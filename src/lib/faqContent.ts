@@ -120,6 +120,50 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
     ],
   },
   {
+    id: 'putting',
+    title: 'Putting',
+    items: [
+      {
+        q: 'Which putts does the Putting page count?',
+        a: [
+          'Putts of 5 ft and longer that you stroked yourself. Gimmes are left out, and so are rounds played with auto putt on.',
+          'Sim gimme circles are usually 5 or 6 ft, so there is nothing to study inside that.',
+        ],
+        link: { href: '/rounds/putting', label: 'Putting' },
+      },
+      {
+        q: 'What are Read, Pace and Line?',
+        a: ['Every putt is split into three skills.'],
+        table: {
+          head: ['Skill', 'What it means'],
+          rows: [
+            ['Read', 'Where you placed your aim. Did you play the right amount of break?'],
+            ['Line', 'Whether the ball started where you aimed, from the launch monitor\u2019s start direction.'],
+            ['Pace', 'Distance. Right pace would finish about 1 ft past the hole.'],
+          ],
+        },
+      },
+      {
+        q: 'How does it decide what a miss cost?',
+        a: [
+          'Each missed putt is replayed with one thing put right: the read, the pace, or the start line. Each skill is credited with the strokes its fix would have saved, and the three add up to your strokes gained putting against the tour benchmark.',
+          'Each skill also shows a typical miss and a lean: which way it goes, when it clearly goes one way. Averages are not used, because a putt left short and a putt run past would cancel out and look fine.',
+        ],
+      },
+      {
+        q: 'Why does it say the numbers are early?',
+        a: [
+          'For now, Read is worked out from where the ball finished, with the start-line error taken out. It becomes exact once enough putts carry your aim and roll path, which Looper records from here on. Break size (minor, medium, big) arrives at the same point.',
+          'A round has only 20 to 30 real putts, so numbers from one or two rounds move a lot.',
+        ],
+      },
+      {
+        q: 'What do holed, left a gimme and missed mean?',
+        a: ['Holed went in. Left a gimme missed, but finished close enough that the next putt was given. Missed left another putt you had to hit.'],
+      },
+    ],
+  },
+  {
     id: 'courses',
     title: 'Courses',
     items: [
