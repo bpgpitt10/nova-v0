@@ -143,7 +143,7 @@ export type PuttingProfile = Readonly<{
   line: SkillSummary
   /** How the cost of the misses splits between the skills (sums to 1); null with nothing to split. */
   skillShare: SkillCosts | null
-  /** sgPer18 split by skillShare, when putting is losing strokes. */
+  /** sgPer18 split between the skills; the three always add up to it. */
   skillStrokes: SkillCosts | null
   /** Misses the split is built on. */
   attributedPutts: number
@@ -396,8 +396,11 @@ export const buildPuttingProfile = (allRounds: readonly RoundSummary[]): Putting
   const skillShare: SkillCosts | null = totalCost > 0
     ? { read: totals.read / totalCost, pace: totals.pace / totalCost, line: totals.line / totalCost }
     : null
-  const skillStrokes: SkillCosts | null = skillShare && sgPer18 != null && sgPer18 < 0
-    ? { read: sgPer18 * skillShare.read, pace: sgPer18 * skillShare.pace, line: sgPer18 * skillShare.line }
+  // The three always add up to sgPer18. Losing strokes: each skill takes its share of the cost.
+  // Gaining strokes: the gain goes the other way round, most to the skill that cost least.
+  const weight = (share: number) => (sgPer18 != null && sgPer18 < 0 ? share : (1 - share) / 2)
+  const skillStrokes: SkillCosts | null = skillShare && sgPer18 != null
+    ? { read: sgPer18 * weight(skillShare.read), pace: sgPer18 * weight(skillShare.pace), line: sgPer18 * weight(skillShare.line) }
     : null
 
   const gimmes = rounds.flatMap(scoredShots).filter((shot) => shot.isPutt && shot.conceded).length

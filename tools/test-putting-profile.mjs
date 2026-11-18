@@ -114,6 +114,15 @@ try {
     assert.equal(built.putts[0].cause, 'pace')
     assert.ok(built.skillShare && near(built.skillShare.read + built.skillShare.pace + built.skillShare.line, 1))
     assert.ok(built.skillStrokes && near(built.skillStrokes.read + built.skillStrokes.pace + built.skillStrokes.line, built.sgPer18))
+    // Gaining strokes: the three still add up, and the skill that cost least gets the most credit.
+    const gaining = buildPuttingProfile([round([
+      putt(3, { end: { x: 0.05, y: 0, z: 9 }, startDirectionDeg: 0.2, sg: 0.1 }),
+      putt(4, { holed: true, end: cup, sg: 0.9 }),
+    ])])
+    assert.ok(gaining.sgPer18 > 0)
+    const g = gaining.skillStrokes
+    assert.ok(g && near(g.read + g.pace + g.line, gaining.sgPer18))
+    assert.ok(g.pace < g.read && g.pace < g.line && g.pace >= 0, 'pace cost the most, so it gets the least of the gain')
   }
 
   // 6. The Old Game (round 268): real putts only, every one of them 5 ft or longer.
