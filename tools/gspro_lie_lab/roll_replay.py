@@ -9,11 +9,16 @@ roll as GSPro plays them now.
 
 Double-click it (open with Python), or run `python roll_replay.py`. It asks
 what you want to test and what GSPro is set to, then hits the shots. Nothing to
-remember: press Enter to take the suggested answer. Two tests:
+remember: press Enter to take the suggested answer. Four tests:
 
   Fairway roll       whole bag on the Practice Range
+  Designed shots     25 shots on the Practice Range that vary speed, launch and
+                     spin independently, so a model can tell which one causes
+                     the roll (a bag's stock shots can't: they move together)
   Landing on a green irons and wedges in On Course practice (carry, then how far
                      the ball released or spun back, and how flat the green was)
+  Putt roll          putts at set speeds on a green: how far each rolls on this
+                     course type, green firmness and stimp, flat, uphill or down
 
 Everything from one sitting goes into one file, looper_lab_<time>.csv.
 
@@ -289,9 +294,34 @@ LAB_FIELDS = [
     "test", "course_type", "fairway_firmness", "green_firmness", "stimp", "pin_distance_yd", "club", "n", "status",
     "carry_yd", "total_yd", "roll_yd", "sideways_yd", "roll_height_change_in", "finish_surface", "holed",
     "offline_yd", "peak_height", "descent_deg",
+    "slope", "putt_roll_ft", "putt_height_change_in", "putt_to_cup_ft", "sent_hla_deg",
     "sent_speed_mph", "sent_vla_deg", "sent_spin_rpm", "gspro_speed_mph", "gspro_vla_deg", "gspro_spin_rpm",
     "stored_carry_yd", "stored_roll_yd", "row_id", "sent_at",
 ]
+M_TO_FT = 3.280839895
+#: Putt speeds rolled by default, mph off the face.
+PUTT_SPEEDS_MPH = (2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0)
+
+
+def measure_putt(record: dict[str, Any] | None) -> dict[str, Any]:
+    """How far a putt rolled and how much it climbed or dropped, from GSPro's record of it."""
+    if not record:
+        return {}
+    start, end = _xyz(record.get("StartingPOS")), _xyz(record.get("EndingPOS"))
+    shot_data = ((record.get("activeShot") or {}).get("sd")) or ((record.get("GhostData") or {}).get("atShotData")) or {}
+    cup = _xyz(shot_data.get("tdpoint"))
+    row: dict[str, Any] = {"row_id": record.get("ShotID"), "holed": bool(shot_data.get("isHoled")),
+                           "finish_surface": record.get("EndingSurface"), "gspro_speed_mph": _num(record.get("BallSpeed"))}
+    if start and end:
+        row["putt_roll_ft"] = round(((end[0] - start[0]) ** 2 + (end[2] - start[2]) ** 2) ** 0.5 * M_TO_FT, 2)
+        row["putt_height_change_in"] = round((end[1] - start[1]) * M_TO_IN, 1)
+    if start and cup:
+        row["putt_to_cup_ft"] = round(((cup[0] - start[0]) ** 2 + (cup[2] - start[2]) ** 2) ** 0.5 * M_TO_FT, 2)
+    return row
+
+
+def putt_shots(speeds: tuple[float, ...] | list[float], hla: float) -> dict[str, dict[str, float]]:
+    return {f"{speed:g} mph": {"speed": speed, "vla": 0.0, "spin": 0.0, "hla": hla} for speed in speeds}
 
 
 def gspro_round_file() -> Path:
@@ -398,8 +428,42 @@ def ask_number(read_line, question: str, default: float, low: float, high: float
         print(f"  A number from {low:g} to {high:g}, or press Enter for {default:g}.")
 
 
+#: Designed shots: five levels each of ball speed, launch and spin, combined so that every
+#: speed meets every launch and every spin exactly once, and every launch meets every spin
+#: exactly once (an orthogonal array, 25 shots). A normal bag can't do this: its fast shots
+#: are always low and low-spin, so stock shots can't say which of the three causes the roll.
+GRID_SPEEDS_MPH = (70.0, 95.0, 120.0, 145.0, 165.0)
+GRID_LAUNCH_DEG = (9.0, 14.0, 19.0, 24.0, 30.0)
+GRID_SPIN_RPM = (2200.0, 4200.0, 6200.0, 8200.0, 10200.0)
+
+
+def designed_shots() -> dict[str, dict[str, float]]:
+    """The 25 designed shots, named by their numbers: "120mph 19deg 6200rpm"."""
+    shots: dict[str, dict[str, float]] = {}
+    for i, speed in enumerate(GRID_SPEEDS_MPH):
+        for j, launch in enumerate(GRID_LAUNCH_DEG):
+            spin = GRID_SPIN_RPM[(i + j) % len(GRID_SPIN_RPM)]
+            shots[f"{speed:g}mph {launch:g}deg {spin:g}rpm"] = {"speed": speed, "vla": launch, "spin": spin}
+    return shots
+
+
 SETTING_OPTIONS = [("soft", "Soft"), ("medium", "Medium"), ("firm", "Firm")]
 TYPE_OPTIONS = [("soft", "Soft (Bentgrass)"), ("medium", "Medium (Bermuda)"), ("firm", "Firm (Links)")]
+
+
+def putt_summary(rows: list[dict[str, Any]]) -> list[str]:
+    """Average roll at each speed, and whether repeat putts matched."""
+    lines = []
+    widest = 0.0
+    for speed in sorted({row["sent_speed_mph"] for row in rows}):
+        rolls = [row["putt_roll_ft"] for row in rows if row["sent_speed_mph"] == speed and row.get("putt_roll_ft") is not None and not row.get("holed")]
+        if not rolls:
+            continue
+        widest = max(widest, max(rolls) - min(rolls))
+        lines.append(f"  {speed:>5.1f} mph: rolled {sum(rolls) / len(rolls):5.1f} ft ({len(rolls)} putts)")
+    if any(sum(1 for row in rows if row["sent_speed_mph"] == speed) >= 2 for speed in {row["sent_speed_mph"] for row in rows}):
+        lines.append(f"  Repeat putts matched to within {widest:.1f} ft." + (" One putt a speed is enough." if widest <= 0.3 else ""))
+    return lines
 
 
 def spread_note(rows: list[dict[str, Any]]) -> str | None:
@@ -432,13 +496,13 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
                     break
             except EOFError:
                 break
-        if test == "green":
+        if test in ("green", "putt"):
             before_record = newest_round_record(round_file)
             before_id: Any = before_record.get("ShotID") if before_record else None
         else:
             before_row = latest_row_safely(db_path)
             before_id = before_row[0] if before_row else None
-        shot = {"speed": stock["speed"], "vla": stock["vla"], "hla": 0.0, "spin": stock["spin"], "axis": 0.0}
+        shot = {"speed": stock["speed"], "vla": stock["vla"], "hla": stock.get("hla", 0.0), "spin": stock["spin"], "axis": 0.0}
         sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
         try:
             status = path.fire(shot)  # blocks until GSPro's ball-at-rest: one shot at a time
@@ -449,7 +513,9 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
             # GSPro did not say the ball had stopped: give it time to fly and roll out before anything else.
             print(f"  (no ball-at-rest from GSPro; waiting {NO_STOP_SIGNAL_WAIT_S:g} s for the shot to finish)")
             sleep(NO_STOP_SIGNAL_WAIT_S)
-        if test == "green":
+        if test == "putt":
+            measured = measure_putt(wait_for_new_record(round_file, before_id, record_wait, sleep=sleep))
+        elif test == "green":
             measured = measure_landing(wait_for_new_record(round_file, before_id, record_wait, sleep=sleep))
         else:
             found = wait_for_new_row(db_path, before_id, record_wait, sleep=sleep)
@@ -457,11 +523,18 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
         stored_roll = round(stock["total"] - stock["carry"], 1) if "total" in stock and "carry" in stock else None
         row = {"test": test, **labels, "club": club, "n": index, "status": status,
                "sent_speed_mph": stock["speed"], "sent_vla_deg": stock["vla"], "sent_spin_rpm": stock["spin"],
+               "sent_hla_deg": stock.get("hla"),
                "stored_carry_yd": stock.get("carry"), "stored_roll_yd": stored_roll, "sent_at": sent_at, **measured}
         writer.writerow(row)
         flush()
         rows.append(row)
-        if row.get("roll_yd") is None:
+        if test == "putt":
+            if row.get("putt_roll_ft") is None:
+                print(f"  {index:>3}/{len(shots)}  {club:<7} not recorded by GSPro   [{status}]")
+            else:
+                holed = "  (HOLED: roll cut short, not usable)" if row.get("holed") else ""
+                print(f"  {index:>3}/{len(shots)}  {club:<7} rolled {row['putt_roll_ft']:5.1f} ft, {row['putt_height_change_in']:+.1f} in. height change{holed}")
+        elif row.get("roll_yd") is None:
             print(f"  {index:>3}/{len(shots)}  {club:<6} not recorded by GSPro   [{status}]")
         elif test == "green":
             on_green = "on the green" if row.get("finish_surface") == GREEN_SURFACE else f"finished off the green (surface {row.get('finish_surface')})"
@@ -495,7 +568,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
         pause_before_close(read_line)
         return 3
 
-    answers = {"type": "medium", "fairway": "medium", "green": "medium", "stimp": 10.0, "repeats": 2.0, "gap": 3.0, "test": "fairway"}
+    answers: dict[str, Any] = {"type": "medium", "fairway": "medium", "green": "medium", "stimp": 10.0, "repeats": 2.0, "gap": 3.0, "test": "fairway"}
     total = 0
     try:
         with out.open("w", newline="", encoding="utf-8") as handle:
@@ -504,7 +577,9 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
             while True:
                 test = choose(read_line, "What do you want to test?", [
                     ("fairway", "Fairway roll: whole bag on the Practice Range"),
+                    ("grid", "Designed shots: 25 shots that separate speed, launch and spin (Practice Range)"),
                     ("green", "Landing on a green: irons and wedges in On Course practice"),
+                    ("putt", "Putt roll: putts at set speeds on a green"),
                     ("quit", "Finished"),
                 ], answers["test"])  # Enter repeats the last test, so nine settings are nine quick passes
                 if test == "quit":
@@ -513,7 +588,44 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                 answers["type"] = choose(read_line, "\nCourse Type set in GSPro right now?", TYPE_OPTIONS, answers["type"])
                 labels: dict[str, Any] = {"course_type": answers["type"]}
                 confirm_each = False
-                if test == "fairway":
+                shot_bag = bag
+                if test == "putt":
+                    answers["green"] = choose(read_line, "\nGreen Firmness set in GSPro right now?", SETTING_OPTIONS, answers["green"])
+                    answers["stimp"] = ask_number(read_line, "Stimp set in GSPro right now?", answers["stimp"], 6, 13)
+                    slope = choose(read_line, "\nWhich way does this putt run?", [
+                        ("flat", "Flat"), ("uphill", "Uphill"), ("downhill", "Downhill"),
+                    ], answers.get("slope", "flat"))
+                    answers["slope"] = slope
+                    labels.update({"green_firmness": answers["green"], "stimp": answers["stimp"], "slope": slope})
+                    print("\nGSPro should have the ball on a green, ready for a putt, with room past the hole.")
+                    answers["hla"] = ask_number(read_line, "Degrees to start it off line so it misses the hole and rolls out (negative is left)?",
+                                                answers.get("hla", 3.0), -15, 15)
+                    shot_bag = putt_shots(PUTT_SPEEDS_MPH, answers["hla"])
+                    clubs = list(shot_bag)
+                    typed = read_line(f"Speeds in mph? Enter for {', '.join(f'{v:g}' for v in PUTT_SPEEDS_MPH)}, or list your own (3,5,7): ").strip()
+                    if typed:
+                        try:
+                            speeds = [float(part) for part in typed.split(",") if part.strip()]
+                            if not speeds or any(not 0.5 <= speed <= 25 for speed in speeds):
+                                raise ValueError
+                        except ValueError:
+                            print("  Speeds are numbers from 0.5 to 25, separated by commas.\n")
+                            continue
+                        shot_bag = putt_shots(speeds, answers["hla"])
+                        clubs = list(shot_bag)
+                        typed = ""
+                    confirm_each = choose(read_line, "\nAfter each putt, does GSPro put the ball back on your spot by itself?", [
+                        ("yes", "Yes, it resets"), ("no", "No, I put it back (I'll press Enter before each putt)"),
+                    ], "no") == "no"
+                elif test == "grid":
+                    answers["fairway"] = choose(read_line, "\nFairway Firmness set in GSPro right now?", SETTING_OPTIONS, answers["fairway"])
+                    labels["fairway_firmness"] = answers["fairway"]
+                    print("\nGSPro should be on the Practice Range (Driving Range), hitting to the fairway.")
+                    print("These are not golf shots: some are fast with wedge spin, some slow and low. That is the point.")
+                    shot_bag = designed_shots()
+                    clubs = list(shot_bag)
+                    typed = ""
+                elif test == "fairway":
                     answers["fairway"] = choose(read_line, "\nFairway Firmness set in GSPro right now?", SETTING_OPTIONS, answers["fairway"])
                     labels["fairway_firmness"] = answers["fairway"]
                     print("\nGSPro should be on the Practice Range (Driving Range), hitting to the fairway.")
@@ -548,17 +660,28 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     except ValueError as exc:
                         print(f"  {exc}\n")
                         continue
-                answers["repeats"] = ask_number(read_line, "Shots per club?", answers["repeats"], 1, 10)
+                # GSPro's roll repeats exactly, so each designed shot is hit once.
+                if test == "grid":
+                    repeats = 1
+                elif test == "putt":
+                    repeats = int(ask_number(read_line, "Putts at each speed?", answers.get("putt_repeats", 2.0), 1, 10))
+                    answers["putt_repeats"] = float(repeats)
+                else:
+                    repeats = int(ask_number(read_line, "Shots per club?", answers["repeats"], 1, 10))
+                    answers["repeats"] = float(repeats)
                 answers["gap"] = ask_number(read_line, "Extra seconds to wait once the ball has stopped (the flight itself is already waited for)?", answers["gap"], 0, 60)
-                shots = int(answers["repeats"]) * len(clubs)
+                shots = repeats * len(clubs)
+                what = "the 25 designed shots" if test == "grid" else f"{repeats} each of {', '.join(clubs)}"
+                if test == "putt":
+                    what = f"{repeats} each at {', '.join(clubs)}"
                 try:
-                    if read_line(f"\n{shots} shots: {int(answers['repeats'])} each of {', '.join(clubs)}. Enter to start, q to cancel. ").strip().lower() in ("q", "quit"):
+                    if read_line(f"\n{shots} shots: {what}. Enter to start, q to cancel. ").strip().lower() in ("q", "quit"):
                         print()
                         continue
                 except EOFError:
                     break
-                rows = fire_series(path, read_line, writer, handle.flush, test=test, labels=labels, bag=bag, clubs=clubs,
-                                   repeats=int(answers["repeats"]), gap=answers["gap"], db_path=db_path, round_file=round_file,
+                rows = fire_series(path, read_line, writer, handle.flush, test=test, labels=labels, bag=shot_bag, clubs=clubs,
+                                   repeats=repeats, gap=answers["gap"], db_path=db_path, round_file=round_file,
                                    record_wait=8.0, confirm_each=confirm_each, sleep=sleep)
                 total += len(rows)
                 print()
@@ -568,8 +691,13 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                 note = spread_note(rows)
                 if note:
                     print(f"  {note}")
-                if rows and all(row.get("roll_yd") is None for row in rows):
-                    where = "the Practice Range (Driving Range)" if test == "fairway" else "On Course practice"
+                if test == "putt":
+                    for line in putt_summary(rows):
+                        print(line)
+                    if rows and all(row.get("putt_roll_ft") is None for row in rows):
+                        print("  GSPro did not record any of these putts. Tell Claude which GSPro screen you were on.")
+                elif rows and all(row.get("roll_yd") is None for row in rows):
+                    where = "On Course practice" if test == "green" else "the Practice Range (Driving Range)"
                     print(f"  GSPro did not record any of these. They only count in {where}. Tell Claude which screen you were on.")
                 print(f"\nSaved so far: {total} shots in {out.name}.")
                 print("Change the setting in GSPro for the next set, or choose Finished.\n")
