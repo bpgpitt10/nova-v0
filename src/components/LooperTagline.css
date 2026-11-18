@@ -9,3 +9,9 @@
   letter-spacing: 0.01em;
   color: rgba(234, 179, 8, 0.72);
 }
+
+.looper-tagline-help { margin: 0 0 8px; text-align: center; font-size: 12px; }
+.looper-tagline-help a { color: #9fb09f; text-decoration: none; }
+.looper-tagline-help a:hover { color: #f4d15d; text-decoration: underline; }
+/* One help link per page: where the tagline carries it, the footer copy is not needed. */
+body:has(.looper-tagline-help) .looper-footer { display: none; }
