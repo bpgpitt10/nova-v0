@@ -5,7 +5,6 @@ import {
   IDEAL_PAST_FT,
   leaveSummary,
   MIN_PUTT_FT,
-  MIN_PUTTS_FOR_LABEL,
   PUTT_LENGTH_BUCKETS,
   PUTT_SKILLS,
   READ_PUTTS_NEEDED,
@@ -59,22 +58,76 @@ const sizeText = (id: PuttSkill, skill: SkillSummary) =>
       : id === 'pace' ? `${feet(skill.sizeFt ?? 0)} from the ideal finish`
         : `${skill.size.toFixed(1)}° off your aim`
 
-const adviceFor = (id: PuttSkill, skill: SkillSummary) => {
-  if (skill.kind === 'collecting') return `Needs ${MIN_PUTTS_FOR_LABEL} putts to call; ${skill.putts} so far.`
-  if (id === 'read') {
-    if (skill.lean) return `Your aim leaves putts ${skill.lean.side} of the hole.`
-    return skill.kind === 'scattered' ? 'Your reads miss both ways.' : 'Your reads are close.'
+/** Feet either side that a strip covers: the smallest round number that holds every putt. */
+const stripRange = (values: readonly number[]) => {
+  const furthest = values.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
+  return [1, 2, 3, 6, 9, 15, 30].find((range) => range >= furthest) ?? 30
+}
+
+/**
+ * One skill along one axis: the hole in the middle, a shaded zone that counts
+ * as good, and a tick for every putt. A tight bunch off to one side is a habit;
+ * ticks spread both ways is scatter.
+ */
+function SkillStrip({ values, zone, color, left, right, label }: {
+  values: readonly number[]
+  zone: readonly [number, number]
+  color: string
+  left: string
+  right: string
+  label: string
+}) {
+  const range = stripRange(values)
+  const x = (value: number) => 150 + Math.max(-1, Math.min(1, value / range)) * 132
+  return (
+    <svg aria-label={label} className="putting-mini" role="img" viewBox="0 0 300 92">
+      <rect className="putting-mini-zone" height="36" rx="3" width={Math.max(4, x(zone[1]) - x(zone[0]))} x={x(zone[0])} y="22" />
+      <line className="putting-mini-axis" x1="18" x2="282" y1="40" y2="40" />
+      {values.map((value, index) => (
+        <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1={x(value)} x2={x(value)} y1="25" y2="55" />
+      ))}
+      <circle className="putting-mini-hole" cx="150" cy="40" r="4.5" />
+      <text className="putting-mini-label" x="18" y="78">{left}</text>
+      <text className="putting-mini-label" textAnchor="middle" x="150" y="78">hole</text>
+      <text className="putting-mini-label" textAnchor="end" x="282" y="78">{right}</text>
+      <text className="putting-mini-scale" x="18" y="14">{feet(range)}</text>
+      <text className="putting-mini-scale" textAnchor="end" x="282" y="14">{feet(range)}</text>
+    </svg>
+  )
+}
+
+/** Start direction as a dial: straight up is your aim, a tick per putt. */
+function LineDial({ degrees, color, label }: { degrees: readonly number[]; color: string; label: string }) {
+  const furthest = degrees.reduce((max, value) => Math.max(max, Math.abs(value)), 0)
+  const range = furthest <= 3 ? 3 : furthest <= 6 ? 6 : 10
+  // The dial opens the real few degrees out to a fan wide enough to read.
+  const point = (deg: number, radius: number): [number, number] => {
+    const angle = (Math.max(-1, Math.min(1, deg / range)) * 52 * Math.PI) / 180
+    return [150 + radius * Math.sin(angle), 98 - radius * Math.cos(angle)]
   }
-  if (id === 'pace') {
-    if (skill.lean?.side === 'short') return 'Get it to the hole first.'
-    if (skill.lean?.side === 'long') return 'You run it past. Take some pace off.'
-    return skill.kind === 'scattered' ? 'Short as often as long: this is feel.' : 'Your distance control holds up.'
-  }
-  if (skill.lean) return `You start it ${skill.lean.side} of your aim. Check your set-up.`
-  return skill.kind === 'scattered' ? 'Your start line wanders both ways.' : 'You start it where you point it.'
+  const [leftX, leftY] = point(-range, 80)
+  const [rightX, rightY] = point(range, 80)
+  return (
+    <svg aria-label={label} className="putting-mini" role="img" viewBox="0 0 300 110">
+      <path className="putting-mini-axis" d={`M${leftX} ${leftY} A80 80 0 0 1 ${rightX} ${rightY}`} fill="none" />
+      <line className="putting-mini-aim" x1="150" x2="150" y1="98" y2="14" />
+      {degrees.map((value, index) => {
+        const [x1, y1] = point(value, 56)
+        const [x2, y2] = point(value, 80)
+        return <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1={x1} x2={x2} y1={y1} y2={y2} />
+      })}
+      <circle className="putting-mini-hole" cx="150" cy="98" r="4.5" />
+      <text className="putting-mini-label" textAnchor="end" x={leftX - 8} y={leftY + 4}>{range}° left</text>
+      <text className="putting-mini-label" x={rightX + 8} y={rightY + 4}>{range}° right</text>
+      <text className="putting-mini-scale" textAnchor="middle" x="150" y="9">aim</text>
+    </svg>
+  )
 }
 
 type RoundWindow = 'last' | 'five' | 'all'
+
+/** Half the hole, feet: the zone a read has to land in. */
+const CUP_HALF_FT = 2.125 / 12
 
 /** Rows in the putt list before "Show more". */
 const PUTTS_PER_PAGE = 20
@@ -268,8 +321,32 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                   : profile.skillShare ? `${Math.round(profile.skillShare[id] * 100)}%`
                     : '–'}
               </strong>
+              {id === 'read' ? (
+                <SkillStrip
+                  color={SKILL_COLOR.read}
+                  label="Where your aim alone would have left each putt, left or right of the hole"
+                  left="left"
+                  right="right"
+                  values={profile.putts.flatMap((putt) => (!putt.holed && putt.readLateralFt != null ? [putt.readLateralFt] : []))}
+                  zone={[-CUP_HALF_FT, CUP_HALF_FT]}
+                />
+              ) : id === 'pace' ? (
+                <SkillStrip
+                  color={SKILL_COLOR.pace}
+                  label="Where each missed putt stopped, short of the hole or past it"
+                  left="short"
+                  right="past"
+                  values={profile.putts.flatMap((putt) => (!putt.holed && putt.alongFt != null ? [putt.alongFt] : []))}
+                  zone={[0, 2]}
+                />
+              ) : (
+                <LineDial
+                  color={SKILL_COLOR.line}
+                  degrees={profile.putts.flatMap((putt) => (putt.startDirectionDeg != null ? [putt.startDirectionDeg] : []))}
+                  label="Start direction of each putt against your aim"
+                />
+              )}
               <span>{sizeText(id, skills[id])} · {leanShort(skills[id])}</span>
-              <em>{adviceFor(id, skills[id])}</em>
             </button>
           </div>
         ))}
