@@ -351,7 +351,7 @@ export default function RoundSetupPage() {
             <span className="round-setup-label">Conditions</span>
             <span className="round-setup-conditions-hint">From GSPro&apos;s Match screen. Saved with the round.</span>
           </div>
-          <div className="round-setup-row">
+          <div className="round-setup-row is-four">
             <label className="round-setup-field">
               <span className="round-setup-label">Course type</span>
               <select onChange={(event) => setCondition('courseType', event.target.value)} value={conditions.courseType ?? ''}>
@@ -366,8 +366,6 @@ export default function RoundSetupPage() {
                 {STIMP_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </label>
-          </div>
-          <div className="round-setup-row">
             <label className="round-setup-field">
               <span className="round-setup-label">Green firmness</span>
               <select onChange={(event) => setCondition('greenFirmness', event.target.value)} value={conditions.greenFirmness ?? ''}>

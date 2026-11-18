@@ -336,3 +336,21 @@
 /* GSPro course conditions: a quiet heading over two more rows of picks. */
 .round-setup-conditions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 4px; }
 .round-setup-conditions-hint { color: #8fa08d; font-size: 12px; }
+
+/* The four conditions share one row when there is room. */
+.round-setup-row.is-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Laptops and the sim TV: logo to the left, the form beside it, so nothing scrolls. */
+@media (min-width: 980px) {
+  .round-setup-shell {
+    width: min(1040px, 100%);
+    grid-template-columns: 240px minmax(0, 1fr);
+    align-items: start;
+    gap: 56px;
+    padding-top: clamp(24px, 5vh, 56px);
+  }
+  .round-setup-logo { justify-self: start; position: sticky; top: clamp(24px, 5vh, 56px); }
+  .round-setup-logo img { width: 220px; }
+  .round-setup-panel { gap: 16px; }
+  .round-setup-row.is-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
