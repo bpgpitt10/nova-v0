@@ -153,7 +153,7 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
       {
         q: 'Why does it say the numbers are early?',
         a: [
-          'For now, Read is worked out from where the ball finished, with the start-line error taken out. It becomes exact once enough putts carry your aim and roll path, which Looper records from here on. Break size (minor, medium, big) arrives at the same point.',
+          'Read is judged at the right pace, about a foot past the hole. A putt hit too hard breaks less and one left short breaks more, so that part of a miss counts as Pace, not Read. This needs your aim and the roll of the ball, which Looper records from 18 November on; older putts use where the ball finished, with the start-line error taken out. Break size (minor, medium, big) arrives once enough putts carry them.',
           'A round has only 20 to 30 real putts, so numbers from one or two rounds move a lot.',
         ],
       },

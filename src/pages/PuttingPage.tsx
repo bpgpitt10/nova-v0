@@ -303,7 +303,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               <summary aria-label="How this page works"><span aria-hidden="true">i</span></summary>
               <div>
                 <p><b>What counts.</b> Putts of {MIN_PUTT_FT} ft and longer that you stroked yourself. Gimmes and auto-putt rounds are left out.</p>
-                <p><b>Read</b> is where you placed your aim. <b>Line</b> is whether the ball started there. <b>Pace</b> is distance: right pace would finish about {IDEAL_PAST_FT} ft past the hole.</p>
+                <p><b>Read</b> is where you placed your aim. <b>Line</b> is whether the ball started there. <b>Pace</b> is distance: right pace would finish about {IDEAL_PAST_FT} ft past the hole. Read is judged at that pace: a putt hit too hard breaks less and one left short breaks more, and that part of the miss counts as Pace.</p>
                 <p><b>The split.</b> Each miss is replayed with the read, the pace or the start line put right, and each skill is credited with what that would have saved. The three add up to your strokes gained putting against the tour benchmark.</p>
                 <p><b>Early days.</b> Read is worked out from where the ball finished until {READ_PUTTS_NEEDED} putts carry your aim and roll ({everything.readPutts} so far). Break size arrives with it.</p>
               </div>

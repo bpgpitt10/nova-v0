@@ -11,8 +11,12 @@ import { scoredShots, tourExpectedStrokes, type RoundSummary, type WorldPoint } 
  *
  * Strokes by skill: each miss is replayed with one, two or all three errors
  * removed, and each skill is credited with what its fix saves (shared effects
- * split evenly). A first-order estimate: a putt hit at a different pace would
- * also have broken differently, which this ignores.
+ * split evenly).
+ *
+ * Read is judged at the right pace. A ball breaks more the longer it rolls, so
+ * when the aim is known the break a putt took is scaled to what it would have
+ * taken finishing IDEAL_PAST_FT past the hole; the rest of the sideways miss is
+ * pace. (Fitted on 170 stored roll paths, 18 Nov; old GSPro, stimp 11.)
  *
  * No plain averages: opposite misses cancel. Each skill gets a size (typical
  * miss, ignoring direction) and a lean (which way, only when lopsided).
@@ -164,6 +168,17 @@ const median = (values: readonly number[]) => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
+/**
+ * GSPro's aim (compass degrees) against the straight line from ball to cup;
+ * right is positive. Null without an aim, or when it points nowhere near the hole.
+ */
+const aimOffsetOf = (aimDirectionDeg: number | null, start: WorldPoint, cup: WorldPoint) => {
+  if (aimDirectionDeg == null) return null
+  const bearing = (Math.atan2(cup.x - start.x, cup.z - start.z) * 180) / Math.PI
+  const offset = ((((aimDirectionDeg - bearing) % 360) + 540) % 360) - 180
+  return Math.abs(offset) <= 30 ? offset : null
+}
+
 const bucketFor = (lengthFt: number) =>
   PUTT_LENGTH_BUCKETS.find(([, , from, to]) => lengthFt >= from && (to == null || lengthFt < to))?.[0] ?? '5-10'
 
@@ -246,6 +261,25 @@ export const summarizeRead = (putts: readonly ProfilePutt[]): SkillSummary => {
  * the distance from an ideal finish. Each skill gets its average saving over
  * every order of fixing the three.
  */
+/** Break grows with rolling time to this power (fitted: 1.3–1.4 on stored roll paths). */
+const BREAK_TIME_POWER = 1.4
+/** A putt's break is never scaled by more than this either way. */
+const MAX_BREAK_SCALE = 2
+
+/**
+ * How much more (or less) a putt would have broken by the hole at the right
+ * pace than it did where it was measured. Rolling time under steady slowing
+ * goes with the square roots of the distances, so the green speed drops out.
+ */
+export const idealBreakScale = (lengthFt: number, alongFt: number, reachedHole: boolean) => {
+  const ideal = Math.sqrt(lengthFt + IDEAL_PAST_FT) - Math.sqrt(IDEAL_PAST_FT)
+  const rolled = lengthFt + alongFt
+  // Reached: time to the hole on the way past. Short: time to its stop.
+  const observed = reachedHole ? Math.sqrt(rolled) - Math.sqrt(Math.max(0, alongFt)) : Math.sqrt(Math.max(rolled, 0.01))
+  if (!(observed > 0)) return 1
+  return Math.min(MAX_BREAK_SCALE, Math.max(1 / MAX_BREAK_SCALE, (ideal / observed) ** BREAK_TIME_POWER))
+}
+
 export const attributeMiss = (
   lengthFt: number,
   lateralFt: number,
@@ -253,17 +287,29 @@ export const attributeMiss = (
   startDirectionDeg: number,
   /** Sideways miss as the ball passed the hole, when the roll path gives it. Read and line are judged there. */
   passLateralFt: number | null = null,
+  /** Where the aim sat against the straight line to the hole, degrees, right positive. Lets Read be judged at the right pace. */
+  aimOffsetDeg: number | null = null,
 ) => {
-  const lineLateral = lengthFt * Math.tan((startDirectionDeg * Math.PI) / 180)
+  const tan = (deg: number) => Math.tan((deg * Math.PI) / 180)
+  const lineLateral = lengthFt * tan(startDirectionDeg)
   // Without a roll path (or on a putt that never reached the hole) the stopping point is all there is.
   const atHole = passLateralFt ?? lateralFt
-  const readLateral = atHole - lineLateral
+  // The sideways miss at the hole had the pace been right: same start, the break scaled to the right pace.
+  // Needs the aim, and a place the break was measured: the pass point, or the stop of a putt left short.
+  const measuredAlong = passLateralFt != null ? lengthFt : alongFt < 0 ? lengthFt + alongFt : null
+  const atHoleIdeal = (() => {
+    if (aimOffsetDeg == null || measuredAlong == null || measuredAlong <= 0) return atHole
+    const started = tan(aimOffsetDeg + startDirectionDeg)
+    const broke = atHole - measuredAlong * started
+    return lengthFt * started + broke * idealBreakScale(lengthFt, alongFt, passLateralFt != null)
+  })()
+  const readLateral = atHoleIdeal - lineLateral
   // What the ball broke after the hole. At an ideal pace it runs a shorter way past, so it breaks less.
   const drift = lateralFt - atHole
   const cost = (fix: Readonly<Record<PuttSkill, boolean>>) => {
     // Nothing fixed: the putt as it was. It missed, whatever the geometry says.
     if (!fix.read && !fix.line && !fix.pace) return tourExpectedStrokes('green', Math.hypot(lateralFt, alongFt) / 3)
-    const hole = atHole - (fix.line ? lineLateral : 0) - (fix.read ? readLateral : 0)
+    const hole = (fix.pace ? atHoleIdeal : atHole) - (fix.line ? lineLateral : 0) - (fix.read ? readLateral : 0)
     const along = fix.pace ? IDEAL_PAST_FT : alongFt
     if (Math.abs(hole) <= CUP_RADIUS_FT && along >= 0 && along <= MAX_HOLING_PAST_FT) return 0
     const kept = fix.pace && alongFt > IDEAL_PAST_FT ? IDEAL_PAST_FT / alongFt : 1
@@ -323,7 +369,8 @@ export const profilePutts = (round: RoundSummary): ProfilePutt[] => {
       // With the roll path: the sideways miss where the ball passed the hole (it keeps breaking after).
       const pass = trusted && !shot.holed && shot.start && shot.passHole && cup ? finishAgainstCup(shot.start, shot.passHole, cup) : null
       const split = !shot.holed && alongFt != null && lateralFt != null && shot.startDirectionDeg != null
-        ? attributeMiss(lengthFt, lateralFt, alongFt, shot.startDirectionDeg, pass?.lateralFt ?? null)
+        ? attributeMiss(lengthFt, lateralFt, alongFt, shot.startDirectionDeg, pass?.lateralFt ?? null,
+            trusted && shot.start && cup ? aimOffsetOf(shot.aimDirectionDeg, shot.start, cup) : null)
         : null
       return [{
         roundId: round.roundId,

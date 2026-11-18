@@ -119,6 +119,31 @@ try {
     const overTheTop = attributeMiss(20, 1.5, 6, 0, 0)
     assert.ok(near(overTheTop.readLateralFt, 0) && near(overTheTop.costs.read, 0) && near(overTheTop.costs.line, 0))
     assert.ok(near(overTheTop.costs.pace, benchmark(Math.hypot(1.5, 6))), 'through the hole too fast is all pace')
+    // Read is judged at the right pace. A perfect read of a foot of break, hammered 6 ft by: it broke less,
+    // missed on the high side, and that is all pace.
+    {
+      const { idealBreakScale } = profileLib
+      const scale = idealBreakScale(20, 6, true)
+      assert.ok(scale > 1.4 && scale < 1.6, 'six feet by takes about two thirds of the break')
+      assert.ok(near(idealBreakScale(20, 1, true), 1), 'ideal pace: no change')
+      const aimDeg = (Math.atan(1 / 20) * 180) / Math.PI // aimed a foot right
+      const passedAt = 1 - 1 / scale // broke only 1/scale ft back left by the hole
+      const firm = attributeMiss(20, 0.2, 6, 0, passedAt, aimDeg)
+      assert.ok(near(firm.readLateralFt, 0), 'the read was right')
+      assert.ok(near(firm.costs.read, 0) && near(firm.costs.line, 0) && near(firm.costs.pace, benchmark(Math.hypot(0.2, 6))))
+      // Left 2 ft short and a foot low with a straight aim: about a fifth of that break was the lack of pace.
+      const soft = attributeMiss(20, -1, -2, 0, null, 0)
+      const softScale = idealBreakScale(20, -2, false)
+      assert.ok(softScale > 0.75 && softScale < 0.82)
+      assert.ok(near(soft.readLateralFt, -softScale))
+      assert.ok(near(total(soft.costs), benchmark(Math.hypot(1, 2))), 'still adds up')
+      // The scale is capped, and without an aim nothing changes.
+      assert.equal(idealBreakScale(6, 30, true), 2)
+      assert.deepEqual(attributeMiss(20, 0.2, 6, 0, passedAt, null), attributeMiss(20, 0.2, 6, 0, passedAt))
+      // In a round: aimed straight at a cup due north, left short and low.
+      const aimed = buildPuttingProfile([round([putt(3, { end: { x: -0.3, y: 0, z: 9.4 }, startDirectionDeg: 0, aimDirectionDeg: 0, endYds: 0.7 })])])
+      assert.ok(Math.abs(aimed.putts[0].readLateralFt - -0.3 * 3.280839895 * idealBreakScale(10 * 3.280839895, -0.6 * 3.280839895, false)) < 1e-3)
+    }
     // No pass point: unchanged from before.
     assert.deepEqual(attributeMiss(30, 1.5, -3, 1, null), attributeMiss(30, 1.5, -3, 1))
     {
