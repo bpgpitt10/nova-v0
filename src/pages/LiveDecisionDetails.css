@@ -248,18 +248,34 @@
   opacity: 0.62;
 }
 
-.live-aim-decision-table tbody tr[role='button'] {
+.live-decision-table tbody tr[role='button'] {
   cursor: pointer;
 }
 
-.live-aim-decision-table tbody tr[role='button']:hover,
-.live-aim-decision-table tbody tr[role='button']:focus-visible {
-  background: rgba(255, 255, 255, 0.035);
+.live-decision-table tbody tr[role='button']:hover,
+.live-decision-table tbody tr[role='button']:focus-visible {
+  background: rgba(255, 255, 255, 0.05);
   outline: none;
 }
 
-.live-aim-decision-table tbody tr.viewed {
-  background: rgba(234, 179, 8, 0.075);
+/* The club or line being looked at: clearly yellow. The armed one: stronger, with a bar and an ARMED tag. */
+.live-decision-table tbody tr.viewed {
+  background: rgba(234, 179, 8, 0.17);
+}
+
+.live-decision-table tbody tr.armed {
+  background: rgba(234, 179, 8, 0.26);
+  box-shadow: inset 4px 0 0 #f4d15d;
+}
+
+.live-decision-table tbody tr small.armed-tag {
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f4d15d;
+  color: #1a1503;
+  font-weight: 800;
+  letter-spacing: 0.06em;
 }
 
 @media (max-width: 860px) {

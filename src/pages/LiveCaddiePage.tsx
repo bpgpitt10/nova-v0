@@ -357,6 +357,9 @@ export default function LiveCaddiePage() {
   const [armPhase, setArmPhase] = useState<'idle' | 'filling' | 'aiming' | 'armed'>('idle')
   const [aimResult, setAimResult] = useState<AimInGsproResult | null>(null)
   const [armedAimKey, setArmedAimKey] = useState<string | null>(null)
+  // The aim line that was armed (yards off the club's centre line), so the page can mark it.
+  const [armedAimOffsetYds, setArmedAimOffsetYds] = useState<number | null>(null)
+  const latestAimOffsetRef = useRef<number | null>(null)
   const armTimerRef = useRef<number | null>(null)
   const armRunRef = useRef(0)
   const resetArm = () => {
@@ -367,6 +370,7 @@ export default function LiveCaddiePage() {
     setArmPhase('idle')
     setAimResult(null)
     setArmedAimKey(null)
+    setArmedAimOffsetYds(null)
   }
   const lastShotKeyRef = useRef<string | null>(null)
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
@@ -1493,7 +1497,11 @@ export default function LiveCaddiePage() {
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
     courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
   }
+  latestAimOffsetRef.current = (inspectedCandidate ?? viewedBestCandidate)?.aimOffsetYds ?? null
   const armedHere = armPhase === 'armed' && eligibleArmedClub != null && eligibleArmedClub === displayedClub
+  /** The armed line, when the club on screen is the armed one. */
+  const armedOffsetHere = armedHere ? armedAimOffsetYds : null
+  const shownAimOffset = (inspectedCandidate ?? viewedBestCandidate)?.aimOffsetYds ?? null
   const aimChanged = armedHere && aimResult?.outcome !== 'not-sent'
     && armedAimKey != null && currentAimKey != null && armedAimKey !== currentAimKey
 
@@ -1513,6 +1521,7 @@ export default function LiveCaddiePage() {
       armTimerRef.current = null
       if (run !== armRunRef.current) return
       const snap = latestAimRef.current
+      const armedOffset = latestAimOffsetRef.current
       if (!snap.club) { setArmPhase('idle'); return }
       setArmedClub(snap.club)
       setPreviewClub(snap.club)
@@ -1521,6 +1530,7 @@ export default function LiveCaddiePage() {
         if (run !== armRunRef.current) return
         setAimResult(result)
         setArmedAimKey(snap.aimKey)
+        setArmedAimOffsetYds(armedOffset)
         setArmPhase('armed')
       }
       // Auto Aim lines GSPro's minimap up on the ball and the pin. A pin Looper
@@ -1578,6 +1588,7 @@ export default function LiveCaddiePage() {
       setArmPhase('idle')
       setAimResult(null)
       setArmedAimKey(null)
+      setArmedAimOffsetYds(null)
     }
   }
 
@@ -2422,6 +2433,11 @@ export default function LiveCaddiePage() {
                     ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
                     : displayedClub ?? '—'}</div>
                   <div className="live-aim-hero">
+                    {armedOffsetHere != null ? (
+                      <span className={`live-armed-tag${armedOffsetHere === shownAimOffset ? '' : ' elsewhere'}`}>
+                        {armedOffsetHere === shownAimOffset ? 'ARMED' : `ARMED ON ${aimLabel(armedOffsetHere).toUpperCase()}`}
+                      </span>
+                    ) : null}
                     {playerFacingAim}
                     {aimWidthFact && !isShotStrategy ? <span className="live-aim-width">{aimWidthFact}</span> : null}
                   </div>
@@ -2623,12 +2639,13 @@ export default function LiveCaddiePage() {
                           <button
                             key={option.key}
                             type="button"
-                            className={shown ? 'active' : ''}
+                            className={`${shown ? 'active' : ''}${armedOffsetHere === option.aimOffsetYds ? ' armed' : ''}`}
                             aria-pressed={shown}
                             title={`Water/OB ${Math.round(option.catastrophe * 100)}% · serious trouble ${Math.round(option.seriousTrouble * 100)}%`}
                             onClick={() => setInspectedAimOffset(option.key === 'best' ? null : option.aimOffsetYds)}
                           >
                             <b>{name}{option.alsoSafest && option.key !== 'safest' ? ' · safest' : ''}</b>
+                            {armedOffsetHere === option.aimOffsetYds ? <em>ARMED</em> : null}
                             <span>{aimLabel(option.aimOffsetYds)}</span>
                             <small>{option.key === 'best' ? 'Looper\u2019s line' : `+${option.costStrokes.toFixed(2)} strokes`}</small>
                           </button>
@@ -2657,6 +2674,9 @@ export default function LiveCaddiePage() {
               ball={ball}
               target={target}
               onInspectAim={(aimOffsetYds) => setInspectedAimOffset(aimOffsetYds)}
+              onPickClub={pickClub}
+              armedClub={armPhase === 'armed' ? eligibleArmedClub : null}
+              armedAimOffsetYds={armedOffsetHere}
             /> : null}
 
             <section className="live-club-strip-card">
