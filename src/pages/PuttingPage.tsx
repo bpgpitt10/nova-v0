@@ -218,6 +218,8 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   // Tapping Read, Line or Pace shows only the misses that skill caused.
   const [cause, setCause] = useState<PuttSkill | 'all'>('all')
   const [listLimit, setListLimit] = useState(PUTTS_PER_PAGE)
+  // The putt-by-putt list is detail: closed until asked for.
+  const [listOpen, setListOpen] = useState(false)
 
   const everything = useMemo(() => buildPuttingProfile(rounds), [rounds])
   const profile = useMemo(() => {
@@ -533,8 +535,11 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
         <section className="rounds-section">
           <div className="rounds-section-head">
             <h2>Every putt</h2>
-            <span className="rounds-muted">{listed.length} {listed.length === 1 ? 'putt matches' : 'putts match'} the filters above, newest first.</span>
+            <button aria-expanded={listOpen} className="putting-more" onClick={() => setListOpen((open) => !open)} type="button">
+              {listOpen ? 'Hide' : `Show ${listed.length} ${listed.length === 1 ? 'putt' : 'putts'}`}
+            </button>
           </div>
+          {listOpen ? (
           <div className="yourgame-scroll">
             <table className="rounds-table">
               <thead>
@@ -569,7 +574,8 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               </tbody>
             </table>
           </div>
-          {listed.length > listLimit ? (
+          ) : null}
+          {listOpen && listed.length > listLimit ? (
             <button className="putting-more" onClick={() => setListLimit((limit) => limit + PUTTS_PER_PAGE)} type="button">
               Show {Math.min(PUTTS_PER_PAGE, listed.length - listLimit)} more ({listed.length - listLimit} left)
             </button>
