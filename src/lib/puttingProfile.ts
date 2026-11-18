@@ -44,7 +44,8 @@ const CUP_RADIUS_FT = 2.125 / 12
 const MAX_HOLING_PAST_FT = 4
 
 export type PuttSkill = 'read' | 'pace' | 'line'
-export const PUTT_SKILLS: readonly PuttSkill[] = ['read', 'pace', 'line']
+/** In the order a putt happens: read it, start it on line, find out if the pace was right. */
+export const PUTT_SKILLS: readonly PuttSkill[] = ['read', 'line', 'pace']
 export type SkillCosts = Readonly<Record<PuttSkill, number>>
 
 export const PUTT_LENGTH_BUCKETS: ReadonlyArray<readonly [string, string, number, number | null]> = [
@@ -388,11 +389,12 @@ export const buildPuttingProfile = (allRounds: readonly RoundSummary[]): Putting
 
   // How the cost of the misses splits. A skill whose fixes would not have helped overall counts as zero.
   const attributed = putts.filter((putt) => putt.costs != null)
-  const totals = PUTT_SKILLS.map((skill) => Math.max(0, attributed.reduce((sum, putt) => sum + (putt.costs as SkillCosts)[skill], 0)))
-  const totalCost = totals.reduce((sum, value) => sum + value, 0)
+  const totalFor = (skill: PuttSkill) => Math.max(0, attributed.reduce((sum, putt) => sum + (putt.costs as SkillCosts)[skill], 0))
+  const totals = { read: totalFor('read'), pace: totalFor('pace'), line: totalFor('line') }
+  const totalCost = totals.read + totals.pace + totals.line
   const sgPer18 = holes > 0 && putts.length > 0 ? (sgTotal / holes) * 18 : null
   const skillShare: SkillCosts | null = totalCost > 0
-    ? { read: totals[0] / totalCost, pace: totals[1] / totalCost, line: totals[2] / totalCost }
+    ? { read: totals.read / totalCost, pace: totals.pace / totalCost, line: totals.line / totalCost }
     : null
   const skillStrokes: SkillCosts | null = skillShare && sgPer18 != null && sgPer18 < 0
     ? { read: sgPer18 * skillShare.read, pace: sgPer18 * skillShare.pace, line: sgPer18 * skillShare.line }

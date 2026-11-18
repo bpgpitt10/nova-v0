@@ -202,7 +202,7 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                 <span className="rounds-muted">
                   Inside the {GIMME_CIRCLE_FT}–6 ft gimme circle there&apos;s nothing to read
                   {game.gimmes ? ` (${game.gimmes} gimmes)` : ''}; rounds with auto putt on are left out.
-                  Read, Pace and Line show how far each typically puts you from the hole at that length.
+                  Read, Line and Pace show how far each typically puts you from the hole at that length.
                 </span>
               </div>
               <div className="yourgame-scroll">
@@ -213,8 +213,8 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                     <th className="is-num" scope="col">Made</th>
                     <th className="is-num" scope="col">SG / putt</th>
                     <th className="is-num" scope="col">Read</th>
-                    <th className="is-num" scope="col">Pace</th>
                     <th className="is-num" scope="col">Line</th>
+                    <th className="is-num" scope="col">Pace</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -224,8 +224,8 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
                       <td className="is-num">{bucket.putts ? `${bucket.made} of ${bucket.putts}` : '–'}</td>
                       <td className={`is-num ${tone(bucket.sgPerPutt)}`}>{bucket.sgPerPutt != null ? signed(bucket.sgPerPutt) : '–'}</td>
                       <td className="is-num">{inchesAtHole(bucket.readFt)}</td>
-                      <td className="is-num">{inchesAtHole(bucket.paceFt)}</td>
                       <td className="is-num">{inchesAtHole(bucket.lineFt)}</td>
+                      <td className="is-num">{inchesAtHole(bucket.paceFt)}</td>
                     </tr>
                   ))}
                 </tbody>
