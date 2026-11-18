@@ -49,20 +49,29 @@ export const hasRoundConditions = (conditions: RoundConditions | null | undefine
   conditions != null && (conditions.courseType != null || conditions.greenFirmness != null
     || conditions.fairwayFirmness != null || conditions.stimp != null)
 
-const REMEMBERED_KEY = 'looper.round-setup.conditions'
+/** Every round needs all four (Brian, 18 Nov): a round without them can't be adjusted or learned from. */
+export const roundConditionsComplete = (conditions: RoundConditions | null | undefined) =>
+  conditions != null && conditions.courseType != null && conditions.greenFirmness != null
+    && conditions.fairwayFirmness != null && conditions.stimp != null
 
-/** Most players leave GSPro on the same conditions, so the last pick is the next default. */
-export const loadRememberedRoundConditions = (): RoundConditions => {
+const REMEMBERED_KEY_PREFIX = 'looper.round-setup.conditions:'
+
+/**
+ * What was picked last time on this course. Remembered per course, because
+ * GSPro defaults each course to conditions that suit its design: last night's
+ * links settings would be a wrong guess on a parkland course.
+ */
+export const loadRememberedRoundConditions = (courseId: string): RoundConditions => {
   try {
-    return normalizeRoundConditions(JSON.parse(window.localStorage.getItem(REMEMBERED_KEY) ?? 'null'))
+    return normalizeRoundConditions(JSON.parse(window.localStorage.getItem(`${REMEMBERED_KEY_PREFIX}${courseId}`) ?? 'null'))
   } catch {
     return NO_ROUND_CONDITIONS
   }
 }
 
-export const rememberRoundConditions = (conditions: RoundConditions) => {
+export const rememberRoundConditions = (courseId: string, conditions: RoundConditions) => {
   try {
-    window.localStorage.setItem(REMEMBERED_KEY, JSON.stringify(conditions))
+    window.localStorage.setItem(`${REMEMBERED_KEY_PREFIX}${courseId}`, JSON.stringify(conditions))
   } catch {
     // remembering is a convenience only
   }

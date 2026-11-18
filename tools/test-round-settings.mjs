@@ -11,7 +11,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
 })
 
 try {
-  const { normalizeRoundConditions, hasRoundConditions, NO_ROUND_CONDITIONS } = await load('/src/liveCaddie/roundConditions.ts')
+  const { normalizeRoundConditions, hasRoundConditions, roundConditionsComplete, NO_ROUND_CONDITIONS } = await load('/src/liveCaddie/roundConditions.ts')
   const { roundSettingsFor } = await load('/src/lib/roundSettings.ts')
 
   // Picks come from <select> values: strings, with '' / null for "Not sure".
@@ -22,6 +22,10 @@ try {
   assert.deepEqual(normalizeRoundConditions(null), NO_ROUND_CONDITIONS)
   assert.equal(hasRoundConditions(NO_ROUND_CONDITIONS), false)
   assert.equal(hasRoundConditions({ ...NO_ROUND_CONDITIONS, stimp: 11 }), true)
+  // Start Round needs all four.
+  assert.equal(roundConditionsComplete({ ...NO_ROUND_CONDITIONS, stimp: 11 }), false)
+  assert.equal(roundConditionsComplete({ courseType: 'medium', greenFirmness: 'soft', fairwayFirmness: 'firm', stimp: 11 }), true)
+  assert.equal(roundConditionsComplete(null), false)
 
   const active = {
     id: 'a', teeSet: 'Yellow', pinDay: 'Thursday', startedAt: '2026-11-18T23:00:00.000Z',

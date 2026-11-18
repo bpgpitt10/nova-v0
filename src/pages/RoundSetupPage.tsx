@@ -40,6 +40,7 @@ import {
   loadRememberedRoundConditions,
   normalizeRoundConditions,
   rememberRoundConditions,
+  roundConditionsComplete,
   type RoundConditions,
 } from '../liveCaddie/roundConditions'
 import type { CourseTeeCandidate } from '../courseGeometry/types'
@@ -91,8 +92,8 @@ export default function RoundSetupPage() {
       return ''
     }
   })
-  // GSPro's course conditions (Match screen). Remembered like the pin day.
-  const [conditions, setConditions] = useState<RoundConditions>(() => loadRememberedRoundConditions())
+  // GSPro's course conditions (Match screen): required, and remembered per course.
+  const [conditions, setConditions] = useState<RoundConditions>(() => loadRememberedRoundConditions(initialCourseId))
   const setCondition = (field: keyof RoundConditions, value: string) =>
     setConditions((current) => normalizeRoundConditions({ ...current, [field]: value === '' ? null : value }))
   const [unmappedTeeName, setUnmappedTeeName] = useState('')
@@ -233,7 +234,7 @@ export default function RoundSetupPage() {
       } catch {
         // remembering is a convenience only
       }
-      rememberRoundConditions(conditions)
+      rememberRoundConditions(courseId, conditions)
       const round = startLiveCaddieRound({
         courseId,
         teeSet: selection.teeSet,
@@ -267,6 +268,7 @@ export default function RoundSetupPage() {
   const activeCourse = activeRound && activeIsRecent ? getCourseCatalogEntry(activeRound.courseId) : null
   const startDisabled =
     starting || loadingTees || !actualTeeSet || actualTeeSet.length > 60 || course.packageStatus !== 'ready'
+    || !roundConditionsComplete(conditions)
 
   return (
     <main className="round-setup-page">
@@ -299,6 +301,7 @@ export default function RoundSetupPage() {
               courses={courseRegistry}
               onChange={(id) => {
                 setCourseId(id as CourseId)
+                setConditions(loadRememberedRoundConditions(id))
                 setTeeSet('')
                 setUnmappedTeeName('')
               }}
@@ -349,34 +352,36 @@ export default function RoundSetupPage() {
 
           <div className="round-setup-conditions">
             <span className="round-setup-label">Conditions</span>
-            <span className="round-setup-conditions-hint">From GSPro&apos;s Match screen. Saved with the round.</span>
+            <span className="round-setup-conditions-hint">
+              Match these to GSPro. Already in the round? They are in GSPro&apos;s settings.
+            </span>
           </div>
           <div className="round-setup-row is-four">
             <label className="round-setup-field">
               <span className="round-setup-label">Course type</span>
-              <select onChange={(event) => setCondition('courseType', event.target.value)} value={conditions.courseType ?? ''}>
-                <option value="">Not sure</option>
+              <select required onChange={(event) => setCondition('courseType', event.target.value)} value={conditions.courseType ?? ''}>
+                <option disabled value="">Pick…</option>
                 {COURSE_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
             <label className="round-setup-field">
               <span className="round-setup-label">Stimp</span>
-              <select onChange={(event) => setCondition('stimp', event.target.value)} value={conditions.stimp ?? ''}>
-                <option value="">Not sure</option>
+              <select required onChange={(event) => setCondition('stimp', event.target.value)} value={conditions.stimp ?? ''}>
+                <option disabled value="">Pick…</option>
                 {STIMP_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </label>
             <label className="round-setup-field">
               <span className="round-setup-label">Green firmness</span>
-              <select onChange={(event) => setCondition('greenFirmness', event.target.value)} value={conditions.greenFirmness ?? ''}>
-                <option value="">Not sure</option>
+              <select required onChange={(event) => setCondition('greenFirmness', event.target.value)} value={conditions.greenFirmness ?? ''}>
+                <option disabled value="">Pick…</option>
                 {FIRMNESS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
             <label className="round-setup-field">
               <span className="round-setup-label">Fairway firmness</span>
-              <select onChange={(event) => setCondition('fairwayFirmness', event.target.value)} value={conditions.fairwayFirmness ?? ''}>
-                <option value="">Not sure</option>
+              <select required onChange={(event) => setCondition('fairwayFirmness', event.target.value)} value={conditions.fairwayFirmness ?? ''}>
+                <option disabled value="">Pick…</option>
                 {FIRMNESS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
@@ -392,6 +397,9 @@ export default function RoundSetupPage() {
           >
             {starting ? 'Starting…' : 'Start Round'}
           </button>
+          {!roundConditionsComplete(conditions) ? (
+            <p className="round-setup-need">Pick the course type, stimp and both firmness settings to start.</p>
+          ) : null}
         </section>
       </div>
     </main>
