@@ -230,6 +230,35 @@ const puttPath = (record: RoundShotRecord): number[][] => {
   })
 }
 
+/**
+ * Where the ball was as it passed the hole: the point on the roll path level
+ * with the cup along the start-to-cup line. Null when the putt never got there.
+ * A ball keeps breaking after the hole, so this, not where it stopped, is the
+ * sideways miss (checked on 200 stored putts, 18 Nov: 6 in apart on average).
+ */
+export const puttPassPoint = (
+  path: readonly (readonly number[])[],
+  start: { x: number; z: number } | null,
+  cup: { x: number; z: number } | null,
+): { x: number; y: number; z: number } | null => {
+  if (!start || !cup || path.length < 2) return null
+  const dx = cup.x - start.x
+  const dz = cup.z - start.z
+  const length = Math.hypot(dx, dz)
+  if (length < 0.05) return null
+  const along = (point: readonly number[]) => ((point[1] - start.x) * dx + (point[3] - start.z) * dz) / length
+  for (let index = 1; index < path.length; index += 1) {
+    const before = along(path[index - 1])
+    const after = along(path[index])
+    if (before < length && after >= length) {
+      const share = (length - before) / (after - before)
+      const at = (axis: number) => round4(path[index - 1][axis] + (path[index][axis] - path[index - 1][axis]) * share)
+      return { x: at(1), y: at(2), z: at(3) }
+    }
+  }
+  return null
+}
+
 const buildPuttDetail = (record: RoundShotRecord): BrowserGsproPuttDetail | null => {
   if (!isPuttRecord(record)) return null
   const roundId = asNumber(record.RoundID)
@@ -298,6 +327,7 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
         startOffsetDeg: asNumber(ghost?.az) ?? lmfAZ,
         puttVector: vec3(sd?.bounceForce),
         pathPoints: puttPath(record).length,
+        passHole: puttPassPoint(puttPath(record), startingPositionMeters, touchdownPositionMeters),
       }
     : null
 

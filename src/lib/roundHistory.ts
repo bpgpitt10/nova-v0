@@ -59,6 +59,8 @@ export type RoundShotRecord = {
   aimDirectionDeg?: number | null
   /** Putts: the cup, GSPro world metres. */
   cup?: WorldPoint | null
+  /** Putts: where the ball was as it passed the hole, when the roll path was captured and it got there. */
+  passHole?: WorldPoint | null
 }
 
 export type ShotLie = 'tee' | 'fairway' | 'fringe' | 'rough' | 'deep-rough' | 'sand' | 'green' | 'unknown'
@@ -98,6 +100,7 @@ export type RoundShot = {
   startDirectionDeg: number | null
   aimDirectionDeg: number | null
   cup: WorldPoint | null
+  passHole: WorldPoint | null
 }
 
 export type RoundHole = {
@@ -399,6 +402,7 @@ const buildHole = (
       startDirectionDeg: record.startDirectionDeg ?? null,
       aimDirectionDeg: record.aimDirectionDeg ?? null,
       cup: record.cup ?? null,
+      passHole: record.passHole ?? null,
     })
   })
 
@@ -624,6 +628,7 @@ const launchFromRaw = (raw: Record<string, unknown> | null | undefined) => {
     startDirectionDeg: num(putt?.startOffsetDeg) ?? num(raw?.lmfAZ),
     aimDirectionDeg: num(putt?.targetDirectionDeg),
     cup: point(raw?.touchdownPositionMeters),
+    passHole: point(putt?.passHole),
   }
 }
 
