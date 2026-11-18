@@ -126,6 +126,8 @@ jobs:
 
       - name: Your game (where you lose strokes) from real rounds
         run: node tools/test-your-game.mjs
+      - name: Putting profile (real putts, pace and line)
+        run: node tools/test-putting-profile.mjs
 
       - name: Courses loaded at run time join the catalog
         run: node tools/test-runtime-courses.mjs
