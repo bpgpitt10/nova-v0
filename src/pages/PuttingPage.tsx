@@ -89,26 +89,27 @@ function SkillStrip({ values, zone, color, low, high, centre, label, steps, form
   const range = stripRange(values, steps)
   const at = (value: number) => Math.max(-1, Math.min(1, value / range))
   if (vertical) {
-    const y = (value: number) => 75 - at(value) * 58
+    // Tall and narrow: it stands beside the number, the full height of its column.
+    const y = (value: number) => 100 - at(value) * 84
     return (
-      <svg aria-label={label} className="putting-mini" role="img" viewBox="0 0 300 150">
-        <rect className="putting-mini-zone" height={Math.max(4, y(zone[0]) - y(zone[1]))} rx="3" width="44" x="128" y={y(zone[1])} />
-        <line className="putting-mini-axis" x1="150" x2="150" y1="17" y2="133" />
+      <svg aria-label={label} className="putting-mini putting-mini-vertical" role="img" viewBox="0 0 120 200">
+        <rect className="putting-mini-zone" height={Math.max(4, y(zone[0]) - y(zone[1]))} rx="3" width="44" x="18" y={y(zone[1])} />
+        <line className="putting-mini-axis" x1="40" x2="40" y1="12" y2="188" />
         {values.map((value, index) => (
-          <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1="132" x2="168" y1={y(value)} y2={y(value)} />
+          <line key={index} className="putting-mini-tick" style={{ stroke: color }} x1="22" x2="58" y1={y(value)} y2={y(value)} />
         ))}
-        <circle className="putting-mini-hole" cx="150" cy="75" r="4.5" />
-        <text className="putting-mini-label" x="182" y="21">{high}</text>
-        <text className="putting-mini-label" x="182" y="79">{centre}</text>
-        <text className="putting-mini-label" x="182" y="137">{low}</text>
-        <text className="putting-mini-scale" textAnchor="end" x="118" y="21">{format(range)}</text>
-        <text className="putting-mini-scale" textAnchor="end" x="118" y="137">{format(range)}</text>
+        <circle className="putting-mini-hole" cx="40" cy="100" r="4.5" />
+        <text className="putting-mini-label" x="70" y="18">{high}</text>
+        <text className="putting-mini-scale" x="70" y="31">{format(range)}</text>
+        <text className="putting-mini-label" x="70" y="104">{centre}</text>
+        <text className="putting-mini-scale" x="70" y="177">{format(range)}</text>
+        <text className="putting-mini-label" x="70" y="190">{low}</text>
       </svg>
     )
   }
   const x = (value: number) => 150 + at(value) * 132
   return (
-    <svg aria-label={label} className="putting-mini" role="img" viewBox="0 -29 300 150">
+    <svg aria-label={label} className="putting-mini" role="img" viewBox="0 0 300 92">
       <rect className="putting-mini-zone" height="44" rx="3" width={Math.max(4, x(zone[1]) - x(zone[0]))} x={x(zone[0])} y="18" />
       <line className="putting-mini-axis" x1="18" x2="282" y1="40" y2="40" />
       {values.map((value, index) => (
@@ -208,7 +209,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const [roundWindow, setRoundWindow] = useState<RoundWindow>('all')
   const [slope, setSlope] = useState<PuttSlope | 'all'>('all')
   const [length, setLength] = useState<string>('all')
-  // Tapping Read, Pace or Line shows only the misses that skill caused.
+  // Tapping Read, Line or Pace shows only the misses that skill caused.
   const [cause, setCause] = useState<PuttSkill | 'all'>('all')
   const [listLimit, setListLimit] = useState(PUTTS_PER_PAGE)
 
@@ -231,6 +232,14 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const unsplit = allMisses.filter((putt) => putt.cause == null).length
   const topCause = [...byCause].sort((a, b) => b.count - a.count)[0]
   const leaves = leaveSummary(shown)
+  // How often each part, on its own, was good enough for the putt to drop.
+  const judged = shown.filter((putt) => !putt.holed && putt.readLateralFt != null && putt.startDirectionDeg != null && putt.alongFt != null)
+  const judgedTotal = holed + judged.length
+  const goodEnough: Record<PuttSkill, number> = {
+    read: holed + judged.filter((putt) => Math.abs(putt.readLateralFt as number) <= CUP_HALF_FT).length,
+    line: holed + judged.filter((putt) => Math.abs(putt.lengthFt * Math.tan(((putt.startDirectionDeg as number) * Math.PI) / 180)) <= CUP_HALF_FT).length,
+    pace: holed + judged.filter((putt) => (putt.alongFt as number) >= 0 && (putt.alongFt as number) <= 4).length,
+  }
   const shownSkills: Record<PuttSkill, SkillSummary> = {
     read: summarizeRead(shown), pace: summarizePace(shown), line: summarizeLine(shown),
   }
@@ -426,6 +435,19 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               ))}
               {unsplit ? <li><i style={{ background: 'var(--putting-unsplit)' }} /><span>No start direction recorded</span><b>{unsplit}</b></li> : null}
             </ul>
+            {cause === 'all' && judgedTotal >= 4 ? (
+              <div className="putting-good">
+                <h4>Good enough to hole it</h4>
+                <p className="rounds-muted">How often each part, on its own, would have let the putt drop.</p>
+                {PUTT_SKILLS.map((id) => (
+                  <div key={id} className="putting-good-row" data-skill={id}>
+                    <b>{SKILL_LABEL[id]}</b>
+                    <div aria-hidden="true"><i style={{ width: `${(goodEnough[id] / judgedTotal) * 100}%`, background: SKILL_COLOR[id] }} /></div>
+                    <span>{goodEnough[id]} of {judgedTotal}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {leaves.firsts ? (
               <p className="putting-leaves">
                 First putts left inside 3 ft: <b>{leaves.inside3} of {leaves.firsts}</b>. Inside the 5 ft gimme
@@ -457,11 +479,11 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                 <tr><th data-skill="read" scope="row">Read</th>{profile.slopes.map((row) => (
                   <td key={row.slope}>{row.read.sizeFt != null && row.read.putts >= 4 ? `${feet(row.read.sizeFt)} off · ${leanShort(row.read)}` : 'Not enough yet'}</td>
                 ))}</tr>
-                <tr><th data-skill="pace" scope="row">Pace</th>{profile.slopes.map((row) => (
-                  <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${feet(row.pace.sizeFt ?? 0)} off · ${leanShort(row.pace)}` : 'Not enough yet'}</td>
-                ))}</tr>
                 <tr><th data-skill="line" scope="row">Line</th>{profile.slopes.map((row) => (
                   <td key={row.slope}>{row.line.size != null && row.line.putts >= 4 ? `${row.line.size.toFixed(1)}° off · ${leanShort(row.line)}` : 'Not enough yet'}</td>
+                ))}</tr>
+                <tr><th data-skill="pace" scope="row">Pace</th>{profile.slopes.map((row) => (
+                  <td key={row.slope}>{row.pace.size != null && row.pace.putts >= 4 ? `${feet(row.pace.sizeFt ?? 0)} off · ${leanShort(row.pace)}` : 'Not enough yet'}</td>
                 ))}</tr>
                 <tr><th scope="row">Three-putts</th>{profile.slopes.map((row) => <td key={row.slope}>{row.putts ? row.threePutts : '–'}</td>)}</tr>
               </tbody>
@@ -521,7 +543,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               <tbody>
                 {listed.slice(0, listLimit).map((putt) => (
                   <tr key={`${putt.roundId}-${putt.holeNumber}-${putt.number}`}>
-                    <td><a href={`/rounds/${putt.roundId}`}>{putt.courseName}</a></td>
+                    <td><a className="putting-quiet-link" href={`/rounds/${putt.roundId}`}>{putt.courseName}</a></td>
                     <td><strong>{putt.holeNumber}</strong></td>
                     <td className="is-num">{Math.round(putt.lengthFt)} ft</td>
                     <td>{putt.slope && putt.riseIn != null ? `${SLOPE_LABEL[putt.slope]}${putt.slope === 'flat' ? '' : `, ${feet(putt.riseIn / 12)}`}` : '–'}</td>

@@ -138,7 +138,7 @@
 .putting-reset { background: transparent; color: var(--rounds-accent); border-color: transparent; padding: 0 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
 .putting-hero { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 36px; }
-.putting-cup { flex: 2 1 420px; max-width: 680px; min-width: 0; }
+.putting-cup { flex: 1.3 1 380px; max-width: 560px; min-width: 0; }
 /* No fill, like the other charts: rings and dots sit straight on the page. */
 .putting-cup svg { display: block; width: 100%; height: auto; }
 .putting-cup-rings { fill: none; stroke: rgba(207, 216, 205, 0.3); stroke-width: 1.5; }
@@ -206,3 +206,39 @@
 .putting-mini-hole { fill: rgba(240, 246, 240, 0.94); }
 .putting-mini-label { fill: var(--rounds-muted); font-size: 11px; }
 .putting-mini-scale { fill: var(--rounds-muted); font-size: 10px; opacity: 0.8; }
+
+/* Pace stands beside its number: text on the left, the tall strip on the right, top to bottom of the column. */
+.putting-term[data-skill='pace'] > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(84px, 120px);
+  grid-auto-rows: min-content;
+  column-gap: 14px;
+  align-content: start;
+}
+.putting-term[data-skill='pace'] > button > * { grid-column: 1; }
+.putting-term[data-skill='pace'] > button > .putting-mini-vertical {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
+  min-height: 170px;
+  margin: 0;
+}
+
+/* Links that are clickable without looking like links. */
+.rounds-page .putting .rounds-table a.putting-quiet-link,
+.putting .rounds-table a.putting-quiet-link { color: inherit; text-decoration: none; }
+.putting .rounds-table a.putting-quiet-link:hover { color: var(--rounds-accent); }
+
+.putting-good { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--rounds-line); }
+.putting-good h4 { margin: 0; font-size: 15px; font-weight: 600; }
+.putting-good p { margin: 0 0 2px; font-size: 13px; }
+.putting-good-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 64px; align-items: center; gap: 12px; font-size: 14px; }
+.putting-good-row b { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+.putting-good-row[data-skill='read'] b { color: var(--putting-read); }
+.putting-good-row[data-skill='pace'] b { color: var(--putting-pace); }
+.putting-good-row[data-skill='line'] b { color: var(--putting-line); }
+.putting-good-row > div { height: 10px; border-radius: 5px; background: var(--rounds-line); overflow: hidden; }
+.putting-good-row > div i { display: block; height: 100%; border-radius: 5px; }
+.putting-good-row span { text-align: right; color: var(--rounds-secondary); font-variant-numeric: tabular-nums; }
