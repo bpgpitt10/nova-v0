@@ -28,7 +28,8 @@ import gspro_minimap_markers as markers
 
 RIGHT_MINIMAP_ROI = (0.848, 0.520, 0.995, 0.960)
 #: The same place mirrored: GSPro lets the player put the minimap on the left.
-#: Assumed, not yet seen on a real capture (Brian to check).
+#: Confirmed on a real 3834 x 2144 capture (19 Nov 2026): ball at 50.5% across and
+#: 91.1% down this crop, pin at 50.5% and 19.3%, the same as on the right.
 LEFT_MINIMAP_ROI = (0.005, 0.520, 0.152, 0.960)
 #: Where the pair sits on the map, as shares of its height and width.
 BALL_MIN_DOWN = 0.70
