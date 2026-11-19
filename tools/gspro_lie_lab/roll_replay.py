@@ -543,6 +543,107 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
     return rows
 
 
+# --------------------------------------------------------------------------
+# Check what GSPro records: one shot, then a report of everything GSPro wrote.
+
+TEXT_SUFFIXES = (".txt", ".log", ".json", ".dat", ".csv", ".xml")
+
+
+def folder_snapshot(folder: Path) -> dict[str, tuple[int, float]]:
+    """Every file under GSPro's data folder: size and time last written."""
+    seen: dict[str, tuple[int, float]] = {}
+    try:
+        for item in folder.rglob("*"):
+            try:
+                if item.is_file():
+                    stat = item.stat()
+                    seen[str(item.relative_to(folder))] = (stat.st_size, stat.st_mtime)
+            except OSError:
+                continue
+            if len(seen) > 20000:
+                break
+    except OSError:
+        pass
+    return seen
+
+
+def db_counts(db_file: Path) -> dict[str, int]:
+    """Rows per table (read only)."""
+    try:
+        with sqlite3.connect(f"file:{db_file.as_posix()}?mode=ro", uri=True, timeout=2.0) as conn:
+            tables = [r[0] for r in conn.execute("select name from sqlite_master where type='table'")]
+            return {t: conn.execute(f'select count(*) from "{t}"').fetchone()[0] for t in tables}
+    except sqlite3.Error:
+        return {}
+
+
+def db_newest_row(db_file: Path, table: str) -> str:
+    try:
+        with sqlite3.connect(f"file:{db_file.as_posix()}?mode=ro", uri=True, timeout=2.0) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(f'select * from "{table}" order by rowid desc limit 1').fetchone()
+            return json.dumps({k: (str(row[k])[:1500]) for k in row.keys()}, indent=1) if row else "(empty)"
+    except sqlite3.Error as exc:
+        return f"(could not read: {exc})"
+
+
+def check_recording(path: Any, read_line, *, folder: Path, round_file: Path, out: Path, sleep=time.sleep) -> list[str]:
+    """Hit one shot and write down every file, log line and database row GSPro changed because of it."""
+    shot = {"speed": 94.4, "vla": 22.4, "hla": 0.0, "spin": 8646.0, "axis": 0.0}
+    dbs = [p for p in folder.glob("*.db")]
+    before_files = folder_snapshot(folder)
+    before_counts = {db.name: db_counts(db) for db in dbs}
+    before_record = newest_round_record(round_file)
+    status = path.fire(shot)
+    if "at rest" not in status:
+        sleep(NO_STOP_SIGNAL_WAIT_S)
+    sleep(4.0)  # let GSPro finish writing
+    after_files = folder_snapshot(folder)
+    lines = [f"Looper check: one PW shot (94.4 mph, 22.4 deg, 8646 rpm) at {time.strftime('%Y-%m-%dT%H:%M:%S')}", f"GSPro said: {status}",
+             f"Folder: {folder}", f"Files in the folder: {len(after_files)}", "", "FILES GSPRO WROTE DURING THE SHOT"]
+    changed = sorted(name for name, meta in after_files.items() if before_files.get(name) != meta)
+    for name in changed:
+        old_size = before_files.get(name, (0, 0.0))[0]
+        lines.append(f"  {name}: {old_size} -> {after_files[name][0]} bytes" + ("  (new file)" if name not in before_files else ""))
+    if not changed:
+        lines.append("  none")
+    for name in changed:
+        old_size, new_size = before_files.get(name, (0, 0.0))[0], after_files[name][0]
+        if not name.lower().endswith(TEXT_SUFFIXES) or name.lower().endswith("currentround.dat"):
+            continue
+        try:
+            with (folder / name).open("rb") as handle:
+                if new_size > old_size:
+                    handle.seek(old_size)
+                    text, what = handle.read(30000).decode("utf-8", errors="replace"), "TEXT ADDED TO"
+                else:
+                    text, what = handle.read(6000).decode("utf-8", errors="replace"), "START OF REWRITTEN"
+        except OSError as exc:
+            text, what = f"(could not read: {exc})", "TEXT ADDED TO"
+        lines += ["", f"{what} {name}", text.strip()]
+    lines += ["", "DATABASE TABLES THAT GAINED ROWS"]
+    any_rows = False
+    for db in dbs:
+        after = db_counts(db)
+        for table, count in sorted(after.items()):
+            was = before_counts.get(db.name, {}).get(table, 0)
+            if count != was:
+                any_rows = True
+                lines += [f"  {db.name} / {table}: {was} -> {count} rows. Newest row:", db_newest_row(db, table)]
+    if not any_rows:
+        lines.append("  none")
+    after_record = newest_round_record(round_file)
+    same = record_fingerprint(after_record) == record_fingerprint(before_record)
+    lines += ["", f"currentRound.dat newest shot record: {'UNCHANGED by this shot' if same else 'changed'}"]
+    if after_record:
+        lines.append(json.dumps(after_record, default=str)[:6000])
+    try:
+        out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except OSError as exc:
+        print(f"  could not save the report: {exc}")
+    return lines
+
+
 def clubs_for_distance(distance_yd: float, bag: dict[str, dict[str, float]]) -> list[str]:
     """Clubs whose stock carry lands near the pin from here, shortest first."""
     low, high = distance_yd + GREEN_WINDOW_YD[0], distance_yd + GREEN_WINDOW_YD[1]
@@ -741,10 +842,31 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     ("green", "Landing on a green: irons and wedges in On Course practice"),
                     ("putt", "Putt roll: putts at set speeds on a green"),
                     ("lie", "Shots from a lie: drop the ball anywhere in On Course practice, 3 shots per spot"),
+                    ("check", "Check what GSPro records: one shot, then a report of every file GSPro wrote"),
                     ("quit", "Finished"),
                 ], answers["test"])  # Enter repeats the last test, so nine settings are nine quick passes
                 if test == "quit":
                     break
+                if test == "check":
+                    print("\nStay exactly where you are in GSPro (On Course practice, ball dropped). One PW shot is hit,")
+                    print("then this looks at everything GSPro wrote because of it. It only reads.")
+                    try:
+                        if read_line("Enter to hit the shot, q to cancel. ").strip().lower() in ("q", "quit"):
+                            print()
+                            continue
+                    except EOFError:
+                        break
+                    report = out.with_name(out.stem.replace("looper_lab", "looper_check") + f"_{time.strftime('%H%M%S')}.txt")
+                    try:
+                        found = check_recording(path, read_line, folder=db_path.parent, round_file=round_file, out=report, sleep=sleep)
+                    except (ConnectionError, OSError) as exc:
+                        print(f"  could not send: {exc}\n")
+                        continue
+                    wrote = found[found.index("FILES GSPRO WROTE DURING THE SHOT") + 1:]
+                    for line in wrote[:wrote.index("")] if "" in wrote else wrote[:12]:
+                        print(line)
+                    print(f"\nSaved: {report}\nSend that file to Claude.\n")
+                    continue
                 answers["test"] = test
                 answers["type"] = choose(read_line, "\nCourse Type set in GSPro right now?", TYPE_OPTIONS, answers["type"])
                 labels: dict[str, Any] = {"course_type": answers["type"]}
