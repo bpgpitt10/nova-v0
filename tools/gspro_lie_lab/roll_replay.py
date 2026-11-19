@@ -307,7 +307,8 @@ LAB_FIELDS = [
     "start_surface", "start_x", "start_y", "start_z", "moved_from_spot_yd", "log_speed_mph", "log_vla_deg", "log_spin_rpm",
     "landing_surface", "landing_material", "landing_spin_rpm", "log_course_type", "log_fairway_firmness", "log_green_firmness",
     "db_carry_yd", "db_total_yd", "db_raw_carry_game_yd", "db_raw_carry_lm_yd", "db_pin_yd",
-    "gspro_hla_deg", "gspro_axis_deg", "peak_height_ft", "flown_vla_deg", "start_line_deg", "curve_yd", "offline_from_aim_yd", "aim_heading_deg",
+    "gspro_hla_deg", "gspro_axis_deg", "landing_speed", "course_key", "hole", "land_x", "land_y", "land_z", "end_x", "end_y", "end_z",
+    "peak_height_ft", "flown_vla_deg", "start_line_deg", "curve_yd", "offline_from_aim_yd", "aim_heading_deg",
     "db_offline_yd", "db_peak_height", "db_descent_deg", "db_vla_deg", "db_hla_deg", "db_backspin_rpm", "db_sidespin_rpm", "db_id",
 ]
 M_TO_FT = 3.280839895
@@ -385,6 +386,10 @@ def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
         "landing_surface": shot_data.get("TDmaterial"),
         "descent_deg": _num(shot_data.get("descentAngle")),
         "landing_spin_rpm": _num(shot_data.get("finalSpin")),
+        "landing_speed": _num(shot_data.get("finalSpeed")),
+        "course_key": record.get("CourseKey"), "hole": record.get("Hole"),
+        "land_x": landed[0] if landed else None, "land_y": landed[1] if landed else None, "land_z": landed[2] if landed else None,
+        "end_x": end[0] if end else None, "end_y": end[1] if end else None, "end_z": end[2] if end else None,
     }
     if start and landed and end:
         dx, dz = landed[0] - start[0], landed[2] - start[2]
@@ -570,6 +575,7 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
     while True:
         try:
             typed = read_line(f"\nSpot {spot}: drop the ball, then Enter to hit 3 shots. Type the slope first if it is not flat (2 up 3 left). "
+                              "Add g and the yards to the pin (g 145) to also hit 2 of your clubs at the green. "
                               "Start with the word all to hit all 25 designed shots from here. q to finish. ").strip()
         except EOFError:
             break
@@ -582,6 +588,13 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             typed = typed[3:].strip()
             spot_shots = [(name, {"speed": v["speed"], "vla": v["vla"], "hla": 0.0, "spin": v["spin"], "axis": 0.0})
                           for name, v in designed_shots().items()]
+        # "g 145" in the note: also hit the two stock clubs that carry nearest 145 yd, to land shots on the green.
+        to_green = re.search(r"\bg\s*(\d{2,3})\b", typed, re.I)
+        if to_green:
+            distance = float(to_green[1])
+            nearest = sorted((club for club in BAG if "carry" in BAG[club]), key=lambda club: abs(BAG[club]["carry"] - distance))[:2]
+            spot_shots = spot_shots + [(f"{club} to green", {"speed": BAG[club]["speed"], "vla": BAG[club]["vla"], "hla": 0.0,
+                                                               "spin": BAG[club]["spin"], "axis": 0.0}) for club in nearest]
         for index, (name, shot) in enumerate(spot_shots, start=1):
             before_record = record_fingerprint(newest_round_record(round_file))
             before_log = log_size(log_file)
@@ -638,6 +651,8 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
                 carry += f", started {abs(turn):.1f} deg {'right' if turn > 0 else 'left'}, landed {abs(off):.1f} yd {'right' if off > 0 else 'left'}"
             if row.get("peak_height_ft") is not None:
                 carry += f", peak {row['peak_height_ft']:.0f} ft"
+            if row.get("landing_surface") == GREEN_SURFACE and row.get("roll_yd") is not None:
+                carry += f"; LANDED ON THE GREEN, {'spun back' if row['roll_yd'] < 0 else 'released'} {abs(row['roll_yd']):.1f} yd"
             elsewhere = f"  [hit from {moved:g} yd away from the first shot's spot]" if moved and moved > 2 else ""
             print(f"  {name:<16} {took}; {carry}{elsewhere}")
             sleep(gap)
