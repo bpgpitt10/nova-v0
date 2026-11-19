@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { readLooperCompanionStatus } from '../adapters/looperCompanion'
 import {
   COURSES_UPDATED_EVENT,
   GREYWOLF_COURSE_ID,
@@ -96,6 +97,16 @@ export default function RoundSetupPage() {
   const [conditions, setConditions] = useState<RoundConditions>(() => loadRememberedRoundConditions(initialCourseId))
   const setCondition = (field: keyof RoundConditions, value: string) =>
     setConditions((current) => normalizeRoundConditions({ ...current, [field]: value === '' ? null : value }))
+  // A companion that reads GSPro 4's log tells Looper the course type and both
+  // firmness settings from the first shot, so only stimp has to be picked.
+  const [gsproTellsSettings, setGsproTellsSettings] = useState(false)
+  useEffect(() => {
+    let active = true
+    void readLooperCompanionStatus()
+      .then((status) => { if (active) setGsproTellsSettings(status?.capabilities?.playerLog === true) })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [])
   const [unmappedTeeName, setUnmappedTeeName] = useState('')
   const [teeOptions, setTeeOptions] = useState<string[]>([])
   // Display text per option (GSPro tee names are marked as such).
@@ -268,7 +279,7 @@ export default function RoundSetupPage() {
   const activeCourse = activeRound && activeIsRecent ? getCourseCatalogEntry(activeRound.courseId) : null
   const startDisabled =
     starting || loadingTees || !actualTeeSet || actualTeeSet.length > 60 || course.packageStatus !== 'ready'
-    || !roundConditionsComplete(conditions)
+    || !(gsproTellsSettings ? conditions.stimp != null : roundConditionsComplete(conditions))
 
   return (
     <main className="round-setup-page">
@@ -350,6 +361,25 @@ export default function RoundSetupPage() {
           </label>
           </div>
 
+          {gsproTellsSettings ? (
+            <>
+              <div className="round-setup-conditions">
+                <span className="round-setup-label">Conditions</span>
+                <span className="round-setup-conditions-hint">Match the stimp to GSPro.</span>
+              </div>
+              <div className="round-setup-row is-four">
+                <label className="round-setup-field">
+                  <span className="round-setup-label">Stimp</span>
+                  <select required onChange={(event) => setCondition('stimp', event.target.value)} value={conditions.stimp ?? ''}>
+                    <option disabled value="">Pick…</option>
+                    {STIMP_OPTIONS.map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </label>
+              </div>
+              <p className="round-setup-unsure">Looper reads the course type and firmness from GSPro after your first shot.</p>
+            </>
+          ) : (
+            <>
           <div className="round-setup-conditions">
             <span className="round-setup-label">Conditions</span>
             <span className="round-setup-conditions-hint">Match these to GSPro.</span>
@@ -385,6 +415,8 @@ export default function RoundSetupPage() {
             </label>
           </div>
           <p className="round-setup-unsure">Not sure? In GSPro, open Menu, then Settings, then Course Setup.</p>
+            </>
+          )}
 
           {error ? <p className="round-setup-error" role="alert">{error}</p> : null}
 
@@ -396,7 +428,9 @@ export default function RoundSetupPage() {
           >
             {starting ? 'Starting…' : 'Start Round'}
           </button>
-          {!roundConditionsComplete(conditions) ? (
+          {gsproTellsSettings ? (
+            conditions.stimp == null ? <p className="round-setup-need">Pick the stimp to start.</p> : null
+          ) : !roundConditionsComplete(conditions) ? (
             <p className="round-setup-need">Pick the course type, stimp and both firmness settings to start.</p>
           ) : null}
         </section>

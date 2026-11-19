@@ -60,6 +60,7 @@ import {
   type LiveCaddieStartRoundDetail,
 } from '../liveCaddie/roundRuntime'
 import { fairwayRollModelOn } from '../liveCaddie/roundConditions'
+import { useGsproRoundConditions } from '../liveCaddie/useGsproRoundConditions'
 import {
   firstTeeCaptureKey,
   isNewLooperRoundForCapture,
@@ -257,19 +258,9 @@ export default function LiveCaddiePage() {
   const [evaluations, setEvaluations] = useState<ClubAimEvaluation[]>([])
   // The player's Quick Bag (handicap + three carries), laid under the range data.
   const quickBagPrior = useQuickBagPrior()
-  // GSPro's Course Type and Fairway Firmness from Start a Round, for the fairway roll model.
-  const [fairwayConditions] = useState(() => {
-    const picked = loadActiveLiveCaddieRound()?.conditions
-    return picked?.courseType && picked.fairwayFirmness
-      ? { courseType: picked.courseType, fairwayFirmness: picked.fairwayFirmness }
-      : null
-  })
-  const [greenConditions] = useState(() => {
-    const picked = loadActiveLiveCaddieRound()?.conditions
-    return picked?.courseType && picked.greenFirmness
-      ? { courseType: picked.courseType, greenFirmness: picked.greenFirmness }
-      : null
-  })
+  // Course type and firmness for the roll and green models: picked at Start a
+  // Round, then GSPro's own once it has logged a shot of this round.
+  const { fairwayConditions, greenConditions, gsproAltitudeFt } = useGsproRoundConditions()
   const [applyFairwayRoll] = useState(() => fairwayRollModelOn())
   const [livePrepared, setLivePrepared] = useState(false)
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
@@ -1089,8 +1080,11 @@ export default function LiveCaddiePage() {
           ? "30 m global terrain fitted to GSPro's heights (coarse)"
           : `${selectedCourse?.name ?? 'Course'} terrain proxy`
     : 'No terrain model'
-  const airAltitudeFt = ballTerrain?.elevationFt ?? null
-  const airAltitudeSource = ballTerrain
+  // GSPro logs the altitude it flies the ball at; that beats any terrain estimate.
+  const airAltitudeFt = gsproAltitudeFt ?? ballTerrain?.elevationFt ?? null
+  const airAltitudeSource = gsproAltitudeFt != null
+    ? "GSPro's own altitude for this round"
+    : ballTerrain
     ? ballTerrain.source === 'lidar-dem'
       ? `${selectedCourse?.name ?? 'Course'} direct LiDAR DEM`
       : ballTerrain.source === 'gspro-heights'
