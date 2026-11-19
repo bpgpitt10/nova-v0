@@ -94,7 +94,7 @@ export const readMissYds = (read: Pick<InsightRead, 'actualYds' | 'actualSideYds
   Math.round(Math.hypot(read.actualYds - read.guessYds, read.actualSideYds - read.guessSideYds) * 10) / 10
 
 /** A shot has to move this far from the club's normal for its read to count. */
-export const LEADERBOARD_MIN_MOVE_YDS = 8
+export const LEADERBOARD_MIN_MOVE_YDS = 5
 
 export const loadTopReads = async (): Promise<InsightTopRead[] | null> => {
   try {

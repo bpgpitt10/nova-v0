@@ -56,27 +56,86 @@ const STATS_FROM_READS = 20
 type Scenario = Readonly<{ club: Club; conditions: InsightConditions; baseYds: number }>
 
 const pick = <T,>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)]
-const nearZero = (most: number) => (Math.random() + Math.random() - 1) * most
 const tenth = (value: number) => Math.round(value * 10) / 10
+const between = (low: number, high: number) => low + Math.random() * (high - low)
+const eitherWay = (value: number) => (Math.random() < 0.5 ? -value : value)
+
+/** Pick one of several ranges by how often it should come up (shares add to 1). */
+const often = <T,>(choices: readonly (readonly [number, () => T])[]): T => {
+  let roll = Math.random()
+  for (const [share, make] of choices) {
+    if (roll < share) return make()
+    roll -= share
+  }
+  return choices[choices.length - 1][1]()
+}
+
+/*
+ * How often each condition comes up. The aim is shots a GSPro player
+ * recognises: mostly breezy, mostly gentle slopes, plenty of rough, deep
+ * rough and sand, and elevation from flat to a big elevated green.
+ */
+const rollWind = () => often([
+  [0.2, () => Math.round(between(0, 4.49))],
+  [0.7, () => Math.round(between(4.5, 12.49))],
+  [0.1, () => Math.round(between(12.5, 17.49))],
+])
+const rollUpDown = () => tenth(eitherWay(often([[0.7, () => between(0, 3)], [0.22, () => between(3, 5)], [0.08, () => between(5, 6.5)]])))
+const rollAcross = () => tenth(eitherWay(often([[0.75, () => between(0, 2)], [0.2, () => between(2, 3.5)], [0.05, () => between(3.5, 4.5)]])))
+/** Height of the green above the ball, in yards, as GSPro players talk about it. */
+const rollElevationYds = () => Math.round(eitherWay(often([
+  [0.35, () => between(0, 2.5)],
+  [0.35, () => between(2.5, 7.5)],
+  [0.2, () => between(7.5, 12.5)],
+  [0.1, () => between(12.5, 18.5)],
+])))
+const rollAltitude = () => Math.round(often([
+  [0.6, () => between(0, 1000)],
+  [0.3, () => between(1000, 3500)],
+  [0.1, () => between(3500, 5500)],
+]) / 100) * 100
+const rollLie = (): InsightLie => often<InsightLie>([
+  [0.3, () => 'fairway'], [0.3, () => 'rough'], [0.22, () => 'deep-rough'], [0.18, () => 'sand'],
+])
+const rollGrass = () => often<(typeof LEVELS)[number]>([[0.35, () => 'soft'], [0.45, () => 'medium'], [0.2, () => 'firm']])
+const rollFirmness = () => often<(typeof LEVELS)[number]>([[0.25, () => 'soft'], [0.5, () => 'medium'], [0.25, () => 'firm']])
+
+/** Conditions that each move the ball a lot. A shot gets two of them at most. */
+const bigOnes = (c: InsightConditions) => [
+  c.windMph >= 13,
+  Math.abs(c.slopeUpDeg) >= 4,
+  Math.abs(c.elevationFt) >= 30,
+  c.altitudeFt >= 3500,
+  c.lie === 'deep-rough',
+].filter(Boolean).length
+
+/** A shot that ends up further than this from normal is drawn again: it stops looking like golf. */
+const MAX_MOVE_YDS = 45
 
 const makeScenario = (): Scenario => {
-  const club = pick(CLUBS)
-  const lieRoll = Math.random()
-  const conditions: InsightConditions = {
-    grass: pick(LEVELS),
-    firmness: pick(LEVELS),
-    lie: lieRoll < 0.4 ? 'fairway' : lieRoll < 0.75 ? 'rough' : lieRoll < 0.87 ? 'deep-rough' : 'sand',
-    slopeUpDeg: tenth(nearZero(7)),
-    slopeRightDeg: tenth(nearZero(5)),
-    elevationFt: Math.round(nearZero(35)),
-    altitudeFt: Math.random() < 0.45 ? Math.round(Math.random() * 4) * 100 : Math.round((500 + Math.random() * 5000) / 100) * 100,
-    windMph: Math.round(Math.random() * 16),
-    windFromDeg: Math.round((Math.random() * 360) / 15) * 15,
+  for (let tries = 0; ; tries += 1) {
+    const club = pick(CLUBS)
+    const conditions: InsightConditions = {
+      grass: rollGrass(),
+      firmness: rollFirmness(),
+      lie: rollLie(),
+      slopeUpDeg: rollUpDown(),
+      slopeRightDeg: rollAcross(),
+      elevationFt: rollElevationYds() * 3,
+      altitudeFt: rollAltitude(),
+      windMph: rollWind(),
+      windFromDeg: Math.round((Math.random() * 360) / 15) * 15,
+    }
+    if (bigOnes(conditions) > 2 && tries < 40) continue
+    // The pin is wherever this club normally finishes: find the carry first so the ball lands on the green.
+    const carryYds = finishOf(INSIGHT_BASELINE, 150, club.swing).carryYds
+    const baseYds = Math.round(finishOf(INSIGHT_BASELINE, carryYds + 5, club.swing).totalYds)
+    const finish = finishOf(conditions, baseYds, club.swing)
+    const moved = Math.hypot(finish.totalYds - baseYds, finish.sideYds)
+    // Too far stops looking like golf; too little leaves nothing to read.
+    if ((moved > MAX_MOVE_YDS || moved < LEADERBOARD_MIN_MOVE_YDS) && tries < 40) continue
+    return { club, conditions, baseYds }
   }
-  // The pin is wherever this club normally finishes: find the carry first so the ball lands on the green.
-  const carryYds = finishOf(INSIGHT_BASELINE, 150, club.swing).carryYds
-  const baseYds = Math.round(finishOf(INSIGHT_BASELINE, carryYds + 5, club.swing).totalYds)
-  return { club, conditions, baseYds }
 }
 
 const slopeText = (upDeg: number, rightDeg: number) => {
@@ -243,7 +302,7 @@ export default function InsightsReadQuiz() {
       ),
     },
     { key: 'altitude', name: 'Altitude', value: conditions.altitudeFt === 0 ? 'Sea level' : `${conditions.altitudeFt.toLocaleString('en-US')} ft` },
-    { key: 'elevation', name: 'Elevation', value: conditions.elevationFt === 0 ? 'Level' : `${Math.abs(conditions.elevationFt)} ft ${conditions.elevationFt > 0 ? 'up' : 'down'}` },
+    { key: 'elevation', name: 'Elevation', value: conditions.elevationFt === 0 ? 'Level' : `${Math.round(Math.abs(conditions.elevationFt) / 3)} yd ${conditions.elevationFt > 0 ? 'up' : 'down'}` },
   ]
 
 

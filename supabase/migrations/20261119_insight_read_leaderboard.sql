@@ -2,7 +2,7 @@
 -- Anyone may post one; the site reads only the top 20 through the view.
 -- The score is the straight line, in yards, from the read to where the ball
 -- finished. It is checked against the read itself, and the shot has to have
--- moved at least 8 yards from the club's normal, so an easy shot can't win.
+-- moved at least 5 yards from the club's normal, so an easy shot can't win.
 
 create table if not exists public.insight_read_leaderboard (
   id bigint generated always as identity primary key,
@@ -16,7 +16,7 @@ create table if not exists public.insight_read_leaderboard (
   guess_yds numeric not null check (guess_yds between 10 and 380),
   guess_side_yds numeric not null check (guess_side_yds between -90 and 90),
   constraint miss_matches_the_read check (abs(miss_yds - sqrt(power(actual_yds - guess_yds, 2) + power(actual_side_yds - guess_side_yds, 2))) <= 0.11),
-  constraint shot_moved_from_normal check (sqrt(power(actual_yds - base_yds, 2) + power(actual_side_yds, 2)) >= 8)
+  constraint shot_moved_from_normal check (sqrt(power(actual_yds - base_yds, 2) + power(actual_side_yds, 2)) >= 5)
 );
 
 alter table public.insight_read_leaderboard enable row level security;
