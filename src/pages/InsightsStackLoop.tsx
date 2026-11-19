@@ -1,88 +1,65 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  STACK_ALT_FT,
+  STACK_ELEV_FT,
+  STACK_GRID,
   STACK_LIES,
   STACK_PIN_YDS,
   STACK_SIDE_SHARE,
-  STACK_SIDE_SLOPES_DEG,
-  STACK_SWING,
-  STACK_TOTALS,
+  STACK_SPREADS,
   STACK_TOTAL_SIZES,
+  STACK_UP_DEG,
+  STACK_WIND_10MPH,
 } from './insightsStackData'
+import {
+  INSIGHT_BASELINE,
+  INSIGHT_GREEN,
+  finishOf,
+  strokesLostToMisread,
+  type InsightConditions,
+} from './insightsShotModel'
 
 /**
- * One swing, every outcome: a picture that plays on a loop at the top of the
- * insights page. It starts with a single ball at the pin, then adds one layer
- * at a time (green setting, lie, slope, elevation, altitude) and shows where
- * the same swing finishes in every combination. Nothing to click.
+ * One shot, six things to adjust for: a picture that plays on a loop at the
+ * top of the insights page. Nothing to click.
  *
- * Every dot comes from the models that are live in Looper (insightsStackData).
+ * It follows one shot the way a player would have to work it out: a stock
+ * 8 iron that goes 150, then the green, the lie, the slope, the elevation, the
+ * altitude and the wind, with the running number after each. Behind it, a
+ * cloud of dots shows where the same swing finishes across the whole range of
+ * each condition.
+ *
+ * The followed shot is worked out by the live models as the page loads. The
+ * cloud is read from a grid of those same models (insightsStackData).
  */
 
 type Step = Readonly<{
   layer: string
-  /** What this layer multiplies in, for the list under the picture. */
-  options: string
-  caption: (spreadYds: number, count: number) => string
+  /** The followed shot's condition at this step. */
+  example: string
+  /** What the player would have to know. */
+  know: string
+  change: Partial<InsightConditions>
 }>
 
 const STEPS: readonly Step[] = [
-  {
-    layer: 'One swing',
-    options: `8 iron, ${STACK_SWING.ballSpeedMph} mph, ${STACK_SWING.spinRpm.toLocaleString('en-US')} rpm`,
-    caption: () => `One swing. A stock 8 iron that finishes at the pin, ${STACK_PIN_YDS} yards away.`,
-  },
-  {
-    layer: 'Green setting',
-    options: '3 grass types × 3 firmness',
-    caption: (spread) => `The same swing on GSPro's nine green settings: ${spread} yards from shortest to longest.`,
-  },
-  {
-    layer: 'Lie',
-    options: 'fairway, rough, deep rough, sand',
-    caption: (spread) => `Now the lie. Rough takes speed and spin, so it comes up short and then runs: ${spread} yards.`,
-  },
-  {
-    layer: 'Slope of the lie',
-    options: 'up to 6° up, down or across',
-    caption: (spread) => `Now stand on a slope. It changes the launch and the start line: ${spread} yards, and offline.`,
-  },
-  {
-    layer: 'Elevation',
-    options: 'up to 30 ft above or below',
-    caption: (spread) => `Now the green sits above or below you: ${spread} yards.`,
-  },
-  {
-    layer: 'Altitude',
-    options: 'sea level up to 5,000 ft',
-    caption: (spread) => `Now the course's altitude: ${spread} yards between the shortest and the longest.`,
-  },
+  { layer: 'One swing', example: 'Stock 8 iron', know: 'Your stock 8 iron: level fairway lie, Bermuda medium green, still air.', change: {} },
+  { layer: 'Green', example: 'Links, firm', know: 'The green is Links and firm. It releases further.', change: { grass: 'firm', firmness: 'firm' } },
+  { layer: 'Lie', example: 'Rough', know: 'The ball is in the rough. Less carry, less spin, more run.', change: { lie: 'rough' } },
+  { layer: 'Slope', example: '3° downhill, ball below feet', know: 'A downhill lie with the ball below your feet. Lower launch, and it starts right.', change: { slopeUpDeg: -3, slopeRightDeg: 2 } },
+  { layer: 'Elevation', example: 'Green 20 ft below', know: 'The green is 20 feet below you. It stays in the air longer.', change: { elevationFt: -20 } },
+  { layer: 'Altitude', example: '2,500 ft', know: 'The course is at 2,500 feet. Thinner air, more carry.', change: { altitudeFt: 2500 } },
+  { layer: 'Wind', example: '10 mph, into from the left', know: 'A 10 mph wind, into you and from the left. Shorter, and further right.', change: { windMph: 10, windFromDeg: 300 } },
 ]
-
-/** Layers that are real but not measured yet, shown greyed out. */
-const COMING = ['Wind', 'Stimp']
 
 const STEP_MS = 4200
 const MOVE_MS = 1500
-const END_HOLD_MS = 3800
+const SUMMARY_MS = 5200
 const LIE_COLOURS = ['#76d39b', '#eab308', '#f97316', '#f2e2b8']
-const VIEW = { minYds: 92, maxYds: 190, halfWidthYds: 13 }
-const GREEN_HALF_DEPTH_YDS = 12
-
-const [GREENS, LIES, UPS, ELEVS, ALTS] = STACK_TOTAL_SIZES
-/** The data's grid, as values (the order the generator wrote them in). */
-const UP_DEG = [0, -6, -3, 3, 6]
-const ELEV_FT = [0, -30, 30]
-const ALT_FT = [0, 2500, 5000]
-const SIDE_MAX_DEG = Math.max(...STACK_SIDE_SLOPES_DEG)
-/**
- * How many ways the swing can finish once each step's layer is in, counting a
- * slope to the nearest degree (13 up or down x 13 across), elevation to the
- * nearest 10 ft (7) and altitude to the nearest 1,000 ft (6).
- */
-const SLOPE_WAYS = 13 * 13
-const STEP_COUNTS = [1, GREENS, GREENS * LIES, GREENS * LIES * SLOPE_WAYS, GREENS * LIES * SLOPE_WAYS * 7, GREENS * LIES * SLOPE_WAYS * 7 * 6]
-/** Dots drawn: each is one of those ways, picked at random (the same ones every time). */
+const VIEW = { minYds: 86, maxYds: 192, halfWidthYds: 19 }
 const DOTS = 5200
+const WIND_MAX_MPH = 15
+const [GREENS, LIES, UPS, ELEVS, ALTS] = STACK_TOTAL_SIZES
 
 /** Where `value` falls on an axis of the grid: the two grid slots around it and how far between them. */
 const along = (axis: readonly number[], value: number): [number, number, number] => {
@@ -94,17 +71,27 @@ const along = (axis: readonly number[], value: number): [number, number, number]
   }
   return [order[0][1], order[0][1], 0]
 }
+const mix = (x: number, y: number, t: number) => x + (y - x) * t
 
-/** Total distance for any slope, elevation and altitude inside the grid, read between the modelled points. */
+/** Total distance in still air for any slope, elevation and altitude inside the grid, read between the modelled points. */
 const totalAt = (green: number, lie: number, upDeg: number, elevFt: number, altFt: number) => {
-  const [u0, u1, ut] = along(UP_DEG, upDeg)
-  const [e0, e1, et] = along(ELEV_FT, elevFt)
-  const [a0, a1, at] = along(ALT_FT, altFt)
-  const grid = STACK_TOTALS[4]
-  const read = (u: number, e: number, a: number) => grid[(((green * LIES + lie) * UPS + u) * ELEVS + e) * ALTS + a]
-  const mix = (x: number, y: number, t: number) => x + (y - x) * t
+  const [u0, u1, ut] = along(STACK_UP_DEG, upDeg)
+  const [e0, e1, et] = along(STACK_ELEV_FT, elevFt)
+  const [a0, a1, at] = along(STACK_ALT_FT, altFt)
+  const read = (u: number, e: number, a: number) => STACK_GRID[(((green * LIES + lie) * UPS + u) * ELEVS + e) * ALTS + a]
   const face = (a: number) => mix(mix(read(u0, e0, a), read(u1, e0, a), ut), mix(read(u0, e1, a), read(u1, e1, a), ut), et)
   return mix(face(a0), face(a1), at)
+}
+
+/** What a wind does to distance and to line, from the 10 mph figures for this lie and slope. */
+const windAt = (lie: number, upDeg: number, mph: number, fromDeg: number): [number, number] => {
+  const [u0, u1, ut] = along(STACK_UP_DEG, upDeg)
+  const low = STACK_WIND_10MPH[lie * UPS + u0]
+  const high = STACK_WIND_10MPH[lie * UPS + u1]
+  const into = (mph / 10) * Math.cos((fromDeg * Math.PI) / 180)
+  const fromLeft = -(mph / 10) * Math.sin((fromDeg * Math.PI) / 180)
+  const distance = into >= 0 ? mix(low[0], high[0], ut) * into : mix(low[1], high[1], ut) * -into
+  return [distance, mix(low[2], high[2], ut) * fromLeft]
 }
 
 /** The same "random" numbers on every visit, so the picture never changes between loops. */
@@ -115,25 +102,43 @@ const seeded = (seed: number) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296
 }
 
+const yards = (value: number) => `${Math.round(value)}`
+const signed = (value: number) => (Math.round(value) === 0 ? '±0' : `${value > 0 ? '+' : '−'}${Math.abs(Math.round(value))}`)
+const sideText = (value: number) => (Math.abs(value) < 0.75 ? 'on line' : `${Math.round(Math.abs(value))} yd ${value > 0 ? 'right' : 'left'}`)
+
 export default function InsightsStackLoop() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  // 0 to 6 are the layers; 7 is the closing summary.
   const [step, setStep] = useState(0)
 
-  const model = useMemo(() => {
-    const total = DOTS
-    const lies = new Uint8Array(total)
+  /** The followed shot after each layer, from the live models. */
+  const followed = useMemo(() => {
+    let conditions = INSIGHT_BASELINE
+    return STEPS.map((item) => {
+      conditions = { ...conditions, ...item.change }
+      return finishOf(conditions, STACK_PIN_YDS)
+    })
+  }, [])
+  const final = followed[followed.length - 1]
+  const lost = useMemo(
+    () => strokesLostToMisread(final.totalYds - STACK_PIN_YDS, final.sideYds),
+    [final],
+  )
+
+  const cloud = useMemo(() => {
+    const lies = new Uint8Array(DOTS)
     const random = seeded(20261119)
     // Most lies are near level, so slopes and height changes cluster around zero.
     const nearZero = (most: number) => (random() + random() - 1) * most
-    // positions[step]: where each dot sits once that step's layer is in.
-    const positions = STEPS.map(() => new Float32Array(total * 2))
-    for (let i = 0; i < total; i += 1) {
+    const positions = STEPS.map(() => new Float32Array(DOTS * 2))
+    for (let i = 0; i < DOTS; i += 1) {
       const green = Math.floor(random() * GREENS)
       const lie = Math.floor(random() * LIES)
       const up = nearZero(6)
-      const side = nearZero(SIDE_MAX_DEG)
+      const side = nearZero(6)
       const elev = nearZero(30)
       const alt = random() * 5000
+      const [windYds, windSide] = windAt(lie, up, (random() + random()) * 0.5 * WIND_MAX_MPH, random() * 360)
       const totals = [
         STACK_PIN_YDS,
         totalAt(green, 0, 0, 0, 0),
@@ -141,21 +146,16 @@ export default function InsightsStackLoop() {
         totalAt(green, lie, up, 0, 0),
         totalAt(green, lie, up, elev, 0),
         totalAt(green, lie, up, elev, alt),
+        totalAt(green, lie, up, elev, alt) + windYds,
       ]
       const turn = Math.sin((side * STACK_SIDE_SHARE[lie] * Math.PI) / 180)
-      for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
-        positions[stepIndex][i * 2] = totals[stepIndex]
-        positions[stepIndex][i * 2 + 1] = stepIndex >= 3 ? totals[stepIndex] * turn : 0
+      for (let at = 0; at < STEPS.length; at += 1) {
+        positions[at][i * 2] = totals[at]
+        positions[at][i * 2 + 1] = (at >= 3 ? totals[at] * turn : 0) + (at >= 6 ? windSide : 0)
       }
       lies[i] = lie
     }
-    // The spread is the modelled extremes, not just the dots that happened to be drawn.
-    const spreads = STEPS.map((_, stepIndex) => {
-      if (stepIndex === 0) return 0
-      const level = STACK_TOTALS[stepIndex - 1]
-      return Math.round(Math.max(...level) - Math.min(...level))
-    })
-    return { total, positions, counts: STEP_COUNTS, spreads, lies }
+    return { lies, positions }
   }, [])
 
   useEffect(() => {
@@ -165,12 +165,11 @@ export default function InsightsStackLoop() {
     if (!context) return undefined
     const still = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const lastStep = STEPS.length - 1
-    const loopMs = STEP_MS * STEPS.length + END_HOLD_MS
+    const loopMs = STEP_MS * STEPS.length + SUMMARY_MS
     let frame = 0
-    let shownStep = -1
+    let shown = -1
     let visible = true
     const started = performance.now()
-
     const observer = typeof IntersectionObserver === 'function'
       ? new IntersectionObserver((entries) => { visible = entries.some((entry) => entry.isIntersecting) })
       : null
@@ -178,16 +177,17 @@ export default function InsightsStackLoop() {
 
     const draw = (now: number) => {
       frame = window.requestAnimationFrame(draw)
-      if (!visible && shownStep >= 0) return
+      if (!visible && shown >= 0) return
       // The first frame's clock can read a hair before the start: never go negative.
       const elapsed = still ? loopMs - 1 : Math.max(0, now - started) % loopMs
-      const current = Math.max(0, Math.min(lastStep, Math.floor(elapsed / STEP_MS)))
-      const within = elapsed - current * STEP_MS
-      const moved = current === 0 ? 1 : Math.min(1, within / MOVE_MS)
+      const phase = Math.floor(elapsed / STEP_MS)
+      const current = Math.max(0, Math.min(lastStep, phase))
+      const moved = current === 0 || phase > lastStep ? 1 : Math.min(1, (elapsed - current * STEP_MS) / MOVE_MS)
       const eased = 1 - (1 - moved) ** 3
-      if (current !== shownStep) {
-        shownStep = current
-        setStep(current)
+      const showing = phase > lastStep ? STEPS.length : current
+      if (showing !== shown) {
+        shown = showing
+        setStep(showing)
       }
 
       const ratio = Math.min(2, window.devicePixelRatio || 1)
@@ -201,59 +201,58 @@ export default function InsightsStackLoop() {
       context.clearRect(0, 0, width, height)
 
       const x = (yds: number) => ((yds - VIEW.minYds) / (VIEW.maxYds - VIEW.minYds)) * width
-      const mid = height / 2
-      const perYard = Math.min(width / (VIEW.maxYds - VIEW.minYds), (height * 0.42) / VIEW.halfWidthYds)
+      const mid = (height - 18) / 2
+      const perYard = Math.min(width / (VIEW.maxYds - VIEW.minYds), ((height - 18) * 0.47) / VIEW.halfWidthYds)
       const y = (sideYds: number) => mid + sideYds * perYard
 
       // The hole from above: rough, a band of fairway, the green and the pin.
       context.fillStyle = '#0c1a11'
       context.fillRect(0, 0, width, height)
       context.fillStyle = '#12281a'
-      context.fillRect(0, mid - 9 * perYard, width, 18 * perYard)
+      context.fillRect(0, mid - 14 * perYard, width, 28 * perYard)
       context.fillStyle = '#1c3d28'
       context.beginPath()
-      context.ellipse(x(STACK_PIN_YDS), mid, x(STACK_PIN_YDS + GREEN_HALF_DEPTH_YDS) - x(STACK_PIN_YDS), 10.5 * perYard, 0, 0, Math.PI * 2)
+      context.ellipse(x(STACK_PIN_YDS), mid, x(STACK_PIN_YDS + INSIGHT_GREEN.halfDepthYds) - x(STACK_PIN_YDS), INSIGHT_GREEN.halfWidthYds * perYard, 0, 0, Math.PI * 2)
       context.fill()
       context.strokeStyle = 'rgba(242, 226, 184, 0.28)'
       context.lineWidth = 1
       context.stroke()
 
-      // Distance marks every 10 yards.
       context.font = '600 11px Inter, system-ui, sans-serif'
       context.textAlign = 'center'
-      for (let yds = 100; yds <= 180; yds += 10) {
+      for (let yds = 90; yds <= 190; yds += 10) {
         context.fillStyle = 'rgba(255, 255, 255, 0.07)'
         context.fillRect(x(yds), 0, 1, height)
         context.fillStyle = 'rgba(207, 216, 205, 0.6)'
-        context.fillText(`${yds}`, x(yds), height - 8)
+        context.fillText(`${yds}`, x(yds), height - 6)
       }
 
-      // The dots. Before the lie is added they are all one colour.
-      const from = model.positions[Math.max(0, current - 1)]
-      const to = model.positions[current]
-      const count = model.counts[current]
-      const radius = count <= 9 ? 5 : count <= 36 ? 4 : 1.6
-      context.globalAlpha = count <= 36 ? 0.95 : 0.42
+      // The cloud: the same swing across the whole range of every layer added so far.
+      const from = cloud.positions[Math.max(0, current - 1)]
+      const to = cloud.positions[current]
+      const few = current <= 2
+      const radius = current === 0 ? 5 : few ? 4 : 1.6
+      context.globalAlpha = few ? 0.5 : 0.36
       // Deep rough first and fairway last, so the shots that reach the green stay visible.
       for (const lie of [2, 3, 1, 0]) {
         context.fillStyle = current >= 2 ? LIE_COLOURS[lie] : '#eab308'
         context.beginPath()
-        for (let i = 0; i < model.total; i += 1) {
-          if (model.lies[i] !== lie) continue
+        for (let i = 0; i < DOTS; i += 1) {
+          if (cloud.lies[i] !== lie) continue
           const px = x(from[i * 2] + (to[i * 2] - from[i * 2]) * eased)
           const py = y(from[i * 2 + 1] + (to[i * 2 + 1] - from[i * 2 + 1]) * eased)
-          if (radius < 2) {
-            context.rect(px - radius, py - radius, radius * 2, radius * 2)  // thousands of dots: squares draw far faster
-          } else {
+          if (few) {
             context.moveTo(px + radius, py)
             context.arc(px, py, radius, 0, Math.PI * 2)
+          } else {
+            context.rect(px - radius, py - radius, radius * 2, radius * 2) // thousands of dots: squares draw far faster
           }
         }
         context.fill()
       }
       context.globalAlpha = 1
 
-      // The pin, on top.
+      // The pin.
       const pinX = x(STACK_PIN_YDS)
       context.fillStyle = '#ffffff'
       context.fillRect(pinX - 1, mid - 26, 2, 26)
@@ -263,37 +262,60 @@ export default function InsightsStackLoop() {
       context.lineTo(pinX + 15, mid - 21)
       context.lineTo(pinX + 1, mid - 16)
       context.fill()
-      context.fillStyle = '#ffffff'
+
+      // The followed shot: where it has been, and where it is now.
+      const before = followed[Math.max(0, current - 1)]
+      const after = followed[current]
+      const ballX = x(before.totalYds + (after.totalYds - before.totalYds) * eased)
+      const ballY = y(before.sideYds + (after.sideYds - before.sideYds) * eased)
+      context.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+      context.lineWidth = 1.5
+      context.setLineDash([4, 4])
       context.beginPath()
-      context.arc(pinX, mid, 2.5, 0, Math.PI * 2)
+      context.moveTo(x(followed[0].totalYds), y(followed[0].sideYds))
+      for (let n = 1; n < current; n += 1) context.lineTo(x(followed[n].totalYds), y(followed[n].sideYds))
+      context.lineTo(ballX, ballY)
+      context.stroke()
+      context.setLineDash([])
+      context.fillStyle = '#ffffff'
+      context.strokeStyle = '#07100a'
+      context.lineWidth = 2.5
+      context.beginPath()
+      context.arc(ballX, ballY, 7, 0, Math.PI * 2)
       context.fill()
+      context.stroke()
     }
     frame = window.requestAnimationFrame(draw)
     return () => {
       window.cancelAnimationFrame(frame)
       observer?.disconnect()
     }
-  }, [model])
+  }, [cloud, followed])
 
-  const count = model.counts[step]
-  const spread = model.spreads[step]
+  const summary = step >= STEPS.length
+  const at = Math.min(step, STEPS.length - 1)
+  const now = followed[at]
+  const off = final.totalYds - STACK_PIN_YDS
+  const caption = summary
+    ? `Six adjustments. Hit it like a normal 150 and you finish ${Math.abs(Math.round(off)) < 1 ? 'pin high' : `${Math.abs(Math.round(off))} yards ${off > 0 ? 'long' : 'short'}`} and ${sideText(final.sideYds).replace(' yd', ' yards')}. That costs about ${lost.toFixed(1)} strokes.`
+    : STEPS[at].know
 
   return (
-    <section className="insights-stack" aria-label="One swing, every outcome">
+    <section className="insights-stack" aria-label="One shot, six things to adjust for">
       <div className="insights-wrap">
         <div className="insights-stack__head">
           <div>
-            <p className="insights-eyebrow">One swing, every outcome</p>
-            <p className="insights-stack__caption" aria-live="off">{STEPS[step].caption(spread, count)}</p>
+            <p className="insights-eyebrow">One shot, six things to adjust for</p>
+            <p className="insights-stack__caption">{caption}</p>
           </div>
           <dl className="insights-stack__numbers">
             <div>
-              <dt>Ways it can finish</dt>
-              <dd>{count.toLocaleString('en-US')}</dd>
+              <dt>Adjustments so far</dt>
+              <dd>{at}<small> of {STEPS.length - 1}</small></dd>
             </div>
             <div>
-              <dt>Shortest to longest</dt>
-              <dd>{spread} yd</dd>
+              <dt>Your 150 swing now goes</dt>
+              <dd>{yards(now.totalYds)}<small> yd{at >= 3 ? `, ${sideText(now.sideYds)}` : ''}</small></dd>
             </div>
           </dl>
         </div>
@@ -301,31 +323,34 @@ export default function InsightsStackLoop() {
           className="insights-stack__canvas"
           ref={canvasRef}
           role="img"
-          aria-label={`A hole seen from above with a pin at ${STACK_PIN_YDS} yards. Dots show where one identical swing finishes as green setting, lie, slope, elevation and altitude are added: ${model.counts[STEPS.length - 1].toLocaleString('en-US')} outcomes spread over ${model.spreads[STEPS.length - 1]} yards.`}
+          aria-label={`A hole seen from above with a pin at ${STACK_PIN_YDS} yards. One stock 8 iron is followed as six conditions are added and ends up ${yards(final.totalYds)} yards out, ${sideText(final.sideYds)}. Behind it, dots show where the same swing can finish: ${STACK_SPREADS[STACK_SPREADS.length - 1]} yards from shortest to longest.`}
         />
         <ol className="insights-stack__layers">
           {STEPS.map((item, index) => (
-            <li className={index < step ? 'is-done' : index === step ? 'is-on' : ''} key={item.layer}>
+            <li className={index < at || summary ? 'is-done' : index === at ? 'is-on' : ''} key={item.layer}>
               <strong>{item.layer}</strong>
-              <span>{item.options}</span>
+              <span>{item.example}</span>
+              <b>{index === 0 ? `${STACK_PIN_YDS} yd` : index <= at ? `${signed(followed[index].totalYds - followed[index - 1].totalYds)} yd` : ''}</b>
             </li>
           ))}
-          {COMING.map((name) => (
-            <li className="is-coming" key={name}>
-              <strong>{name}</strong>
-              <span>still being measured</span>
-            </li>
-          ))}
+          <li className="is-coming">
+            <strong>Stimp</strong>
+            <span>still being measured</span>
+            <b />
+          </li>
         </ol>
-        <div className="insights-stack__key" aria-hidden={step < 2}>
+        <div className="insights-stack__key">
+          <span><i className="insights-stack__ball" />This shot</span>
           {STACK_LIES.map((lie, index) => (
-            <span key={lie} style={{ opacity: step >= 2 ? 1 : 0.35 }}>
+            <span key={lie} style={{ opacity: at >= 2 ? 1 : 0.35 }}>
               <i style={{ background: LIE_COLOURS[index] }} />
               {lie}
             </span>
           ))}
           <span className="insights-stack__note">
-            Every dot is the same swing. Slopes counted to the nearest degree, elevation to 10 ft, altitude to 1,000 ft.
+            {at === 0
+              ? 'The dots: the same swing in every other condition.'
+              : `The dots: the same swing in every other condition, ${STACK_SPREADS[at]} yards from shortest to longest.`}
           </span>
         </div>
       </div>
