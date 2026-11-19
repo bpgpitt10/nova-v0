@@ -40,6 +40,11 @@ try {
   const paynes = buildAirAltitudeAdjustment(seven, 1391)
   assert.equal(paynes.status, 'ready')
   assert.ok(paynes.carryDeltaYds > 2 && paynes.carryDeltaYds < 3.5, `7i at 1,391 ft: ${paynes.carryDeltaYds}`)
+  // The gain is a share of the player's own carry when it is known (a 158 yd 7-iron at 4,000 ft: 4.7% = 7.4 yd).
+  const own = buildAirAltitudeAdjustment(seven, 4000, 157.6)
+  assert.ok(Math.abs(own.carryDeltaYds - 157.6 * gsproAltitudeCarryFraction(seven, 4000)) < 1e-9)
+  assert.ok(own.carryDeltaYds > 7.1 && own.carryDeltaYds < 7.7, `7i at 4,000 ft: ${own.carryDeltaYds}`)
+  assert.ok(buildAirAltitudeAdjustment(seven, 4000).carryDeltaYds > own.carryDeltaYds)
   assert.equal(buildAirAltitudeAdjustment(null, 1391).carryDeltaYds, 0)
   assert.equal(buildAirAltitudeAdjustment(seven, null).carryDeltaYds, 0)
   console.log(`altitude carry ok (50 measured shots: mean ${(sum / shots.length).toFixed(2)} yd, worst ${worst.toFixed(1)} yd)`)

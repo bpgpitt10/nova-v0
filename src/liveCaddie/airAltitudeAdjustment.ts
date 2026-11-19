@@ -56,6 +56,8 @@ export const gsproAltitudeCarryFraction = (launch: FlightLaunchInput, altitudeFt
 export const buildAirAltitudeAdjustment = (
   launch: FlightLaunchInput | null,
   altitudeFt: number | null | undefined,
+  /** The player's own carry with this club. The gain is a share of this, not of the simulated carry. */
+  stockCarryYds?: number | null,
 ): AirAltitudeAdjustment => {
   if (!launch || !finite(altitudeFt)) {
     return {
@@ -89,7 +91,9 @@ export const buildAirAltitudeAdjustment = (
   return {
     altitudeFt,
     // Carry: GSPro's own altitude effect, measured. Sideways: still the flight model's.
-    carryDeltaYds: gsproAltitudeCarryFraction(launch, altitudeFt) * baseline.carryYds,
+    // A share of the player's real carry: the simulation runs long for irons (a 158 yd 7-iron simulates at 170).
+    carryDeltaYds: gsproAltitudeCarryFraction(launch, altitudeFt)
+      * (finite(stockCarryYds) && stockCarryYds > 0 ? stockCarryYds : baseline.carryYds),
     lateralDeltaYds: atAltitude.offlineYds - baseline.offlineYds,
     status: 'ready',
     note: 'Carry change from GSPro\'s measured altitude effect for this launch (50 range shots at 2,500 and 5,000 ft); sideways change from the flight model.',
