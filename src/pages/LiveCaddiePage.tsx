@@ -264,6 +264,12 @@ export default function LiveCaddiePage() {
       ? { courseType: picked.courseType, fairwayFirmness: picked.fairwayFirmness }
       : null
   })
+  const [greenConditions] = useState(() => {
+    const picked = loadActiveLiveCaddieRound()?.conditions
+    return picked?.courseType && picked.greenFirmness
+      ? { courseType: picked.courseType, greenFirmness: picked.greenFirmness }
+      : null
+  })
   const [applyFairwayRoll] = useState(() => fairwayRollModelOn())
   const [livePrepared, setLivePrepared] = useState(false)
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
@@ -1307,6 +1313,7 @@ export default function LiveCaddiePage() {
         lieSource,
         exactPinLocalYds: trustedLivePin,
         fairwayConditions,
+        greenConditions,
         applyFairwayRoll,
         layupPin,
         greenDetail: trustedLivePin && liveSnapshot?.ballSource !== 'world-provisional'
@@ -1353,7 +1360,7 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
-    trustedLivePin, greenDetail, layupPin, quickBagPrior, fairwayConditions, applyFairwayRoll,
+    trustedLivePin, greenDetail, layupPin, quickBagPrior, fairwayConditions, greenConditions, applyFairwayRoll,
   ])
 
   const shotStrategy = hole && !isGreenSurface && !holdFirstTeeRecommendation

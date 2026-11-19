@@ -2,6 +2,7 @@ import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geom
 import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
 import { makeRollLandingTransform } from './rollModel'
 import { estimateFairwayRoll, type FairwayConditions, type FairwayRollEstimate } from './fairwayRollModel'
+import { estimateGreenRelease, type GreenConditions, type GreenReleaseEstimate } from './greenReleaseModel'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
@@ -107,6 +108,8 @@ export type AimLabEnvironment = {
   greenDetail?: CourseGreenDetail | null
   /** GSPro's Course Type and Fairway Firmness for this round (picked at Start a Round). */
   fairwayConditions?: FairwayConditions | null
+  /** The round's GSPro Course Type and Green Firmness, for shots that land on a green. */
+  greenConditions?: GreenConditions | null
   /**
    * Use the fairway roll model for outcomes. Off (the default): the roll it
    * expects is still worked out and reported, but outcomes keep the range rollout.
@@ -191,6 +194,8 @@ export type ClubAimEvaluation = {
   rolloutYds: number
   /** Roll expected under the round's course conditions, and whether outcomes used it; null without conditions or launch data. */
   fairwayRoll?: (FairwayRollEstimate & { applied: boolean }) | null
+  /** Release on a level green in the round's conditions, and whether outcomes use it. */
+  greenRelease?: (GreenReleaseEstimate & { applied: boolean }) | null
   airAltitudeFt: number | null
   altitudeCarryDeltaYds: number
   altitudeLateralDeltaYds: number
@@ -611,11 +616,26 @@ export const evaluateAimLab = (
     const fairwayRoll = fairwayRollEstimate
       ? { ...fairwayRollEstimate, applied: environment.applyFairwayRoll === true }
       : null
+    // The same for a ball that lands on the green: Course Type and Green Firmness.
+    const greenReleaseEstimate = estimateGreenRelease({
+      arrival: {
+        ballSpeedMph: profile.launch_profile?.ball_speed_mph,
+        spinRpm: profile.launch_profile?.total_spin_rpm,
+        descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : undefined,
+      },
+      descentDeltaDeg,
+      stockRolloutYds: rolloutYds,
+      conditions: environment.greenConditions,
+    })
+    const greenRelease = greenReleaseEstimate
+      ? { ...greenReleaseEstimate, applied: environment.applyFairwayRoll === true }
+      : null
     const greenLandingTransform = makeRollLandingTransform(hole, greenRollout,
       ballElevationFt != null && typeof descentDeg === 'number' && Number.isFinite(descentDeg)
         ? { ball, descentDeg, refElevationFt: ballElevationFt + (environment.elevationDeltaFt ?? 0) }
         : null,
-      fairwayRoll?.applied ? fairwayRoll.scale : 1)
+      fairwayRoll?.applied ? fairwayRoll.scale : 1,
+      greenRelease?.applied ? greenRelease.predictedYds : null)
     // Until destination-surface rollout physics are validated, preserve the player's
     // observed Stock rollout and translate both carry and total by the same live carry delta.
     const modeledTotalYds = modeledCarryYds + rolloutYds
@@ -679,6 +699,11 @@ export const evaluateAimLab = (
     }
     if (rolloutYds > 0) {
       notes.push(`Final-position outcomes start from ${rolloutYds.toFixed(1)} yd of observed Stock rollout, scaled by the surface and slope where each ball lands.`)
+    }
+    if (greenRelease) {
+      notes.push(`Greens (${greenRelease.conditions.courseType} type, ${greenRelease.conditions.greenFirmness} greens): `
+        + `${greenRelease.predictedYds.toFixed(1)} yd of release on a level green against ${greenRelease.stockYds.toFixed(1)} yd of range rollout. `
+        + (greenRelease.applied ? 'Applied to shots landing on the green.' : 'Preview only: outcomes still use the range rollout.'))
     }
     if (fairwayRoll) {
       notes.push(`Course conditions (${fairwayRoll.conditions.courseType} type, ${fairwayRoll.conditions.fairwayFirmness} fairways): `
@@ -808,6 +833,7 @@ export const evaluateAimLab = (
       expectedTotalYds,
       rolloutYds,
       fairwayRoll,
+      greenRelease,
       airAltitudeFt: altitudeAdjustment.altitudeFt,
       altitudeCarryDeltaYds: altitudeAdjustment.carryDeltaYds,
       altitudeLateralDeltaYds: altitudeAdjustment.lateralDeltaYds,
