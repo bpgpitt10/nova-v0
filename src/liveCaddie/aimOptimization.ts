@@ -505,6 +505,7 @@ const modelClubCarryAt = (
   const altitudeAdjustment = buildAirAltitudeAdjustment(
     altitudeLaunch,
     environment.airAltitudeFt,
+    profile.stock_carry_yds,
   )
 
   const baseModeledCarryYds = modeled.modeledCarryYds ?? profile.stock_carry_yds
