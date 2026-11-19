@@ -223,7 +223,7 @@ export const buildCaddieModelContract = (
   })
 
   const surface = context.surface?.trim() || null
-  const surfaceResponse = getSurfaceResponse(surface)
+  const surfaceResponse = getSurfaceResponse(surface, baseline.launchBallSpeedMph)
   const surfaceFactors = surfaceResponse.factors
   factors.push({
     id: 'surface',
