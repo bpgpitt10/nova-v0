@@ -13,9 +13,9 @@ import {
 } from './insightsStackData'
 import {
   INSIGHT_BASELINE,
-  INSIGHT_GREEN,
+  INSIGHT_HOLE,
+  describeLeave,
   finishOf,
-  strokesLostToMisread,
   type InsightConditions,
 } from './insightsShotModel'
 
@@ -120,10 +120,7 @@ export default function InsightsStackLoop() {
     })
   }, [])
   const final = followed[followed.length - 1]
-  const lost = useMemo(
-    () => strokesLostToMisread(final.totalYds - STACK_PIN_YDS, final.sideYds),
-    [final],
-  )
+  const leave = useMemo(() => describeLeave(final.totalYds - STACK_PIN_YDS, final.sideYds), [final])
 
   const cloud = useMemo(() => {
     const lies = new Uint8Array(DOTS)
@@ -210,13 +207,21 @@ export default function InsightsStackLoop() {
       context.fillRect(0, 0, width, height)
       context.fillStyle = '#12281a'
       context.fillRect(0, mid - 14 * perYard, width, 28 * perYard)
+      const yardsWide = (yds: number) => x(STACK_PIN_YDS + yds) - x(STACK_PIN_YDS)
+      const { green, bunkers } = INSIGHT_HOLE
       context.fillStyle = '#1c3d28'
       context.beginPath()
-      context.ellipse(x(STACK_PIN_YDS), mid, x(STACK_PIN_YDS + INSIGHT_GREEN.halfDepthYds) - x(STACK_PIN_YDS), INSIGHT_GREEN.halfWidthYds * perYard, 0, 0, Math.PI * 2)
+      context.ellipse(x(STACK_PIN_YDS + green.longYds), y(green.rightYds), yardsWide(green.halfDepthYds), green.halfWidthYds * perYard, 0, 0, Math.PI * 2)
       context.fill()
       context.strokeStyle = 'rgba(242, 226, 184, 0.28)'
       context.lineWidth = 1
       context.stroke()
+      context.fillStyle = 'rgba(214, 196, 150, 0.34)'
+      for (const bunker of bunkers) {
+        context.beginPath()
+        context.ellipse(x(STACK_PIN_YDS + bunker.longYds), y(bunker.rightYds), yardsWide(bunker.halfDepthYds), bunker.halfWidthYds * perYard, 0, 0, Math.PI * 2)
+        context.fill()
+      }
 
       context.font = '600 11px Inter, system-ui, sans-serif'
       context.textAlign = 'center'
@@ -297,7 +302,7 @@ export default function InsightsStackLoop() {
   const now = followed[at]
   const off = final.totalYds - STACK_PIN_YDS
   const caption = summary
-    ? `Six adjustments. Hit it like a normal 150 and you finish ${Math.abs(Math.round(off)) < 1 ? 'pin high' : `${Math.abs(Math.round(off))} yards ${off > 0 ? 'long' : 'short'}`} and ${sideText(final.sideYds).replace(' yd', ' yards')}. That costs about ${lost.toFixed(1)} strokes.`
+    ? `Six adjustments. Hit it like a normal ${STACK_PIN_YDS} and you finish ${Math.abs(Math.round(off)) < 1 ? 'pin high' : `${Math.abs(Math.round(off))} yards ${off > 0 ? 'long' : 'short'}`} and ${sideText(final.sideYds).replace(' yd', ' yards')}. ${leave.headline}`
     : STEPS[at].know
 
   return (

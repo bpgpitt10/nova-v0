@@ -4,7 +4,6 @@ import { simulateFlight } from '../liveCaddie/flightPhysics'
 import { predictGreenRelease } from '../liveCaddie/greenReleaseModel'
 import { predictGsproCarry } from '../liveCaddie/gsproCarryModel'
 import { sidehillLieShare, upDownLieShare } from '../liveCaddie/lieResponse'
-import { BROADIE_2012_OFF_GREEN_TABLE, PGA_TOUR_PUTTING_TABLE } from '../liveCaddie/nextStateValue'
 import type { Firmness } from '../liveCaddie/roundConditions'
 import { getSurfaceResponse } from '../liveCaddie/surfaceResponse'
 
@@ -45,9 +44,6 @@ export const INSIGHT_BASELINE: InsightConditions = {
   grass: 'medium', firmness: 'medium', lie: 'fairway',
   slopeUpDeg: 0, slopeRightDeg: 0, elevationFt: 0, altitudeFt: 0, windMph: 0, windFromDeg: 0,
 }
-
-/** The green in every example: this far in front of and behind the pin, and this wide each side. */
-export const INSIGHT_GREEN = { halfDepthYds: 12, halfWidthYds: 10.5 } as const
 
 const LIE_SURFACE: Record<InsightLie, string | null> = { fairway: null, rough: 'TVGrough', 'deep-rough': 'TVGdeeprough', sand: 'TVGsand' }
 const within = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value))
@@ -99,7 +95,7 @@ export const finishOf = (conditions: InsightConditions, pinYds: number, swing: I
     }
   }
   const arrival = { ballSpeedMph: launch.ballSpeedMph, spinRpm: launch.totalSpinRpm, descentDeg: descent ?? 45 }
-  const onGreen = Math.abs(carry - pinYds) <= INSIGHT_GREEN.halfDepthYds
+  const onGreen = Math.abs(carry - (pinYds + INSIGHT_HOLE.green.longYds)) <= INSIGHT_HOLE.green.halfDepthYds
   const run = onGreen
     ? predictGreenRelease(arrival, { courseType: conditions.grass, greenFirmness: conditions.firmness })
     : predictFairwayRoll(arrival, { courseType: conditions.grass, fairwayFirmness: conditions.firmness })
@@ -108,64 +104,57 @@ export const finishOf = (conditions: InsightConditions, pinYds: number, swing: I
   return { totalYds: total, sideYds: side, carryYds: carry, onGreen }
 }
 
-// ---- What a misread costs, in strokes --------------------------------------
-
-const between = (x: number, rows: readonly (readonly [number, number])[]) => {
-  if (x <= rows[0][0]) return rows[0][1]
-  for (let n = 1; n < rows.length; n += 1) {
-    if (x <= rows[n][0]) {
-      const [x0, y0] = rows[n - 1]
-      const [x1, y1] = rows[n]
-      return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0)
-    }
-  }
-  return rows[rows.length - 1][1]
-}
-
-const PUTTS = PGA_TOUR_PUTTING_TABLE.map((row) => [row.distanceFeet, row.expectedPutts] as const)
-const FROM_FAIRWAY = BROADIE_2012_OFF_GREEN_TABLE.map((row) => [row.distanceYds, row.fairway] as const)
-const FROM_ROUGH = BROADIE_2012_OFF_GREEN_TABLE.map((row) => [row.distanceYds, row.rough] as const)
+// ---- Where a misread leaves you --------------------------------------------
 
 /**
- * Average strokes to hole out from a spot `longYds` past the pin and `rightYds`
- * right of it: a putt if it is on the green, a chip from fairway if it is short,
- * from rough anywhere else. Same tour tables the live caddie decides with.
+ * The hole every example is played on, measured from the pin (yards past it,
+ * yards right of it). The pin is back right, so the middle of the green is a
+ * little short and left, and there is sand long-right and short-left.
  */
-export const strokesFrom = (longYds: number, rightYds: number) => {
-  const distanceYds = Math.hypot(longYds, rightYds)
-  const onGreen = (longYds / INSIGHT_GREEN.halfDepthYds) ** 2 + (rightYds / INSIGHT_GREEN.halfWidthYds) ** 2 <= 1
-  if (onGreen) return between(distanceYds * 3, PUTTS)
-  const straightShort = longYds < 0 && Math.abs(rightYds) <= INSIGHT_GREEN.halfWidthYds
-  return between(distanceYds, straightShort ? FROM_FAIRWAY : FROM_ROUGH)
-}
+export const INSIGHT_HOLE = {
+  green: { longYds: -5, rightYds: -3, halfDepthYds: 11, halfWidthYds: 9 },
+  bunkers: [
+    { longYds: 10, rightYds: 6, halfDepthYds: 6, halfWidthYds: 5 },
+    { longYds: -19, rightYds: -8, halfDepthYds: 5, halfWidthYds: 5 },
+  ],
+} as const
 
-/** How far a decent player's 8 iron scatters around where it was meant to go (one standard deviation). */
-export const INSIGHT_SCATTER = { longYds: 6, rightYds: 5 } as const
+const inside = (area: { longYds: number; rightYds: number; halfDepthYds: number; halfWidthYds: number }, longYds: number, rightYds: number) =>
+  ((longYds - area.longYds) / area.halfDepthYds) ** 2 + ((rightYds - area.rightYds) / area.halfWidthYds) ** 2 <= 1
 
-const SPREAD = [-2.4, -1.8, -1.2, -0.6, 0, 0.6, 1.2, 1.8, 2.4]
-const WEIGHTS = SPREAD.map((z) => Math.exp(-0.5 * z * z))
-const WEIGHT_SUM = WEIGHTS.reduce((sum, weight) => sum + weight, 0)
+export type InsightLeave = Readonly<{
+  kind: 'close' | 'look' | 'green' | 'long-putt' | 'fringe' | 'sand' | 'short' | 'long' | 'wide' | 'gone'
+  /** The short verdict, in plain golf. */
+  headline: string
+  detail: string
+}>
 
-type Scatter = Readonly<{ longYds: number; rightYds: number }>
-
-/** A longer club scatters wider: about 4% of the shot long and short, a little less side to side. */
-export const scatterFor = (shotYds: number): Scatter => ({ longYds: shotYds * 0.04, rightYds: shotYds * 0.033 })
-
-/** Average strokes to hole out when shots are centred `longYds` past and `rightYds` right of the pin. */
-export const strokesWhenCentredAt = (longYds: number, rightYds: number, scatter: Scatter = INSIGHT_SCATTER) => {
-  let total = 0
-  for (let a = 0; a < SPREAD.length; a += 1) {
-    for (let b = 0; b < SPREAD.length; b += 1) {
-      total += WEIGHTS[a] * WEIGHTS[b]
-        * strokesFrom(longYds + SPREAD[a] * scatter.longYds, rightYds + SPREAD[b] * scatter.rightYds)
-    }
+/** What you are left with when your ball finishes `longYds` past the pin and `rightYds` right of it. */
+export const describeLeave = (longYds: number, rightYds: number): InsightLeave => {
+  const yards = Math.hypot(longYds, rightYds)
+  const feet = Math.round(yards * 3)
+  const { green, bunkers } = INSIGHT_HOLE
+  if (yards > 32) return { kind: 'gone', headline: 'That is a different hole.', detail: `${Math.round(yards)} yards from the pin. Reload.` }
+  if (bunkers.some((bunker) => inside(bunker, longYds, rightYds))) {
+    return { kind: 'sand', headline: 'Bunker. Have fun at the beach.', detail: `${Math.round(yards)} yards from the pin, in the sand.` }
   }
-  return total / (WEIGHT_SUM * WEIGHT_SUM)
+  if (inside(green, longYds, rightYds)) {
+    if (feet <= 6) return { kind: 'close', headline: 'Kick-in range.', detail: `${Math.max(1, feet)} feet. That read was a birdie.` }
+    if (feet <= 18) return { kind: 'look', headline: 'A real birdie look.', detail: `${feet} feet from the pin.` }
+    if (feet <= 45) return { kind: 'green', headline: 'On the green, not at the pin.', detail: `${feet} feet away. Two putt instead of chasing a birdie.` }
+    return { kind: 'long-putt', headline: 'On the green. Barely.', detail: `${feet} feet away. That is three-putt range.` }
+  }
+  // The pin is near the back right edge, so a small miss that way is only just off.
+  if (yards <= 5) return { kind: 'fringe', headline: 'Just off the edge.', detail: `${feet} feet from the pin, on the fringe. Putt it or chip it close.` }
+  const pastGreen = longYds - green.longYds
+  if (Math.abs(rightYds - green.rightYds) <= green.halfWidthYds) {
+    return pastGreen < 0
+      ? { kind: 'short', headline: 'Short of the green.', detail: `${Math.round(yards)} yards from the pin. A chip and a putt to save par.` }
+      : { kind: 'long', headline: 'Over the back.', detail: `${Math.round(yards)} yards from the pin, with a touchy chip coming back.` }
+  }
+  return {
+    kind: 'wide',
+    headline: `Missed the green ${rightYds > green.rightYds ? 'right' : 'left'}.`,
+    detail: `${Math.round(yards)} yards from the pin. Up and down for par.`,
+  }
 }
-
-/**
- * Strokes lost by planning for the wrong number: your shots end up centred on
- * the misread instead of on the pin. Never negative.
- */
-export const strokesLostToMisread = (longYds: number, rightYds: number, scatter: Scatter = INSIGHT_SCATTER) =>
-  Math.max(0, strokesWhenCentredAt(longYds, rightYds, scatter) - strokesWhenCentredAt(0, 0, scatter))
