@@ -402,8 +402,8 @@ def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
             })
     # The flight itself, from GSPro's own path. GSPro's stored launch numbers (lmfEL, lmfAZ) carry the
     # grass penalty but NOT the slope: a sloped lie only shows in the path (checked 18 Nov on 27 shots).
-    raw_path = (shot_data.get("pos") or ((record.get("activeShot") or {}).get("sd") or {}).get("pos")
-                or (ghost.get("atShotData") or {}).get("pos") or [])
+    # activeShot's path is in course coordinates; the copy under GhostData is not (checked on real records).
+    raw_path = (((record.get("activeShot") or {}).get("sd") or {}).get("pos") or shot_data.get("pos") or [])
     flight = [p for p in (_xyz(point) for point in raw_path) if p]
     aim_deg = _num(ghost.get("ballDirection"))
     if start and landed and len(flight) >= 3:
