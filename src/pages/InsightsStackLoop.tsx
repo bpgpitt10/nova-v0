@@ -48,12 +48,12 @@ const STEPS: readonly Step[] = [
   },
   {
     layer: 'Elevation',
-    options: 'level, 30 ft up, 30 ft down',
+    options: 'up to 30 ft above or below',
     caption: (spread) => `Now the green sits above or below you: ${spread} yards.`,
   },
   {
     layer: 'Altitude',
-    options: 'sea level, 2,500 ft, 5,000 ft',
+    options: 'sea level up to 5,000 ft',
     caption: (spread) => `Now the course's altitude: ${spread} yards between the shortest and the longest.`,
   },
 ]
@@ -69,45 +69,91 @@ const VIEW = { minYds: 92, maxYds: 190, halfWidthYds: 13 }
 const GREEN_HALF_DEPTH_YDS = 12
 
 const [GREENS, LIES, UPS, ELEVS, ALTS] = STACK_TOTAL_SIZES
-const SIDES = STACK_SIDE_SLOPES_DEG.length
-/** Dots at the end: every green setting, lie, slope (up or down and across), elevation and altitude. */
-const FINAL_COUNT = GREENS * LIES * UPS * SIDES * ELEVS * ALTS
-/** How many dots there are once each step's layer is in. */
-const STEP_COUNTS = [1, GREENS, GREENS * LIES, GREENS * LIES * UPS * SIDES, GREENS * LIES * UPS * SIDES * ELEVS, FINAL_COUNT]
+/** The data's grid, as values (the order the generator wrote them in). */
+const UP_DEG = [0, -6, -3, 3, 6]
+const ELEV_FT = [0, -30, 30]
+const ALT_FT = [0, 2500, 5000]
+const SIDE_MAX_DEG = Math.max(...STACK_SIDE_SLOPES_DEG)
+/**
+ * How many ways the swing can finish once each step's layer is in, counting a
+ * slope to the nearest degree (13 up or down x 13 across), elevation to the
+ * nearest 10 ft (7) and altitude to the nearest 1,000 ft (6).
+ */
+const SLOPE_WAYS = 13 * 13
+const STEP_COUNTS = [1, GREENS, GREENS * LIES, GREENS * LIES * SLOPE_WAYS, GREENS * LIES * SLOPE_WAYS * 7, GREENS * LIES * SLOPE_WAYS * 7 * 6]
+/** Dots drawn: each is one of those ways, picked at random (the same ones every time). */
+const DOTS = 5200
+
+/** Where `value` falls on an axis of the grid: the two grid slots around it and how far between them. */
+const along = (axis: readonly number[], value: number): [number, number, number] => {
+  const order = axis.map((at, slot) => [at, slot] as const).sort((a, b) => a[0] - b[0])
+  for (let n = 0; n < order.length - 1; n += 1) {
+    const [low, lowSlot] = order[n]
+    const [high, highSlot] = order[n + 1]
+    if (value <= high || n === order.length - 2) return [lowSlot, highSlot, Math.min(1, Math.max(0, (value - low) / (high - low)))]
+  }
+  return [order[0][1], order[0][1], 0]
+}
+
+/** Total distance for any slope, elevation and altitude inside the grid, read between the modelled points. */
+const totalAt = (green: number, lie: number, upDeg: number, elevFt: number, altFt: number) => {
+  const [u0, u1, ut] = along(UP_DEG, upDeg)
+  const [e0, e1, et] = along(ELEV_FT, elevFt)
+  const [a0, a1, at] = along(ALT_FT, altFt)
+  const grid = STACK_TOTALS[4]
+  const read = (u: number, e: number, a: number) => grid[(((green * LIES + lie) * UPS + u) * ELEVS + e) * ALTS + a]
+  const mix = (x: number, y: number, t: number) => x + (y - x) * t
+  const face = (a: number) => mix(mix(read(u0, e0, a), read(u1, e0, a), ut), mix(read(u0, e1, a), read(u1, e1, a), ut), et)
+  return mix(face(a0), face(a1), at)
+}
+
+/** The same "random" numbers on every visit, so the picture never changes between loops. */
+const seeded = (seed: number) => () => {
+  seed = (seed + 0x6d2b79f5) | 0
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
 
 export default function InsightsStackLoop() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [step, setStep] = useState(0)
 
   const model = useMemo(() => {
-    const total = FINAL_COUNT
+    const total = DOTS
     const lies = new Uint8Array(total)
-    // positions[step]: where each final dot's ancestor sits once that step's layer is in.
+    const random = seeded(20261119)
+    // Most lies are near level, so slopes and height changes cluster around zero.
+    const nearZero = (most: number) => (random() + random() - 1) * most
+    // positions[step]: where each dot sits once that step's layer is in.
     const positions = STEPS.map(() => new Float32Array(total * 2))
-    let i = 0
-    for (let g = 0; g < GREENS; g += 1) for (let lie = 0; lie < LIES; lie += 1) for (let up = 0; up < UPS; up += 1) {
-      for (let side = 0; side < SIDES; side += 1) for (let elev = 0; elev < ELEVS; elev += 1) for (let alt = 0; alt < ALTS; alt += 1) {
-        const atLie = g * LIES + lie
-        const atUp = atLie * UPS + up
-        const atElev = atUp * ELEVS + elev
-        const totals = [STACK_PIN_YDS, STACK_TOTALS[0][g], STACK_TOTALS[1][atLie], STACK_TOTALS[2][atUp], STACK_TOTALS[3][atElev], STACK_TOTALS[4][atElev * ALTS + alt]]
-        const turn = Math.sin((STACK_SIDE_SLOPES_DEG[side] * STACK_SIDE_SHARE[lie] * Math.PI) / 180)
-        for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
-          positions[stepIndex][i * 2] = totals[stepIndex]
-          positions[stepIndex][i * 2 + 1] = stepIndex >= 3 ? totals[stepIndex] * turn : 0
-        }
-        lies[i] = lie
-        i += 1
+    for (let i = 0; i < total; i += 1) {
+      const green = Math.floor(random() * GREENS)
+      const lie = Math.floor(random() * LIES)
+      const up = nearZero(6)
+      const side = nearZero(SIDE_MAX_DEG)
+      const elev = nearZero(30)
+      const alt = random() * 5000
+      const totals = [
+        STACK_PIN_YDS,
+        totalAt(green, 0, 0, 0, 0),
+        totalAt(green, lie, 0, 0, 0),
+        totalAt(green, lie, up, 0, 0),
+        totalAt(green, lie, up, elev, 0),
+        totalAt(green, lie, up, elev, alt),
+      ]
+      const turn = Math.sin((side * STACK_SIDE_SHARE[lie] * Math.PI) / 180)
+      for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
+        positions[stepIndex][i * 2] = totals[stepIndex]
+        positions[stepIndex][i * 2 + 1] = stepIndex >= 3 ? totals[stepIndex] * turn : 0
       }
+      lies[i] = lie
     }
-    const spreads = positions.map((at) => {
-      let low = Infinity
-      let high = -Infinity
-      for (let n = 0; n < at.length; n += 2) {
-        low = Math.min(low, at[n])
-        high = Math.max(high, at[n])
-      }
-      return Math.round(high - low)
+    // The spread is the modelled extremes, not just the dots that happened to be drawn.
+    const spreads = STEPS.map((_, stepIndex) => {
+      if (stepIndex === 0) return 0
+      const level = STACK_TOTALS[stepIndex - 1]
+      return Math.round(Math.max(...level) - Math.min(...level))
     })
     return { total, positions, counts: STEP_COUNTS, spreads, lies }
   }, [])
@@ -186,8 +232,8 @@ export default function InsightsStackLoop() {
       const from = model.positions[Math.max(0, current - 1)]
       const to = model.positions[current]
       const count = model.counts[current]
-      const radius = count <= 9 ? 5 : count <= 36 ? 4 : count <= 1500 ? 2.2 : 1.7
-      context.globalAlpha = count <= 36 ? 0.95 : count <= 1500 ? 0.5 : 0.34
+      const radius = count <= 9 ? 5 : count <= 36 ? 4 : 1.6
+      context.globalAlpha = count <= 36 ? 0.95 : 0.42
       // Deep rough first and fairway last, so the shots that reach the green stay visible.
       for (const lie of [2, 3, 1, 0]) {
         context.fillStyle = current >= 2 ? LIE_COLOURS[lie] : '#eab308'
@@ -279,7 +325,7 @@ export default function InsightsStackLoop() {
             </span>
           ))}
           <span className="insights-stack__note">
-            Every dot is the same swing, worked out by the models that run in the live caddie.
+            Every dot is the same swing. Slopes counted to the nearest degree, elevation to 10 ft, altitude to 1,000 ft.
           </span>
         </div>
       </div>
