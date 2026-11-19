@@ -27,6 +27,14 @@ import numpy as np
 import gspro_minimap_markers as markers
 
 RIGHT_MINIMAP_ROI = (0.848, 0.520, 0.995, 0.960)
+#: The same place mirrored: GSPro lets the player put the minimap on the left.
+#: Assumed, not yet seen on a real capture (Brian to check).
+LEFT_MINIMAP_ROI = (0.005, 0.520, 0.152, 0.960)
+#: Where the pair sits on the map, as shares of its height and width.
+BALL_MIN_DOWN = 0.70
+PIN_MAX_DOWN = 0.50
+MIN_PIN_TO_BALL_DOWN = 0.30
+MAX_BALL_OFF_PIN_LINE = 0.15
 METERS_TO_YARDS = 1.0936132983377078
 # The red ball dot is ~18 px on a 3760 px wide window: ~3.3% of the minimap width.
 BALL_DOT_FRACTION = 0.033
@@ -50,20 +58,50 @@ def crop_minimap(frame_bgr: np.ndarray, roi=RIGHT_MINIMAP_ROI):
     return frame_bgr[y0:ye, x0:xe].copy(), (x0, y0)
 
 
-def find_red_ball_dot(roi: np.ndarray, pin: Pixel) -> Pixel:
-    """The red ball dot: a compact round red blob, preferring the one on the
-    pin's vertical line below it (GSPro aligns ball and pin vertically). Red
-    OB/hazard lines are long and thin and are rejected by size and shape."""
+class AimReadError(RuntimeError):
+    """The minimap could not be read. `seen` is a small PNG (base64) of where Looper looked."""
+
+    def __init__(self, message: str, seen: str | None = None):
+        super().__init__(message)
+        self.seen = seen
+
+
+def _ball_colour_masks(hsv: np.ndarray) -> list[np.ndarray]:
+    """One mask per colour a GSPro ball dot can be, each searched on its own.
+
+    Kept apart so a dot is never merged with a differently coloured patch it
+    sits on (a red dot on a tan path). Red is as measured on 12 real captures
+    (#ff403d to #cf322a). The others are vivid versions of each colour, to be
+    tightened from real captures; sand and paths are duller than a ball dot.
+    """
+    def band(low, high, sat=120, val=100):
+        return cv2.inRange(hsv, np.array([low, sat, val]), np.array([high, 255, 255]))
+    return [
+        cv2.bitwise_or(band(0, 12), band(170, 179)),         # red
+        band(13, 34, sat=150, val=170),                      # orange, yellow
+        band(96, 130, sat=140, val=140),                     # blue
+        band(131, 169, sat=110, val=130),                    # purple, pink
+        cv2.inRange(hsv, np.array([0, 0, 225]), np.array([179, 45, 255])),  # white
+    ]
+
+
+def find_ball_dot(roi: np.ndarray, pin: Pixel) -> Pixel:
+    """The ball dot, found by where it must be as well as what it looks like.
+
+    GSPro draws the minimap with the pin near the top and the ball straight
+    below it near the bottom (12 real captures: ball 51-58% across and 90-92%
+    down, pin within half a percent of the same line, dot 3.2% of the minimap's
+    width). So: a compact round dot of a ball colour, of that size, in the
+    lower part of the map, close to the pin's vertical line. Hazard lines are
+    long and thin and fail on size and shape.
+    """
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     h, w = hsv.shape[:2]
-    red = cv2.bitwise_or(
-        cv2.inRange(hsv, np.array([0, 120, 100]), np.array([12, 255, 255])),
-        cv2.inRange(hsv, np.array([170, 120, 100]), np.array([179, 255, 255])),
-    )
     expected = max(6.0, BALL_DOT_FRACTION * w)
-    contours, _ = cv2.findContours(red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = [(contour, mask) for mask in _ball_colour_masks(hsv)
+                for contour in cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]]
     best: tuple[float, Pixel] | None = None
-    for contour in contours:
+    for contour, mask in contours:
         x, y, cw, ch = cv2.boundingRect(contour)
         if not (0.5 * expected <= cw <= 1.8 * expected and 0.5 * expected <= ch <= 1.8 * expected):
             continue
@@ -76,21 +114,66 @@ def find_red_ball_dot(roi: np.ndarray, pin: Pixel) -> Pixel:
         if m["m00"] == 0:
             continue
         cx, cy = m["m10"] / m["m00"], m["m01"] / m["m00"]
-        if cy <= pin.y:
+        # A dot is solid: its middle is the dot's colour and it fills its box as a disc does
+        # (0.79). The letter "o" in on-screen text is a ring and fails both.
+        if not mask[int(round(cy)), int(round(cx))]:
+            continue
+        if cv2.countNonZero(mask[y:y + ch, x:x + cw]) < 0.62 * cw * ch:
+            continue
+        if cy < BALL_MIN_DOWN * h or cy - pin.y < MIN_PIN_TO_BALL_DOWN * h:
+            continue
+        if abs(cx - pin.x) > MAX_BALL_OFF_PIN_LINE * w:
             continue
         score = abs(cx - pin.x) / max(cy - pin.y, 1.0) - 0.2 * circularity
         if best is None or score < best[0]:
             best = (score, Pixel(float(cx), float(cy)))
     if best is None:
-        raise RuntimeError("Could not find GSPro's red ball dot on the minimap")
+        raise RuntimeError("Could not find GSPro's ball dot under the pin on the minimap")
     return best[1]
 
 
+#: Kept for callers of the old name.
+find_red_ball_dot = find_ball_dot
+
+
 def find_ball_and_pin(roi: np.ndarray) -> tuple[Pixel, Pixel]:
+    """Pin and ball as a pair: a white marker in the upper part of the map with a ball dot under it.
+
+    A white shape with no ball under it (text, a data tile) is not a minimap.
+    """
     pin_point = markers.detect_pin_marker(roi)
     pin = Pixel(float(pin_point.x), float(pin_point.y))
-    ball = find_red_ball_dot(roi, pin)
+    if pin.y > PIN_MAX_DOWN * roi.shape[0]:
+        raise RuntimeError("The white marker is too low on the map to be GSPro's pin")
+    ball = find_ball_dot(roi, pin)
     return ball, pin
+
+
+def locate_minimap(frame_bgr: np.ndarray, roi=None):
+    """Find the minimap on this frame: bottom right first, then the same place on the left.
+
+    Returns (crop, (x0, y0), ball, pin, side, roi). The left position is the right
+    one mirrored; GSPro lets the player put the minimap on either side.
+    """
+    sides = (("given", roi),) if roi is not None else (("right", RIGHT_MINIMAP_ROI), ("left", LEFT_MINIMAP_ROI))
+    looked: list[np.ndarray] = []
+    reasons: list[str] = []
+    for side, candidate in sides:
+        crop, origin = crop_minimap(frame_bgr, candidate)
+        try:
+            ball, pin = find_ball_and_pin(crop)
+            return crop, origin, ball, pin, side, candidate
+        except Exception as error:  # the pin detector raises its own types
+            looked.append(crop)
+            reasons.append(f"{side}: {str(error)[:70]}")
+    where = "where it was told to look" if roi is not None else "in the bottom right or bottom left of GSPro's window"
+    seen = None
+    try:
+        height = min(c.shape[0] for c in looked)
+        seen = _png_base64(np.hstack([c[:height] for c in looked]), max_width=420)
+    except Exception:
+        seen = None
+    raise AimReadError(f"Could not find GSPro's minimap (a ball dot under the pin) {where}. " + "; ".join(reasons), seen)
 
 
 def _complex_world(x: float, z: float) -> complex:
@@ -135,13 +218,12 @@ def _png_base64(image: np.ndarray, max_width: int = 320) -> str:
     return base64.b64encode(buf.tobytes()).decode("ascii")
 
 
-def aim_preview(frame_bgr: np.ndarray, *, ball_world, pin_world, target_world, roi=RIGHT_MINIMAP_ROI) -> dict:
+def aim_preview(frame_bgr: np.ndarray, *, ball_world, pin_world, target_world, roi=None) -> dict:
     """Where Looper would click for target_world on this frame. Read-only."""
     for value in (*ball_world, *pin_world, *target_world):
         if not math.isfinite(value):
             raise ValueError("Non-finite world coordinate")
-    crop, (x0, y0) = crop_minimap(frame_bgr, roi)
-    ball_px, pin_px = find_ball_and_pin(crop)
+    crop, (x0, y0), ball_px, pin_px, side, used_roi = locate_minimap(frame_bgr, roi)
     separation = math.hypot(pin_px.x - ball_px.x, pin_px.y - ball_px.y)
     if separation < MIN_BALL_PIN_PX:
         raise RuntimeError("Ball and pin dots are too close on the minimap to aim precisely")
@@ -169,6 +251,7 @@ def aim_preview(frame_bgr: np.ndarray, *, ball_world, pin_world, target_world, r
             "pin": [round(pin_px.x, 1), round(pin_px.y, 1)],
             "target": [round(target_px.x, 1), round(target_px.y, 1)],
             "width": w, "height": h,
+            "side": side, "roi": list(used_roi),
         },
         "checks": {
             "ballPinPixels": round(separation, 1),

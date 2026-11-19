@@ -489,8 +489,10 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 )
                 self._send_companion(200, {**base_payload, **result})
             except Exception as error:
+                # `seenPng`: what Looper looked at, so a wrong crop is visible on the page.
                 self._send_companion(200, {**base_payload, "status": "unavailable",
-                                           "reason": str(error)[:160]})
+                                           "reason": str(error)[:240],
+                                           "seenPng": getattr(error, "seen", None)})
             return
         if urlsplit(self.path).path == COMPANION_COURSE_LAYOUTS_PATH:
             if not self._companion_authorized():

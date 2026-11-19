@@ -105,9 +105,9 @@ def aim_click(
         return blocked("minimap-not-aligned")
 
     height, width = frame.shape[:2]
-    roi = native_aim.RIGHT_MINIMAP_ROI
-    x0, y0 = int(width * roi[0]), int(height * roi[1])
     mini = preview["minimap"]
+    roi = tuple(mini.get("roi") or native_aim.RIGHT_MINIMAP_ROI)  # the side the minimap was found on
+    x0, y0 = int(width * roi[0]), int(height * roi[1])
     try:
         plan = direct_click.prepare_verified_minimap_click(
             window=window,
@@ -138,7 +138,7 @@ def aim_click(
     sleep(VERIFY_DELAY_S)
     try:
         after = _capture(capture, find_window(), sleep)
-        crop, _ = native_aim.crop_minimap(after)
+        crop, _ = native_aim.crop_minimap(after, roi)
         marker = find_aim_marker(crop)
     except Exception:
         return result

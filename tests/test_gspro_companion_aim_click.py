@@ -89,8 +89,12 @@ class AimClickTests(unittest.TestCase):
             self.assertEqual((result["status"], result["reason"]), ("blocked", reason), kwargs)
             self.assertEqual(clicks, [])
         # Ball and pin dots not lined up the way GSPro draws them.
-        result, clicks = run([frame_with(ball_px=(40, 400), pin_px=(240, 60))])
+        result, clicks = run([frame_with(ball_px=(104, 400), pin_px=(140, 60))])
         self.assertEqual(result["reason"], "minimap-not-aligned")
+        self.assertEqual(clicks, [])
+        # A dot nowhere near the pin's line is not the ball: the map is not read at all.
+        result, clicks = run([frame_with(ball_px=(40, 400), pin_px=(240, 60))])
+        self.assertEqual(result["reason"], "minimap-not-read")
         self.assertEqual(clicks, [])
         # No dots at all (minimap hidden): nothing to anchor on.
         blank = np.full((H, W, 3), (40, 110, 50), np.uint8)
