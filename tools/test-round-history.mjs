@@ -242,5 +242,39 @@ assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes(
   assert.equal(history.roundCounts({ status: 'full', holesPlayed: 18, completeHoles: 18 }, 'excluded'), false)
 }
 
+// --- Mulligans: re-hits from the same spot don't break the hole ---------------
+{
+  const P = (x, z) => ({ x, y: 0, z })
+  const rec = (holeShot, start, end, extra = {}) => ({
+    roundId: 900, courseKey: 'test_gsp', holeNumber: 1, holeShot, observedAt: null,
+    startSurface: holeShot === 1 ? 18 : 2, endSurface: 2, distanceToPinYds: 100, carryYards: 100, totalYards: 100,
+    spinAxisDegrees: 0, gsproClubIndex: 1, isHoled: false, isGimme: false, start, end, ...extra,
+  })
+  const tee = P(0, 0)
+  // Drive, drive again (mulligan), approach played from the SECOND drive, approach again, then a holed putt from the first approach.
+  const hole = [
+    rec(1, tee, P(5, 200)),
+    rec(1, tee, P(-8, 230)),
+    rec(2, P(-8, 230), P(0, 395), { endSurface: 5 }),
+    rec(2, P(-8, 230), P(20, 380), { endSurface: 1 }),
+    rec(3, P(0, 395), P(0, 400), { startSurface: 5, endSurface: 5, isHoled: true }),
+  ]
+  const resolved = history.resolveMulligans(hole)
+  assert.equal(resolved.mulligans, 2)
+  assert.deepEqual(resolved.shots.map((r) => [r.holeShot, r.end.z]), [[1, 230], [2, 395], [3, 400]], 'the shots the hole carried on from')
+  const round = history.buildRound(900, hole, {}, {})
+  assert.equal(round.holes[0].broken, false, 'a mulligan is not a broken hole')
+  assert.equal(round.holes[0].complete, true)
+  assert.equal(round.holes[0].strokes, 3, 'scored as GSPro scores it')
+  assert.equal(round.mulligans, 2)
+  // A re-hit of the last shot: the one that holed out is kept.
+  const lastTwice = history.resolveMulligans([rec(1, tee, P(0, 398), { endSurface: 5 }), rec(2, P(0, 398), P(1, 399), { startSurface: 5 }), rec(2, P(0, 398), P(0, 400), { startSurface: 5, isHoled: true })])
+  assert.equal(lastTwice.shots[1].isHoled, true)
+  // Two "shot 2" records from different places are not a mulligan: left for the chain check.
+  const odd = history.resolveMulligans([rec(1, tee, P(0, 200)), rec(2, P(0, 200), P(0, 390)), rec(2, P(50, 50), P(0, 380))])
+  assert.equal(odd.mulligans, 0)
+  assert.equal(odd.shots.length, 3)
+}
+
 console.log(`round history ok: Old Game ${oldGame.strokes} (${oldGame.putts} putts, SG ${oldGame.sg.total.toFixed(2)}), FarmLinks test session excluded`)
 await server?.close()
