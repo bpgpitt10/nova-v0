@@ -1,4 +1,5 @@
 import { simulateFlight, type FlightEnvironmentInput, type FlightLaunchInput } from './flightPhysics'
+import { gsproCarryRatio } from './gsproCarryModel'
 
 export const SIDEHILL_LIE_MODEL_VERSION = 'looper-sidehill-lie-gspro-v1'
 export const UPDOWN_LIE_MODEL_VERSION = 'looper-updown-lie-gspro-v1'
@@ -233,7 +234,12 @@ export const buildUpDownLieResponse = ({
     }
   }
 
-  const rawCarryDeltaYds = adjusted.carryYds - baseline.carryYds
+  // GSPro's own carry for the turned launch against the original, when both are inside what was
+  // measured; the flight model's change, as a share of its own carry, otherwise.
+  const measuredRatio = gsproCarryRatio(launch, { ...launch, vlaDeg: launch.vlaDeg + appliedVlaDeltaDeg })
+  const rawCarryDeltaYds = measuredRatio != null
+    ? finiteStockCarry * (measuredRatio - 1)
+    : baseline.carryYds > 1 ? finiteStockCarry * (adjusted.carryYds / baseline.carryYds - 1) : adjusted.carryYds - baseline.carryYds
   const carryDeltaYds = Math.max(-carryCapYds, Math.min(carryCapYds, rawCarryDeltaYds))
 
   return {

@@ -238,6 +238,8 @@ jobs:
         run: node tools/test-green-release.mjs
       - name: Slope of the lie (GSPro's measured launch and start line)
         run: node tools/test-lie-slope.mjs
+      - name: GSPro's carry for a launch (measured model)
+        run: node tools/test-gspro-carry.mjs
 
       - name: Descent meets the terrain (hill faces)
         run: node tools/test-descent-touchdown.mjs

@@ -1,3 +1,4 @@
+import { gsproCarryRatio } from './gsproCarryModel'
 import { buildFlightPhysicsPrior, type FlightLaunchInput, type FlightPhysicsPrior } from './flightPhysics'
 import {
   buildSidehillLieResponse,
@@ -97,8 +98,14 @@ export const modelShotContext = (
 
   const physicsPrior = buildFlightPhysicsPrior(launch, flightEnvironment)
 
+  // The flight model runs long against GSPro: its changes in yards are taken as a share of
+  // its own carry and applied to the player's measured carry.
+  const simulatedStock = physicsPrior.baseline?.carryYds
+  const carryScale = stockCarry != null && finite(simulatedStock) && simulatedStock > 1
+    ? Math.min(1.25, Math.max(0.75, stockCarry / simulatedStock))
+    : 1
   const combinedAirborneCarryYds = finite(physicsPrior.deltas.combinedCarryYds)
-    ? physicsPrior.deltas.combinedCarryYds
+    ? physicsPrior.deltas.combinedCarryYds * carryScale
     : 0
   const combinedAirborneLateralYds = finite(physicsPrior.deltas.combinedLateralYds)
     ? physicsPrior.deltas.combinedLateralYds
@@ -113,13 +120,18 @@ export const modelShotContext = (
       ? buildFlightPhysicsPrior(surfaceLaunch, flightEnvironment)
       : null
 
+  // What the lie takes off the carry: GSPro's own carry for the penalised launch against the
+  // clean one, when both are inside what was measured; the flight model otherwise.
+  const surfaceRatio = surfaceLaunch && surfaceResponse.kind !== 'baseline' ? gsproCarryRatio(launch, surfaceLaunch) : null
   const surfaceCarryYds =
-    surfacePhysics?.combined &&
-    physicsPrior.combined &&
-    finite(surfacePhysics.combined.carryYds) &&
-    finite(physicsPrior.combined.carryYds)
-      ? surfacePhysics.combined.carryYds - physicsPrior.combined.carryYds
-      : 0
+    surfaceRatio != null && stockCarry != null
+      ? stockCarry * (surfaceRatio - 1)
+      : surfacePhysics?.combined &&
+        physicsPrior.combined &&
+        finite(surfacePhysics.combined.carryYds) &&
+        finite(physicsPrior.combined.carryYds)
+        ? (surfacePhysics.combined.carryYds - physicsPrior.combined.carryYds) * carryScale
+        : 0
   const surfaceLateralYds =
     surfacePhysics?.combined &&
     physicsPrior.combined &&
@@ -151,10 +163,10 @@ export const modelShotContext = (
 
   const appliedAdjustments = {
     elevationYds: finite(physicsPrior.deltas.elevationCarryYds)
-      ? physicsPrior.deltas.elevationCarryYds
+      ? physicsPrior.deltas.elevationCarryYds * carryScale
       : 0,
     windCarryYds: finite(physicsPrior.deltas.windCarryYds)
-      ? physicsPrior.deltas.windCarryYds
+      ? physicsPrior.deltas.windCarryYds * carryScale
       : 0,
     windLateralYds: finite(physicsPrior.deltas.windLateralYds)
       ? physicsPrior.deltas.windLateralYds
