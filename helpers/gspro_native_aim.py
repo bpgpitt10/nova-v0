@@ -86,14 +86,50 @@ def _ball_colour_masks(hsv: np.ndarray) -> list[np.ndarray]:
     return [
         cv2.bitwise_or(band(0, 12, 120, 100), band(170, 179, 120, 100)),   # red
         band(13, 30, 170, 170),                                           # orange, yellow
-        band(55, 80, 170, 145),                                           # green
-        band(86, 99, 170, 150),                                           # teal
+        band(45, 85, 120, 140),                                           # green (real dot: 67, 208, 248 in the
+                                                                          # middle, softer at its edge)
+        band(86, 99, 120, 140),                                           # teal
         band(100, 118, 180, 180),                                         # blue
         band(131, 169, 140, 130),                                         # purple, pink
     ]
 
 
-def find_ball_dot(roi: np.ndarray, pin: Pixel) -> Pixel:
+#: The player's name banner in the top left of GSPro's window is drawn in the player's ball
+#: colour, and stays there whichever side the minimap is on. Reading it says which colour
+#: of dot to look for.
+PLAYER_BANNER_ROI = (0.025, 0.024, 0.15, 0.052)
+
+
+def read_player_colour(frame_bgr: np.ndarray) -> int | None:
+    """The hue (OpenCV 0-179) of the player's banner, or None when it cannot be read."""
+    height, width = frame_bgr.shape[:2]
+    x1, y1, x2, y2 = PLAYER_BANNER_ROI
+    patch = frame_bgr[int(height * y1):int(height * y2), int(width * x1):int(width * x2)]
+    if patch.size == 0:
+        return None
+    hsv = cv2.cvtColor(patch, cv2.COLOR_BGR2HSV).reshape(-1, 3)
+    vivid = hsv[(hsv[:, 1] >= 110) & (hsv[:, 2] >= 140)]   # every ball colour is brighter than grass
+    if len(vivid) < 0.5 * len(hsv):       # the banner is a solid block of colour behind the name
+        return None
+    # Red sits at both ends of the hue scale: take the median on a circle.
+    angles = vivid[:, 0].astype(np.float64) * (math.pi / 90.0)
+    mean = math.atan2(np.sin(angles).mean(), np.cos(angles).mean())
+    return int(round((mean * 90.0 / math.pi) % 180)) % 180
+
+
+def _hue_mask(hsv: np.ndarray, hue: int, spread: int = 12) -> np.ndarray:
+    """Vivid pixels within `spread` of this hue (wrapping at red)."""
+    low, high = hue - spread, hue + spread
+    def band(a, b):
+        return cv2.inRange(hsv, np.array([a, 110, 120]), np.array([b, 255, 255]))
+    if low < 0:
+        return cv2.bitwise_or(band(0, high), band(180 + low, 179))
+    if high > 179:
+        return cv2.bitwise_or(band(low, 179), band(0, high - 180))
+    return band(low, high)
+
+
+def find_ball_dot(roi: np.ndarray, pin: Pixel, hue: int | None = None) -> Pixel:
     """The ball dot, found by where it must be as well as what it looks like.
 
     GSPro draws the minimap with the pin near the top and the ball straight
@@ -106,7 +142,9 @@ def find_ball_dot(roi: np.ndarray, pin: Pixel) -> Pixel:
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     h, w = hsv.shape[:2]
     expected = max(6.0, BALL_DOT_FRACTION * w)
-    contours = [(contour, mask) for mask in _ball_colour_masks(hsv)
+    # With the player's colour known, only a dot of that colour will do.
+    masks = [_hue_mask(hsv, hue)] if hue is not None else _ball_colour_masks(hsv)
+    contours = [(contour, mask) for mask in masks
                 for contour in cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]]
     best: tuple[float, Pixel] | None = None
     for contour, mask in contours:
@@ -144,7 +182,7 @@ def find_ball_dot(roi: np.ndarray, pin: Pixel) -> Pixel:
 find_red_ball_dot = find_ball_dot
 
 
-def find_ball_and_pin(roi: np.ndarray) -> tuple[Pixel, Pixel]:
+def find_ball_and_pin(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, Pixel]:
     """Pin and ball as a pair: a white marker in the upper part of the map with a ball dot under it.
 
     A white shape with no ball under it (text, a data tile) is not a minimap.
@@ -153,7 +191,12 @@ def find_ball_and_pin(roi: np.ndarray) -> tuple[Pixel, Pixel]:
     pin = Pixel(float(pin_point.x), float(pin_point.y))
     if pin.y > PIN_MAX_DOWN * roi.shape[0]:
         raise RuntimeError("The white marker is too low on the map to be GSPro's pin")
-    ball = find_ball_dot(roi, pin)
+    try:
+        ball = find_ball_dot(roi, pin, hue)
+    except RuntimeError:
+        if hue is None:
+            raise
+        ball = find_ball_dot(roi, pin)   # the banner was misread or hidden: try every ball colour
     return ball, pin
 
 
@@ -166,10 +209,11 @@ def locate_minimap(frame_bgr: np.ndarray, roi=None):
     sides = (("given", roi),) if roi is not None else (("right", RIGHT_MINIMAP_ROI), ("left", LEFT_MINIMAP_ROI))
     looked: list[np.ndarray] = []
     reasons: list[str] = []
+    hue = read_player_colour(frame_bgr)
     for side, candidate in sides:
         crop, origin = crop_minimap(frame_bgr, candidate)
         try:
-            ball, pin = find_ball_and_pin(crop)
+            ball, pin = find_ball_and_pin(crop, hue)
             return crop, origin, ball, pin, side, candidate
         except Exception as error:  # the pin detector raises its own types
             looked.append(crop)

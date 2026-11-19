@@ -83,6 +83,23 @@ class AimMathTests(unittest.TestCase):
             self.assertAlmostEqual(result["minimap"]["ball"][1], 400, delta=1.5, msg=name)
             self.assertEqual(result["minimap"]["side"], "right")
 
+    def test_the_player_banner_says_which_colour_to_look_for(self):
+        green, red = (61, 164, 22), (38, 50, 209)
+        img = synthetic_frame((140, 400), (140, 60), red_line=False)
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(img, (x0 + 140, y0 + 400), 5, green, -1)             # the ball is green
+        cv2.circle(img, (x0 + 150, y0 + 430), 5, red, -1)               # a round red thing right beside it
+        cv2.rectangle(img, (4, 22), (int(W * 0.2), 58), green, -1)      # the player's banner, in the ball's colour
+        cv2.putText(img, "Brian", (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+        self.assertAlmostEqual(aim.read_player_colour(img), 68, delta=4)
+        result = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(110.0, 200.0))
+        self.assertAlmostEqual(result["minimap"]["ball"][0], 140, delta=1.5)
+        self.assertAlmostEqual(result["minimap"]["ball"][1], 400, delta=1.5)
+        # No banner to read (plain grass there): every ball colour is tried, as before.
+        self.assertIsNone(aim.read_player_colour(synthetic_frame((140, 400), (140, 60))))
+        cv2.rectangle(img, (4, 22), (int(W * 0.2), 58), red, -1)        # a red banner: the red dot is the ball
+        self.assertIn(aim.read_player_colour(img), (0, 1, 2, 3, 4, 178, 179))
+
     def test_a_coloured_dot_away_from_the_pin_line_is_not_the_ball(self):
         img = synthetic_frame((140, 400), (140, 60))
         x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
