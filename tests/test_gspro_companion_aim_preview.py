@@ -70,9 +70,9 @@ class AimMathTests(unittest.TestCase):
         self.assertTrue(result["previewPng"])
 
     def test_any_ball_colour_is_found_under_the_pin(self):
-        # GSPro's ball dot can be many colours (BGR here); the course is green and the pin white.
-        colours = {"red": (0, 0, 235), "blue": (235, 90, 20), "purple": (200, 40, 160), "yellow": (0, 220, 240),
-                   "orange": (0, 130, 250), "pink": (180, 80, 250), "white": (255, 255, 255)}
+                # GSPro's eight ball colours, as its colour picker shows them (BGR).
+        colours = {"red": (38, 50, 209), "green": (61, 164, 22), "blue": (242, 127, 0), "yellow": (50, 193, 242),
+                   "pink": (194, 64, 227), "teal": (179, 162, 22), "purple": (163, 46, 140), "orange": (13, 125, 193)}
         for name, bgr in colours.items():
             img = synthetic_frame((140, 400), (140, 60))
             x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])

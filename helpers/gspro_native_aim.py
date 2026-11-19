@@ -66,22 +66,29 @@ class AimReadError(RuntimeError):
         self.seen = seen
 
 
+#: GSPro's eight ball colours, from its own colour picker (Brian, 19 Nov 2026), as OpenCV
+#: hue / saturation / value: red (2, 209, 209), green (68, 221, 164), blue (104, 255, 242),
+#: yellow (22, 202, 242), pink (156, 183, 227), teal (93, 224, 179), purple (144, 183, 163),
+#: orange (19, 238, 193). There is no white ball.
 def _ball_colour_masks(hsv: np.ndarray) -> list[np.ndarray]:
-    """One mask per colour a GSPro ball dot can be, each searched on its own.
+    """One mask per ball colour, each searched on its own.
 
     Kept apart so a dot is never merged with a differently coloured patch it
     sits on (a red dot on a tan path). Red is as measured on 12 real captures
-    (#ff403d to #cf322a). The others are vivid versions of each colour, to be
-    tightened from real captures; sand and paths are duller than a ball dot.
+    (#ff403d to #cf322a). The rest are set around the picker's colours and
+    away from the course as the minimap draws it: grass is the same hue as the
+    green ball but darker (value 91 typical, 127 at the 95th percentile,
+    against the ball's 164), and water is darker still.
     """
-    def band(low, high, sat=120, val=100):
+    def band(low, high, sat, val):
         return cv2.inRange(hsv, np.array([low, sat, val]), np.array([high, 255, 255]))
     return [
-        cv2.bitwise_or(band(0, 12), band(170, 179)),         # red
-        band(13, 34, sat=150, val=170),                      # orange, yellow
-        band(96, 130, sat=140, val=140),                     # blue
-        band(131, 169, sat=110, val=130),                    # purple, pink
-        cv2.inRange(hsv, np.array([0, 0, 225]), np.array([179, 45, 255])),  # white
+        cv2.bitwise_or(band(0, 12, 120, 100), band(170, 179, 120, 100)),   # red
+        band(13, 30, 170, 170),                                           # orange, yellow
+        band(55, 80, 170, 145),                                           # green
+        band(86, 99, 170, 150),                                           # teal
+        band(100, 118, 180, 180),                                         # blue
+        band(131, 169, 140, 130),                                         # purple, pink
     ]
 
 
