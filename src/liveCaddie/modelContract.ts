@@ -262,6 +262,7 @@ export const buildCaddieModelContract = (
     club: baseline.club,
     lieLeftRightDeg: context.lieLeftRightDeg,
     carryYds: baseline.stockCarryYds,
+    launchVlaDeg: baseline.launchVlaDeg,
   })
   const sidehillReady = sidehillReference.status === 'ready'
   const upDownReady = finite(context.lieUpDownDeg) && hasLaunchPacket && finite(baseline.stockCarryYds)

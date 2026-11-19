@@ -146,6 +146,7 @@ export const modelShotContext = (
     club: baseline.club,
     lieLeftRightDeg: context.lieLeftRightDeg,
     carryYds: physicalLieCarryYds,
+    launchVlaDeg: (surfaceLaunch ?? launch)?.vlaDeg,
   })
 
   const appliedAdjustments = {
