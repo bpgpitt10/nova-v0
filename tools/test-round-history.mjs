@@ -250,7 +250,7 @@ assert.ok(history.tourExpectedStrokes('tee', 400) < history.tourExpectedStrokes(
     startSurface: holeShot === 1 ? 18 : 2, endSurface: 2, distanceToPinYds: 100, carryYards: 100, totalYards: 100,
     spinAxisDegrees: 0, gsproClubIndex: 1, isHoled: false, isGimme: false, start, end, ...extra,
   })
-  const tee = P(0, 0)
+  const tee = P(3, 2) // not the origin: a start at exactly (0, 0) is treated as a junk record
   // Drive, drive again (mulligan), approach played from the SECOND drive, approach again, then a holed putt from the first approach.
   const hole = [
     rec(1, tee, P(5, 200)),
