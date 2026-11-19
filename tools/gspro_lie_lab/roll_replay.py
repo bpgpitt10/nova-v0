@@ -575,7 +575,8 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
     while True:
         try:
             typed = read_line(f"\nSpot {spot}: drop the ball, then Enter to hit 3 shots. Type the slope first if it is not flat (2 up 3 left). "
-                              "Add g and the yards to the pin (g 145) to also hit 2 of your clubs at the green. "
+                              "Add g and the yards to the pin (g 145) to also hit 2 of your clubs at the green; "
+                              "gg 145 hits only the green, 6 shots. Type stimp 11 once to record the stimp. "
                               "Start with the word all to hit all 25 designed shots from here. q to finish. ").strip()
         except EOFError:
             break
@@ -589,12 +590,21 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             spot_shots = [(name, {"speed": v["speed"], "vla": v["vla"], "hla": 0.0, "spin": v["spin"], "axis": 0.0})
                           for name, v in designed_shots().items()]
         # "g 145" in the note: also hit the two stock clubs that carry nearest 145 yd, to land shots on the green.
-        to_green = re.search(r"\bg\s*(\d{2,3})\b", typed, re.I)
+        # "gg 145": only shots at the green, six of them: the same two clubs with less, stock and more spin,
+        # so the green sees different landings from one spot.
+        stimp_note = re.search(r"\bstimp\s*(\d{1,2}(?:\.\d)?)", typed, re.I)
+        if stimp_note:
+            labels = {**labels, "stimp": float(stimp_note[1])}  # stays until another stimp is typed
+        to_green = re.search(r"\b(gg|g)\s*(\d{2,3})\b", typed, re.I)
         if to_green:
-            distance = float(to_green[1])
+            distance = float(to_green[2])
             nearest = sorted((club for club in BAG if "carry" in BAG[club]), key=lambda club: abs(BAG[club]["carry"] - distance))[:2]
-            spot_shots = spot_shots + [(f"{club} to green", {"speed": BAG[club]["speed"], "vla": BAG[club]["vla"], "hla": 0.0,
-                                                               "spin": BAG[club]["spin"], "axis": 0.0}) for club in nearest]
+            only_green = to_green[1].lower() == "gg"
+            spins = ((0.7, " less spin"), (1.0, ""), (1.25, " more spin")) if only_green else ((1.0, ""),)
+            green_shots = [(f"{club} to green{tag}", {"speed": BAG[club]["speed"], "vla": BAG[club]["vla"], "hla": 0.0,
+                                                       "spin": round(BAG[club]["spin"] * factor), "axis": 0.0})
+                           for club in nearest for factor, tag in spins]
+            spot_shots = green_shots if only_green else spot_shots + green_shots
         for index, (name, shot) in enumerate(spot_shots, start=1):
             before_record = record_fingerprint(newest_round_record(round_file))
             before_log = log_size(log_file)
