@@ -79,6 +79,21 @@ try {
   assert.equal(surface.getSurfaceResponse('deep-rough').factors.speed, 0.82, 'implausible values ignored')
   surface.setLearnedSurfaceFactors(null)
 
+  // 5b. Sand: the speed penalty follows how hard the ball is hit (players' rounds, 18 Nov).
+  // A greenside blast keeps 76%, a full shot from a fairway bunker 93%.
+  assert.equal(surface.getSurfaceResponse('sand').factors.speed, 0.77, 'no shot speed: the greenside figure')
+  assert.equal(surface.getSurfaceResponse('bunker', 30).factors.speed, 0.757)
+  assert.ok(Math.abs(surface.getSurfaceResponse('bunker', 55).factors.speed - 0.8435) < 1e-9)
+  assert.equal(surface.getSurfaceResponse('bunker', 113).factors.speed, 0.93)
+  assert.equal(surface.getSurfaceResponse('bunker', 113).label, 'Sand / fairway bunker')
+  assert.equal(surface.getSurfaceResponse('bunker', 113).factors.spin, 0.765, 'spin and launch unchanged')
+  // A player's own median (mostly greenside) no longer drags full shots down; their spin still applies.
+  surface.setLearnedSurfaceFactors({ sand: { speed: 0.76, spin: 0.7, vla: 1, samples: 9 } })
+  assert.equal(surface.getSurfaceResponse('sand', 113).factors.speed, 0.93)
+  assert.equal(surface.getSurfaceResponse('sand', 113).factors.spin, 0.7)
+  assert.equal(surface.getSurfaceResponse('rough', 113).factors.speed, 0.96, 'other lies are untouched')
+  surface.setLearnedSurfaceFactors(null)
+
   // 6. A contradicted code is not learned.
   const conflicting = log.parseGsproPenaltyEvents(shot('sp 50, el 25, az 0, ts 5000, sa 0, cy 40, id 31',
     'Penalty Surface TVGrough, Spin60%, Speed 97%, VLA 100%', 3))

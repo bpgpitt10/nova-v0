@@ -104,7 +104,7 @@ export const modelShotContext = (
     ? physicsPrior.deltas.combinedLateralYds
     : 0
 
-  const surfaceResponse = getSurfaceResponse(context.surface)
+  const surfaceResponse = getSurfaceResponse(context.surface, launch?.ballSpeedMph)
   const surfaceLaunch = launch && surfaceResponse.modeled
     ? applySurfaceLaunchFactors(launch, surfaceResponse)
     : null

@@ -96,13 +96,50 @@ const withLearned = (base: SurfaceResponse & { kind: LearnedKind }): SurfaceResp
   }
 }
 
-export const getSurfaceResponse = (surface: string | null | undefined): SurfaceResponse => {
+/**
+ * GSPro's sand penalty depends on how hard the ball is hit. Across players'
+ * rounds (55 sand shots, 5 players, GSPro's speed after the lie against the
+ * launch monitor's raw speed, 18 Nov 2026): shots under 45 mph keep 76% of
+ * their speed, 45-70 mph keep 86%, and anything over 70 mph keeps 93%, tightly.
+ * A fixed 77% (greenside blasts) made a 7-iron from a fairway bunker look
+ * 60 yd short; a player trusted it and flew the green by 25.
+ */
+const SAND_SLOW_MPH = 40
+const SAND_FULL_MPH = 70
+const SAND_SLOW_SPEED = 0.757
+const SAND_FULL_SPEED = 0.93
+
+export const sandSpeedFactor = (ballSpeedMph: number) => {
+  const t = Math.min(1, Math.max(0, (ballSpeedMph - SAND_SLOW_MPH) / (SAND_FULL_MPH - SAND_SLOW_MPH)))
+  return SAND_SLOW_SPEED + (SAND_FULL_SPEED - SAND_SLOW_SPEED) * t
+}
+
+const sandResponse = (ballSpeedMph: number | null | undefined): SurfaceResponse => {
+  const base = withLearned(GSProSurfaceResponses.sand)
+  if (!(typeof ballSpeedMph === 'number' && Number.isFinite(ballSpeedMph) && ballSpeedMph > 0)) return base
+  // The speed penalty follows the shot, not a per-player median (which is mostly greenside blasts).
+  const speed = sandSpeedFactor(ballSpeedMph)
+  const pctText = (x: number) => `${Math.round(x * 100)}%`
+  return {
+    ...base,
+    label: ballSpeedMph >= SAND_FULL_MPH ? 'Sand / fairway bunker' : base.label,
+    factors: { ...base.factors, speed },
+    evidence: `GSPro's sand penalty by shot speed: Speed ${pctText(speed)} at ${Math.round(ballSpeedMph)} mph `
+      + `(76% for short blasts, 93% for full shots), Spin ${pctText(base.factors.spin)}, VLA ${pctText(base.factors.vla)}.`,
+  }
+}
+
+/**
+ * `ballSpeedMph` is the club's stock ball speed for the shot being planned;
+ * it only matters from sand. Without it sand keeps the greenside figure.
+ */
+export const getSurfaceResponse = (surface: string | null | undefined, ballSpeedMph?: number | null): SurfaceResponse => {
   const value = normalize(surface)
 
   if (value === 'fairway' || value === 'tee') return GSProSurfaceResponses.baseline
   if (value === 'rough' || value === 'semirough' || value === 'semi-rough') return withLearned(GSProSurfaceResponses.rough)
   if (value === 'deep-rough' || value === 'deeprough') return withLearned(GSProSurfaceResponses['deep-rough'])
-  if (value === 'sand' || value === 'bunker' || value === 'tvgsand') return withLearned(GSProSurfaceResponses.sand)
+  if (value === 'sand' || value === 'bunker' || value === 'tvgsand') return sandResponse(ballSpeedMph)
 
   return {
     kind: 'unknown',
