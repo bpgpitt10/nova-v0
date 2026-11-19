@@ -9,6 +9,7 @@ import LiveCaddiePage from './pages/LiveCaddiePage.tsx'
 import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import LoadCoursePage from './pages/LoadCoursePage.tsx'
 import FaqPage, { LooperFooter } from './pages/FaqPage'
+import InsightsPage from './pages/InsightsPage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import QuickBagPage from './pages/QuickBagPage.tsx'
@@ -311,6 +312,8 @@ function RootRouter() {
   const showDecisionAudit = pathname === '/dev/decision-audit'
   const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
   const showFaq = pathname === '/faq' || pathname === '/help'
+  // Public: the post series. No account, so it sits outside the sign-in gate.
+  const showInsights = pathname === '/insights' || pathname.startsWith('/insights/')
   const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest
 
   useEffect(() => {
@@ -406,6 +409,8 @@ function RootRouter() {
       {!showLiveCaddie ? view : null}
     </>
   )
+
+  if (showInsights) return <InsightsPage />
 
   return (
     <LooperAuthGate>
