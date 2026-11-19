@@ -340,6 +340,21 @@ export default function ConditionsMathPanel({
             detail={lieDetail}
             muted={!hasLie}
           />
+          {evaluation?.greenRelease ? (
+            // What a ball does after landing on the green in the round's Course Type and Green Firmness.
+            <AdjustmentRow
+              label="Green"
+              distance={signedYards(evaluation.greenRelease.predictedYds - evaluation.greenRelease.stockYds)}
+              lateral="—"
+              detail={`${FIRMNESS_LABEL[evaluation.greenRelease.conditions.courseType]} course, ${FIRMNESS_LABEL[evaluation.greenRelease.conditions.greenFirmness].toLowerCase()} greens: `
+                + (evaluation.greenRelease.predictedYds < -0.5
+                  ? `spins back ${Math.abs(evaluation.greenRelease.predictedYds).toFixed(0)} yd on a level green`
+                  : `${Math.max(0, evaluation.greenRelease.predictedYds).toFixed(0)} yd of release on a level green`)
+                + `, ${Math.round(evaluation.greenRelease.stockYds)} yd of rollout on the range. `
+                + (evaluation.greenRelease.applied ? 'Applied.' : 'Preview: not applied yet.')}
+              muted={!evaluation.greenRelease.applied}
+            />
+          ) : null}
           {evaluation?.fairwayRoll ? (
             // Roll for the round's Course Type and Fairway Firmness against the range rollout.
             <AdjustmentRow

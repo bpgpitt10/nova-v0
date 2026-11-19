@@ -1,3 +1,4 @@
+import { greenReleaseOnSlope } from './greenReleaseModel'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import { tacticalKindNear } from '../courseGeometry/tacticalClassification'
 import type { CourseHoleGeometry, CoursePointYds, CourseSurfaceClassification } from '../courseGeometry/types'
@@ -152,6 +153,12 @@ export const makeRollLandingTransform = (
    * Not on the green: the model was measured on fairways only.
    */
   fairwayRollScale = 1,
+  /**
+   * Yards of release on a level green for this shot in the round's conditions
+   * (greenReleaseModel). When given, a ball that lands on the green releases
+   * (or spins back) this far, shaped by the slope there, instead of its range rollout.
+   */
+  greenReleaseYds: number | null = null,
 ): LandingTransform => {
   const resolve = (carryLanding: CoursePointYds, baselineLanding: CoursePointYds): LandingResolution => {
     const rx = baselineLanding[0] - carryLanding[0]
@@ -164,9 +171,11 @@ export const makeRollLandingTransform = (
       return { touchdown: start, rest: inner ? inner(start, rest) : rest }
     }
     const dir: CoursePointYds = [rx / stockRoll, ry / stockRoll]
-    const { surface, surfaceFactor, slopeFactor } = rollFactorAt(hole, start, dir)
+    const { surface, surfaceFactor, slopeFactor, grade } = rollFactorAt(hole, start, dir)
     const conditions = surface === 'green' ? 1 : fairwayRollScale
-    const roll = stockRoll * conditions * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
+    const roll = surface === 'green' && greenReleaseYds != null && Number.isFinite(greenReleaseYds)
+      ? greenReleaseOnSlope(greenReleaseYds, grade)
+      : stockRoll * conditions * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
     const scaled: CoursePointYds = [start[0] + dir[0] * roll, start[1] + dir[1] * roll]
     return { touchdown: start, rest: inner ? inner(start, scaled) : scaled }
   }
