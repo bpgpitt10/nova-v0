@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { loadInsightReadStats, saveInsightRead, type InsightReadStats } from './insightsReadStore'
+import {
+  LEADERBOARD_MIN_MOVE_YDS,
+  cleanInitials,
+  loadInsightReadStats,
+  loadTopReads,
+  postTopRead,
+  readMissYds,
+  saveInsightRead,
+  type InsightReadStats,
+  type InsightTopRead,
+} from './insightsReadStore'
 import {
   INSIGHT_BASELINE,
   INSIGHT_HOLE,
@@ -112,13 +122,19 @@ export default function InsightsReadQuiz() {
   const [side, setSide] = useState(0)
   const [checked, setChecked] = useState(false)
   const [stats, setStats] = useState<InsightReadStats | null>(null)
+  const [top, setTop] = useState<InsightTopRead[] | null>(null)
+  const [initials, setInitials] = useState('')
+  const [posted, setPosted] = useState<'no' | 'posting' | 'yes' | 'failed'>('no')
   const saved = useRef(false)
+  /** The read as it was when first checked: what is saved, scored and posted. */
+  const firstRead = useRef<{ guessYds: number; guessSideYds: number } | null>(null)
 
   const { club, conditions, baseYds } = scenario
 
   useEffect(() => {
     let live = true
     void loadInsightReadStats().then((found) => { if (live) setStats(found) })
+    void loadTopReads().then((found) => { if (live) setTop(found) })
     return () => { live = false }
   }, [])
 
@@ -148,11 +164,38 @@ export default function InsightsReadQuiz() {
   const longMiss = answer.finish.totalYds - distance
   const rightMiss = answer.finish.sideYds - side
   const leave = describeLeave(longMiss, rightMiss)
+  /** How far your read was from where it really finished, in a straight line. */
+  const missYds = readMissYds({ actualYds: answer.finish.totalYds, actualSideYds: answer.finish.sideYds, guessYds: distance, guessSideYds: side })
+  const first = firstRead.current
+  const firstMissYds = first
+    ? readMissYds({ actualYds: answer.finish.totalYds, actualSideYds: answer.finish.sideYds, guessYds: first.guessYds, guessSideYds: first.guessSideYds })
+    : missYds
+  const movedYds = Math.hypot(answer.finish.totalYds - baseYds, answer.finish.sideYds)
+  const boardFull = (top?.length ?? 0) >= 20
+  const makesBoard = movedYds >= LEADERBOARD_MIN_MOVE_YDS && (!boardFull || firstMissYds < (top?.[top.length - 1]?.missYds ?? Infinity))
+
+  const post = () => {
+    if (!first || !cleanInitials(initials)) return
+    setPosted('posting')
+    void postTopRead(initials, {
+      club: club.name,
+      baseYds,
+      actualYds: answer.finish.totalYds,
+      actualSideYds: answer.finish.sideYds,
+      guessYds: first.guessYds,
+      guessSideYds: first.guessSideYds,
+      conditions: {},
+    }).then((ok) => {
+      setPosted(ok ? 'yes' : 'failed')
+      if (ok) void loadTopReads().then((found) => { if (found) setTop(found) })
+    })
+  }
 
   const check = () => {
     setChecked(true)
     if (saved.current) return
     saved.current = true
+    firstRead.current = { guessYds: distance, guessSideYds: side }
     void saveInsightRead({
       club: club.name,
       baseYds,
@@ -169,6 +212,8 @@ export default function InsightsReadQuiz() {
   const next = () => {
     const fresh = makeScenario()
     saved.current = false
+    firstRead.current = null
+    setPosted('no')
     setScenario(fresh)
     setDistance(fresh.baseYds)
     setSide(0)
@@ -201,8 +246,6 @@ export default function InsightsReadQuiz() {
     { key: 'elevation', name: 'Elevation', value: conditions.elevationFt === 0 ? 'Level' : `${Math.abs(conditions.elevationFt)} ft ${conditions.elevationFt > 0 ? 'up' : 'down'}` },
   ]
 
-  const guessMiss = Math.round(Math.abs(longMiss))
-  const guessSideMiss = Math.round(Math.abs(rightMiss))
 
   return (
     <section className="insights-quiz" aria-labelledby="insights-quiz-title">
@@ -247,68 +290,147 @@ export default function InsightsReadQuiz() {
               <span className="insights-quiz__guess-title">Your read</span>
               <label htmlFor="insights-quiz-distance">
                 <span>It goes</span>
-                <output>{distance} yd</output>
+                <span className="insights-quiz__typed">
+                  <input
+                    aria-label="Yards it goes"
+                    inputMode="decimal"
+                    max={baseYds + 45}
+                    min={baseYds - 70}
+                    onChange={(event) => { const v = Number(event.target.value); if (Number.isFinite(v)) { setDistance(Math.round(v * 10) / 10); setChecked(false) } }}
+                    step={0.1}
+                    type="number"
+                    value={distance}
+                  />
+                  yd
+                </span>
               </label>
               <input
                 id="insights-quiz-distance"
                 max={baseYds + 45}
                 min={baseYds - 70}
                 onChange={(event) => { setDistance(Number(event.target.value)); setChecked(false) }}
-                step={1}
+                step={0.1}
                 type="range"
                 value={distance}
               />
               <label htmlFor="insights-quiz-side">
                 <span>It finishes</span>
-                <output>{side === 0 ? 'on line' : `${Math.abs(side)} yd ${side > 0 ? 'right' : 'left'}`}</output>
+                <span className="insights-quiz__typed">
+                  <input
+                    aria-label="Yards left (negative) or right (positive)"
+                    inputMode="decimal"
+                    max={25}
+                    min={-25}
+                    onChange={(event) => { const v = Number(event.target.value); if (Number.isFinite(v)) { setSide(Math.round(v * 10) / 10); setChecked(false) } }}
+                    step={0.1}
+                    type="number"
+                    value={side}
+                  />
+                  {side === 0 ? 'on line' : side > 0 ? 'yd right' : 'yd left'}
+                </span>
               </label>
               <input
                 id="insights-quiz-side"
                 max={25}
                 min={-25}
                 onChange={(event) => { setSide(Number(event.target.value)); setChecked(false) }}
-                step={1}
+                step={0.1}
                 type="range"
                 value={side}
               />
+              <small className="insights-quiz__sign">Right is plus, left is minus.</small>
               <button className="insights-button" type="submit">Check my read</button>
             </form>
           </div>
 
           {checked ? (
-            <div className="insights-quiz__result" role="status">
-              <Leave longYds={longMiss} rightYds={rightMiss} />
-              <div>
-                <p className="insights-quiz__verdict">{leave.headline}</p>
-                <p>{leave.detail}</p>
-                <p>
-                  It goes <strong>{Math.round(answer.finish.totalYds)} yards</strong>
-                  {Math.abs(answer.finish.sideYds) < 0.5 ? ', on line' : <> and finishes <strong>{sideWords(answer.finish.sideYds)}</strong></>}.
-                  {' '}You said {distance}{side === 0 ? ', on line' : `, ${Math.abs(side)} ${side > 0 ? 'right' : 'left'}`}:
-                  {' '}{guessMiss === 0 && guessSideMiss === 0
-                    ? 'dead on.'
-                    : `off by ${[guessMiss ? `${guessMiss} yd in distance` : '', guessSideMiss ? `${guessSideMiss} yd in line` : ''].filter(Boolean).join(' and ')}.`}
-                </p>
-                {stats && stats.reads >= STATS_FROM_READS ? (
-                  <p className="insights-quiz__stats">
-                    Across {stats.reads.toLocaleString('en-US')} reads so far, people are off by {stats.missYds.toFixed(0)} yards on
-                    average ({stats.missPct.toFixed(0)}% of the shot) and {stats.sideMissYds.toFixed(0)} yards in line.
+            <>
+              <div className="insights-quiz__result" role="status">
+                <Leave longYds={longMiss} rightYds={rightMiss} />
+                <div>
+                  <p className="insights-quiz__verdict">{leave.headline}</p>
+                  <p>{leave.detail}</p>
+                  <p>
+                    It goes <strong>{answer.finish.totalYds.toFixed(1)} yards</strong>
+                    {Math.abs(answer.finish.sideYds) < 0.05 ? ', on line' : <> and finishes <strong>{Math.abs(answer.finish.sideYds).toFixed(1)} {answer.finish.sideYds > 0 ? 'right' : 'left'}</strong></>}.
+                    {' '}You said {distance.toFixed(1)}{side === 0 ? ', on line' : `, ${Math.abs(side).toFixed(1)} ${side > 0 ? 'right' : 'left'}`}:
+                    {' '}<strong>{missYds.toFixed(1)} yards</strong> from where it finished.
                   </p>
-                ) : null}
-                <div className="insights-quiz__after">
-                  <button className="insights-quiz__again" onClick={next} type="button">Give me another</button>
-                  <span>
-                    The live caddie does this sum before every shot. <a href="/?signup=1">Create a free account</a>
-                  </span>
+                  {stats && stats.reads >= STATS_FROM_READS ? (
+                    <p className="insights-quiz__stats">
+                      Across {stats.reads.toLocaleString('en-US')} reads so far, people are off by {stats.missYds.toFixed(0)} yards on
+                      average ({stats.missPct.toFixed(0)}% of the shot) and {stats.sideMissYds.toFixed(0)} yards in line.
+                    </p>
+                  ) : null}
+                  <button className="insights-button insights-quiz__play" onClick={next} type="button">Play again</button>
                 </div>
               </div>
-            </div>
+
+              <aside className="insights-quiz__looper">
+                <p className="insights-eyebrow">The Looper does this every shot</p>
+                <p>
+                  That sum was seven numbers. Looper does it before every shot you hit in GSPro, and then keeps going:
+                  it adds <strong>your own shot shape and how your mishits fly</strong>, then plays the odds against
+                  <strong> this hole&rsquo;s hazards</strong> to pick the club and the line that save you the most strokes.
+                </p>
+                <a className="insights-button" href="/?signup=1">Create a free account</a>
+              </aside>
+            </>
           ) : (
             <p className="insights-quiz__hint">
               Seven things you know about the shot. Add them up, then check.{' '}
               <button className="insights-quiz__again" onClick={next} type="button">Give me a different shot</button>
             </p>
           )}
+
+          <div className="insights-quiz__board">
+            <div className="insights-quiz__board-head">
+              <p className="insights-eyebrow">Closest reads</p>
+              <span>Scored by the straight line from your read to where the ball finished. First read of each shot only.</span>
+            </div>
+            {checked && first && makesBoard && posted !== 'yes' ? (
+              <form
+                className="insights-quiz__post"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  post()
+                }}
+              >
+                <label htmlFor="insights-quiz-initials">
+                  {firstMissYds.toFixed(1)} yards makes the board. Your initials:
+                </label>
+                <input
+                  autoComplete="off"
+                  id="insights-quiz-initials"
+                  maxLength={3}
+                  onChange={(event) => setInitials(event.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
+                  placeholder="ABC"
+                  value={initials}
+                />
+                <button className="insights-button" disabled={!cleanInitials(initials) || posted === 'posting'} type="submit">
+                  {posted === 'posting' ? 'Posting…' : 'Post it'}
+                </button>
+                {posted === 'failed' ? <span className="insights-quiz__post-error">That didn&rsquo;t go through. Try different initials.</span> : null}
+              </form>
+            ) : null}
+            {checked && first && !makesBoard && movedYds < LEADERBOARD_MIN_MOVE_YDS ? (
+              <p className="insights-quiz__board-note">This shot played close to normal, so it doesn&rsquo;t count for the board. Play again.</p>
+            ) : null}
+            {top && top.length ? (
+              <ol className="insights-quiz__top">
+                {top.map((row, index) => (
+                  <li key={`${row.initials}-${index}`}>
+                    <span>{index + 1}</span>
+                    <strong>{row.initials}</strong>
+                    <em>{row.club}</em>
+                    <b>{row.missYds.toFixed(1)} yd</b>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="insights-quiz__board-note">No reads on the board yet. Be the first.</p>
+            )}
+          </div>
         </div>
       </div>
     </section>

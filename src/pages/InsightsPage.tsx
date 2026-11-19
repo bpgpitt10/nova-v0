@@ -3,7 +3,6 @@ import looperLogo from '../assets/LooperLogo.webp'
 import greensCard from '../assets/insights/insight-01-greens.webp'
 import rangeCard from '../assets/insights/insight-02-range-vs-green.webp'
 import InsightsReadQuiz from './InsightsReadQuiz'
-import InsightsStackLoop from './InsightsStackLoop'
 import './InsightsPage.css'
 
 /**
@@ -259,7 +258,6 @@ export default function InsightsPage() {
         </div>
       </section>
 
-      <InsightsStackLoop />
       <InsightsReadQuiz />
 
       <nav className="insights-tabs" aria-label="Parts of the series">
