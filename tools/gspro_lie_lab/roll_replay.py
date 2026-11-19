@@ -300,7 +300,7 @@ LAB_FIELDS = [
     "test", "course_type", "fairway_firmness", "green_firmness", "stimp", "elevation_ft", "pin_distance_yd", "club", "n", "status",
     "carry_yd", "total_yd", "roll_yd", "sideways_yd", "roll_height_change_in", "finish_surface", "holed",
     "offline_yd", "peak_height", "descent_deg",
-    "slope", "putt_roll_ft", "putt_height_change_in", "putt_to_cup_ft", "sent_hla_deg",
+    "slope", "slope_deg_typed", "putt_roll_ft", "putt_height_change_in", "putt_grade_pct", "putt_to_cup_ft", "sent_hla_deg",
     "sent_speed_mph", "sent_vla_deg", "sent_spin_rpm", "gspro_speed_mph", "gspro_vla_deg", "gspro_spin_rpm",
     "stored_carry_yd", "stored_roll_yd", "row_id", "sent_at",
     "spot", "note", "lie_surface", "lie_speed_pct", "lie_spin_pct", "lie_vla_pct", "lie_type",
@@ -320,14 +320,27 @@ def measure_putt(record: dict[str, Any] | None) -> dict[str, Any]:
     """How far a putt rolled and how much it climbed or dropped, from GSPro's record of it."""
     if not record:
         return {}
-    start, end = _xyz(record.get("StartingPOS")), _xyz(record.get("EndingPOS"))
-    shot_data = ((record.get("activeShot") or {}).get("sd")) or ((record.get("GhostData") or {}).get("atShotData")) or {}
+    active = ((record.get("activeShot") or {}).get("sd")) or {}
+    shot_data = active or ((record.get("GhostData") or {}).get("atShotData")) or {}
+    # On Course practice records do not always carry StartingPOS / EndingPOS: the ball's own path does.
+    rolled = [p for p in (_xyz(point) for point in (active.get("pos") or [])) if p]
+    if not rolled and isinstance(shot_data.get("path"), list):
+        rolled = [p for p in (_xyz((point or {}).get("pos")) for point in shot_data["path"]) if p]
+    start = _xyz(record.get("StartingPOS")) or _xyz(shot_data.get("BallStartPos")) or (rolled[0] if rolled else None)
+    end = _xyz(record.get("EndingPOS")) or (rolled[-1] if rolled else None)
     cup = _xyz(shot_data.get("tdpoint"))
     row: dict[str, Any] = {"row_id": record.get("ShotID"), "holed": bool(shot_data.get("isHoled")),
-                           "finish_surface": record.get("EndingSurface"), "gspro_speed_mph": _num(record.get("BallSpeed"))}
+                           "finish_surface": record.get("EndingSurface"),
+                           "gspro_speed_mph": _num((record.get("GhostData") or {}).get("lmfSP"), record.get("BallSpeed")),
+                           "course_key": record.get("CourseKey"), "hole": record.get("Hole")}
     if start and end:
-        row["putt_roll_ft"] = round(((end[0] - start[0]) ** 2 + (end[2] - start[2]) ** 2) ** 0.5 * M_TO_FT, 2)
+        roll_m = ((end[0] - start[0]) ** 2 + (end[2] - start[2]) ** 2) ** 0.5
+        row["putt_roll_ft"] = round(roll_m * M_TO_FT, 2)
         row["putt_height_change_in"] = round((end[1] - start[1]) * M_TO_IN, 1)
+        if roll_m > 0.3:
+            row["putt_grade_pct"] = round((end[1] - start[1]) / roll_m * 100.0, 2)  # + is uphill
+        row.update({"start_x": round(start[0], 2), "start_y": round(start[1], 2), "start_z": round(start[2], 2),
+                    "end_x": end[0], "end_y": end[1], "end_z": end[2]})
     if start and cup:
         row["putt_to_cup_ft"] = round(((cup[0] - start[0]) ** 2 + (cup[2] - start[2]) ** 2) ** 0.5 * M_TO_FT, 2)
     return row
@@ -699,6 +712,179 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
 
 
 # --------------------------------------------------------------------------
+# Putt sets: one line per set, like the lie test.
+#: Rolled in each set, mph off the face. 8 mph runs about 42 ft at stimp 11 and about 50 ft at stimp 13.
+PUTT_SET_SPEEDS_MPH = (2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
+#: A stimpmeter lets the ball go at about 6 ft/s; the stimp is how many feet it then rolls on the flat.
+STIMP_RELEASE_MPH = 4.09
+#: Putts of one speed that land this close together count as the same: one a speed is then enough.
+PUTT_REPEAT_MATCH_FT = 0.3
+PUTT_SLOPES = {"flat": "flat", "level": "flat", "up": "uphill", "uphill": "uphill", "down": "downhill", "downhill": "downhill"}
+
+
+def read_putt_line(typed: str, state: dict[str, Any]) -> list[str]:
+    """Apply one typed line to the putt settings. Returns what it did not understand."""
+    unknown: list[str] = []
+    words = typed.lower().replace(",", " ").split()
+    index = 0
+    while index < len(words):
+        word = words[index]
+        following = words[index + 1] if index + 1 < len(words) else ""
+        number = _num(following)
+        if word == "stimp" and number is not None and 5 <= number <= 15:
+            state["stimp"] = number
+            index += 2
+        elif word in PUTT_SLOPES:
+            state["slope"] = PUTT_SLOPES[word]
+            state["slope_deg"] = None
+            if number is not None and state["slope"] != "flat" and 0 < number <= 15:
+                state["slope_deg"] = number  # what the HUD says, if the player knows it
+                index += 1
+            index += 1
+        elif word == "off" and number is not None and -15 <= number <= 15:
+            state["hla"] = number
+            index += 2
+        elif word == "speeds":
+            speeds = []
+            index += 1
+            while index < len(words) and (value := _num(words[index])) is not None:
+                speeds.append(value)
+                index += 1
+            if speeds and all(0.5 <= speed <= 25 for speed in speeds):
+                state["speeds"] = tuple(speeds)
+            else:
+                unknown.append("speeds")
+        elif word in ("twice", "once"):
+            state["repeats"] = 2 if word == "twice" else 1
+            index += 1
+        else:
+            unknown.append(word)
+            index += 1
+    return unknown
+
+
+def putt_set_summary(rows: list[dict[str, Any]], slope: str) -> list[str]:
+    """What one set showed: the measured slope, the stimp the rolls work out to, and whether repeats matched."""
+    good = [row for row in rows if row.get("putt_roll_ft") is not None and not row.get("holed")]
+    lines: list[str] = []
+    if not good:
+        return ["  GSPro recorded none of these putts. Tell Claude which GSPro screen you were on."]
+    grades = [row["putt_grade_pct"] for row in good if row.get("putt_grade_pct") is not None]
+    if grades:
+        grade = sum(grades) / len(grades)
+        way = "flat" if abs(grade) < 0.25 else ("uphill" if grade > 0 else "downhill")
+        lines.append(f"  Measured slope: {abs(grade):.1f}% {way} ({abs(math.degrees(math.atan(grade / 100.0))):.1f} deg).")
+        if way != slope and not (way == "flat" and slope == "flat"):
+            lines.append(f"  You typed {slope}. The measured slope is what gets used; nothing to redo.")
+    if slope == "flat" and (not grades or abs(sum(grades) / len(grades)) < 0.5):
+        implied = [row["putt_roll_ft"] * (STIMP_RELEASE_MPH / row["sent_speed_mph"]) ** 2 for row in good if row["sent_speed_mph"] >= 3]
+        if implied:
+            lines.append(f"  These rolls work out to about stimp {sum(implied) / len(implied):.1f}.")
+    widest, repeated = 0.0, False
+    for speed in {row["sent_speed_mph"] for row in good}:
+        rolls = [row["putt_roll_ft"] for row in good if row["sent_speed_mph"] == speed]
+        if len(rolls) >= 2:
+            repeated, widest = True, max(widest, max(rolls) - min(rolls))
+    if repeated:
+        lines.append(f"  Repeat putts matched to within {widest:.1f} ft."
+                     + (" From here each speed is rolled once." if widest <= PUTT_REPEAT_MATCH_FT else " Each speed stays at two putts."))
+    holed = sum(1 for row in rows if row.get("holed"))
+    if holed:
+        lines.append(f"  {holed} went in the hole and can't be used. Type off 5 to start them further off line.")
+    return lines
+
+
+def putt_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, Any], round_file: Path, log_file: Path, db_path: Path,
+                 notes_file: Path, gap: float, record_wait: float, first_set: int = 1, sleep=time.sleep) -> list[dict[str, Any]]:
+    """Set after set of putts from wherever the ball is. One typed line changes what the next set is."""
+    rows: list[dict[str, Any]] = []
+    state: dict[str, Any] = {"stimp": None, "slope": "flat", "slope_deg": None, "hla": 3.0, "speeds": PUTT_SET_SPEEDS_MPH, "repeats": 2}
+    number = first_set
+    while True:
+        speeds = state["speeds"]
+        if state["slope"] == "downhill" and speeds == PUTT_SET_SPEEDS_MPH:
+            speeds = speeds[:-1]  # the fastest would run off most greens downhill
+        count = len(speeds) * state["repeats"]
+        slope_text = state["slope"] + (f" {state['slope_deg']:g} deg" if state["slope_deg"] else "")
+        have = f"stimp {state['stimp']:g}, {slope_text}" if state["stimp"] else f"NO STIMP YET, {slope_text}"
+        try:
+            typed = read_line(f"\nPutt set {number} ({have}): Enter to roll {count} putts, {speeds[0]:g} to {speeds[-1]:g} mph. "
+                              "Type what changed first: stimp 11, then flat, up or down (up 2 if you know the degrees). "
+                              "q to finish. ").strip()
+        except EOFError:
+            break
+        if typed.lower() in ("q", "quit"):
+            break
+        unknown = read_putt_line(typed, state) if typed else []
+        if unknown:
+            print(f"  Did not understand: {' '.join(unknown)}. Use: stimp 11 / flat / up / down / up 2 / off 5 / speeds 2 4 6 / twice / once.")
+            continue
+        if typed:
+            continue  # show the new settings in the prompt; Enter alone rolls the set
+        if not state["stimp"]:
+            print("  Type the stimp GSPro is set to first (stimp 11). GSPro does not write it anywhere.")
+            continue
+        speeds = state["speeds"][:-1] if state["slope"] == "downhill" and state["speeds"] == PUTT_SET_SPEEDS_MPH else state["speeds"]
+        set_rows: list[dict[str, Any]] = []
+        shots = [speed for speed in speeds for _ in range(state["repeats"])]
+        for index, speed in enumerate(shots, start=1):
+            shot = {"speed": speed, "vla": 0.0, "hla": state["hla"], "spin": 0.0, "axis": 0.0}
+            before_record = record_fingerprint(newest_round_record(round_file))
+            before_log = log_size(log_file)
+            before_row = latest_row_safely(db_path)
+            sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+            try:
+                status = path.fire(shot)
+            except (ConnectionError, OSError) as exc:
+                print(f"  could not send: {exc}")
+                return rows + set_rows
+            if "at rest" not in status:
+                print(f"  (no ball-at-rest from GSPro; waiting {NO_STOP_SIGNAL_WAIT_S:g} s for the putt to finish)")
+                sleep(NO_STOP_SIGNAL_WAIT_S)
+            measured = measure_putt(wait_for_new_record(round_file, before_record, record_wait, sleep=sleep))
+            if measured.get("putt_roll_ft") is None:
+                # Practice greens list putts in GSPro's shot table instead (total distance, in yards).
+                found = wait_for_new_row(db_path, before_row[0] if before_row else None, 2.0, sleep=sleep)
+                total = _num(found[1].get("TotalDistance")) if found else None
+                if found and total is not None:
+                    measured = {**measured, "db_id": found[0], "putt_roll_ft": round(total * 3.0, 2),
+                                "gspro_speed_mph": _num(found[1].get("BallSpeed"))}
+            log_text = read_log_since(log_file, before_log)
+            from_log = {key: value for key, value in lie_from_log(log_text).items() if key.startswith("log_")}
+            row = {"test": "putt", **labels, "stimp": state["stimp"], "slope": state["slope"], "slope_deg_typed": state["slope_deg"],
+                   "spot": number, "note": slope_text, "club": f"{speed:g} mph", "n": index, "status": status,
+                   "sent_speed_mph": speed, "sent_vla_deg": 0.0, "sent_spin_rpm": 0.0, "sent_hla_deg": state["hla"], "sent_at": sent_at,
+                   **measured, **from_log}
+            writer.writerow(row)
+            flush()
+            set_rows.append(row)
+            try:
+                kept = [line.strip()[:300] for line in log_text.splitlines() if LOG_KEEP_RE.search(line)][:20]
+                with notes_file.open("a", encoding="utf-8") as notes:
+                    notes.write(f"--- putt set {number} putt {index} ({speed:g} mph) {sent_at} {have}\n" + "\n".join(kept) + "\n")
+            except OSError:
+                pass
+            if row.get("putt_roll_ft") is None:
+                print(f"  {index:>2}/{len(shots)}  {speed:>4g} mph  not recorded by GSPro   [{status}]")
+            else:
+                grade = row.get("putt_grade_pct")
+                hill = "" if grade is None else f", {abs(grade):.1f}% {'up' if grade > 0 else 'down'}" if abs(grade) >= 0.25 else ", level"
+                holed = "  (HOLED: roll cut short, not usable)" if row.get("holed") else ""
+                print(f"  {index:>2}/{len(shots)}  {speed:>4g} mph  rolled {row['putt_roll_ft']:5.1f} ft{hill}{holed}")
+            sleep(gap)
+        rows.extend(set_rows)
+        for line in putt_set_summary(set_rows, state["slope"]):
+            print(line)
+        if state["repeats"] == 2:
+            matched = [max(r) - min(r) for r in ([row["putt_roll_ft"] for row in set_rows if row["sent_speed_mph"] == speed
+                                                   and row.get("putt_roll_ft") is not None and not row.get("holed")] for speed in speeds) if len(r) >= 2]
+            if matched and max(matched) <= PUTT_REPEAT_MATCH_FT:
+                state["repeats"] = 1
+        number += 1
+    return rows
+
+
+# --------------------------------------------------------------------------
 # Check what GSPro records: one shot, then a report of everything GSPro wrote.
 
 TEXT_SUFFIXES = (".txt", ".log", ".json", ".dat", ".csv", ".xml")
@@ -969,6 +1155,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
     round_file = round_file or gspro_round_file()
     log_file = log_file or gspro_log()
     lie_spots = 0
+    putt_sets = 0
     out = (out_dir or HERE) / f"looper_lab_{time.strftime('%Y%m%d_%H%M%S')}.csv"
     print("Looper lab: measure how GSPro lands and rolls your shots, with no swings.\n")
     print("Before you start: CLOSE THE UNEEKOR LAUNCHER, have GSPro open, and do not have a")
@@ -995,7 +1182,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     ("fairway", "Fairway roll: whole bag on the Practice Range"),
                     ("grid", "Designed shots: 25 shots that separate speed, launch and spin (Practice Range)"),
                     ("green", "Landing on a green: irons and wedges in On Course practice"),
-                    ("putt", "Putt roll: putts at set speeds on a green"),
+                    ("putt", "Putt roll: sets of putts on a green, flat, uphill or downhill, at each stimp"),
                     ("lie", "Shots from a lie: drop the ball anywhere in On Course practice, 3 shots per spot"),
                     ("check", "Check what GSPro records: one shot, then a report of every file GSPro wrote"),
                     ("quit", "Finished"),
@@ -1023,8 +1210,23 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     print(f"\nSaved: {report}\nSend that file to Claude.\n")
                     continue
                 answers["test"] = test
-                answers["type"] = choose(read_line, "\nCourse Type set in GSPro right now?", TYPE_OPTIONS, answers["type"])
-                labels: dict[str, Any] = {"course_type": answers["type"]}
+                labels: dict[str, Any] = {}
+                if test != "putt":  # the putt test reads the course type and firmness from GSPro's log
+                    answers["type"] = choose(read_line, "\nCourse Type set in GSPro right now?", TYPE_OPTIONS, answers["type"])
+                    labels = {"course_type": answers["type"]}
+                if test == "putt":
+                    print("\nGSPro should be in On Course practice with the ball on a green, and room for a putt to roll out.")
+                    print("Each set rolls putts from 2 to 8 mph, started a little off line so they miss the hole.")
+                    print("Type the stimp once (stimp 11). Type flat, up or down when you move. Then Enter rolls the set.")
+                    print("To change the stimp: change it in GSPro, type the new one here, Enter.")
+                    print("The first set rolls each speed twice to check GSPro repeats itself; after that, once.")
+                    notes_file = out.with_name(out.stem + "_log.txt")
+                    rows = putt_session(path, read_line, writer, handle.flush, labels=labels, round_file=round_file, log_file=log_file,
+                                        db_path=db_path, notes_file=notes_file, gap=1.0, record_wait=8.0, first_set=putt_sets + 1, sleep=sleep)
+                    total += len(rows)
+                    putt_sets = max([putt_sets] + [int(row["spot"]) for row in rows])
+                    print(f"\nSaved so far: {total} shots in {out.name} (GSPro's log lines in {notes_file.name}).\n")
+                    continue
                 if test == "lie":
                     print("\nGSPro should be in On Course practice, on any hole.")
                     print("Drop the ball somewhere, come back here and press Enter. It hits three shots (soft, medium, hard),")
