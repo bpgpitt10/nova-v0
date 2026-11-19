@@ -306,6 +306,7 @@ LAB_FIELDS = [
     "start_surface", "start_x", "start_y", "start_z", "moved_from_spot_yd", "log_speed_mph", "log_vla_deg", "log_spin_rpm",
     "landing_surface", "landing_material", "landing_spin_rpm", "log_course_type", "log_fairway_firmness", "log_green_firmness",
     "db_carry_yd", "db_total_yd", "db_raw_carry_game_yd", "db_raw_carry_lm_yd", "db_pin_yd",
+    "db_offline_yd", "db_peak_height", "db_descent_deg", "db_vla_deg", "db_hla_deg", "db_backspin_rpm", "db_sidespin_rpm", "db_id",
 ]
 M_TO_FT = 3.280839895
 #: Putt speeds rolled by default, mph off the face.
@@ -485,6 +486,33 @@ def lie_from_log(text: str) -> dict[str, Any]:
     return row
 
 
+def save_shot_table(db_path: Path, out: Path) -> int:
+    """Copy every shot GSPro has in its shot table to a csv (read only). Returns how many."""
+    try:
+        with sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True, timeout=2.0) as conn:
+            found = conn.execute("SELECT ID, DateCreated, ShotData FROM DrivingRangeShot ORDER BY ID").fetchall()
+    except sqlite3.Error:
+        return 0
+    rows = []
+    for shot_id, created, raw in found:
+        try:
+            data = json.loads(raw) if isinstance(raw, (str, bytes)) else {}
+        except ValueError:
+            data = {}
+        rows.append({"ID": shot_id, "DateCreated": created, **(data if isinstance(data, dict) else {})})
+    if not rows:
+        return 0
+    names = list(dict.fromkeys(key for row in rows for key in row))
+    try:
+        with out.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=names)
+            writer.writeheader()
+            writer.writerows(rows)
+    except OSError:
+        return 0
+    return len(rows)
+
+
 def lie_shots_for_spot(spot: int) -> list[tuple[str, dict[str, float]]]:
     """The soft, medium and hard shot for spot number `spot` (1, 2, 3...)."""
     return [(name, {"speed": speed, "vla": vla, "hla": 0.0, "spin": spin, "axis": 0.0})
@@ -539,7 +567,12 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             data = found[1] if found else {}
             table = {"db_carry_yd": _num(data.get("Carry")), "db_total_yd": _num(data.get("TotalDistance")),
                      "db_raw_carry_game_yd": _num(data.get("rawCarryGame")), "db_raw_carry_lm_yd": _num(data.get("rawCarryLM")),
-                     "db_pin_yd": _num(data.get("DistanceToPin"))} if found else {}
+                     "db_pin_yd": _num(data.get("DistanceToPin")),
+                     # What GSPro flew after the lie: a slope shows up here as offline, height and launch.
+                     "db_offline_yd": _num(data.get("Offline")), "db_peak_height": _num(data.get("PeakHeight")),
+                     "db_descent_deg": _num(data.get("Decent")), "db_vla_deg": _num(data.get("VLA")), "db_hla_deg": _num(data.get("HLA")),
+                     "db_backspin_rpm": _num(data.get("BackSpin")), "db_sidespin_rpm": _num(data.get("SideSpin")),
+                     "db_id": found[0]} if found else {}
             start = _xyz((record or {}).get("StartingPOS"))
             origin = origin or start
             moved = round((((start[0] - origin[0]) ** 2 + (start[2] - origin[2]) ** 2) ** 0.5) * M_TO_YD, 1) if start and origin else None
@@ -563,6 +596,9 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
                 took = f"no penalty line in GSPro's log (start surface {row.get('start_surface', 'not recorded')})"
             flown = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
             carry = f"carried {flown:.1f} yd" if flown is not None else "carry not recorded"
+            if row.get("db_offline_yd") is not None and row.get("db_peak_height") is not None:
+                side = "right" if row["db_offline_yd"] > 0 else "left"
+                carry += f", {abs(row['db_offline_yd']):.1f} {side}, peak {row['db_peak_height']:.0f}"
             elsewhere = f"  [hit from {moved:g} yd away from the first shot's spot]" if moved and moved > 2 else ""
             print(f"  {name:<16} {took}; {carry}{elsewhere}")
             sleep(gap)
@@ -906,6 +942,9 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     if not log_file.exists():
                         print(f"\nNote: GSPro's log was not found at {log_file}. Shots are still recorded, without GSPro's penalty.")
                     notes_file = out.with_name(out.stem + "_log.txt")
+                    earlier = save_shot_table(db_path, out.with_name(out.stem + "_gspro_shots.csv"))
+                    if earlier:
+                        print(f"\nSaved the {earlier} shots already in GSPro's shot table to {out.stem}_gspro_shots.csv. Send that too.")
                     rows = lie_session(path, read_line, writer, handle.flush, labels=labels, round_file=round_file, log_file=log_file,
                                        db_path=db_path, notes_file=notes_file, gap=1.0, record_wait=8.0, first_spot=lie_spots + 1, sleep=sleep)
                     total += len(rows)
