@@ -1,0 +1,163 @@
+--- spot 1 shot 1 (PW to green) 2026-11-18T22:38:26 note: stimp 11 3.3d 1l gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 96.3, el 22.4, az 0, ts 8646, sa 0, cy 0, id 207
+Physics Settings: Green Firmness 0     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 9.640, Mat tvggreen (instance)
+magnitude: 2.980248 | yForce 2.750319 | material TVGgreen | SoundMultiplier 0.1731014 | SoundForceScale 0.3462029 | elevation 482
+ResetFriction
+ResetFriction
+Ball and Pin on the same surface
+--- spot 1 shot 2 (PW to green less spin) 2026-11-18T22:38:35 note: stimp 11 3.3d 1l gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 93, el 22.4, az 0, ts 6052, sa 0, cy 0, id 208
+Physics Settings: Green Firmness 0     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 5.818, Mat tvggreen (instance)
+magnitude: 3.039249 | yForce 2.534969 | material TVGgreen | SoundMultiplier 0.1565361 | SoundForceScale 0.3130721 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 1 shot 3 (PW to green more spin) 2026-11-18T22:38:44 note: stimp 11 3.3d 1l gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 98.1, el 22.4, az 0, ts 10808, sa 0, cy 0, id 209
+Physics Settings: Green Firmness 0     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 14.667, Mat tvggreen (instance)
+magnitude: 2.953977 | yForce 2.879881 | material TVGgreen | SoundMultiplier 0.1830678 | SoundForceScale 0.3661356 | elevation 482
+ResetFriction
+--- spot 1 shot 4 (9i to green) 2026-11-18T22:38:57 note: stimp 11 3.3d 1l gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 95.1, el 19.3, az 0, ts 7804, sa 0, cy 0, id 210
+Physics Settings: Green Firmness 0     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 8.971, Mat tvggreen (instance)
+magnitude: 2.94633 | yForce 2.480364 | material TVGgreen | SoundMultiplier 0.1523357 | SoundForceScale 0.3046713 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 1 shot 5 (9i to green less spin) 2026-11-18T22:39:06 note: stimp 11 3.3d 1l gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 93.4, el 19.3, az 0, ts 5463, sa 0, cy 0, id 211
+Physics Settings: Green Firmness 0     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 5.162, Mat tvggreen (instance)
+magnitude: 3.018853 | yForce 2.169995 | material TVGgreen | SoundMultiplier 0.1284612 | SoundForceScale 0.2569224 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 1 shot 6 (9i to green more spin) 2026-11-18T22:39:15 note: stimp 11 3.3d 1l gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 98.6, el 19.3, az 0, ts 9755, sa 0, cy 0, id 212
+Physics Settings: Green Firmness 0     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 11.303, Mat tvggreen (instance)
+magnitude: 2.924181 | yForce 2.657537 | material TVGgreen | SoundMultiplier 0.1659644 | SoundForceScale 0.3319287 | elevation 482
+ResetFriction
+Ball and Pin on the same surface
+--- spot 2 shot 1 (PW to green) 2026-11-18T22:39:39 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 96.3, el 22.4, az 0, ts 8646, sa 0, cy 0, id 213
+Physics Settings: Green Firmness 1     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 7.533, Mat tvggreen (instance)
+magnitude: 2.980248 | yForce 2.750318 | material TVGgreen | SoundMultiplier 0.1731014 | SoundForceScale 0.3462028 | elevation 482
+ResetFriction
+ResetFriction
+Ball and Pin on the same surface
+--- spot 2 shot 2 (PW to green less spin) 2026-11-18T22:39:49 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 93, el 22.4, az 0, ts 6052, sa 0, cy 0, id 214
+Physics Settings: Green Firmness 1     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 4.643, Mat tvggreen (instance)
+magnitude: 3.039249 | yForce 2.507269 | material TVGgreen | SoundMultiplier 0.1544053 | SoundForceScale 0.3088107 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 2 shot 3 (PW to green more spin) 2026-11-18T22:39:58 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 98.1, el 22.4, az 0, ts 10808, sa 0, cy 0, id 215
+Physics Settings: Green Firmness 1     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 11.334, Mat tvggreen (instance)
+magnitude: 2.953977 | yForce 2.879881 | material TVGgreen | SoundMultiplier 0.1830678 | SoundForceScale 0.3661356 | elevation 482
+ResetFriction
+--- spot 2 shot 4 (9i to green) 2026-11-18T22:40:11 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 95.1, el 19.3, az 0, ts 7804, sa 0, cy 0, id 216
+Physics Settings: Green Firmness 1     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 7.027, Mat tvggreen (instance)
+magnitude: 2.946329 | yForce 2.480364 | material TVGgreen | SoundMultiplier 0.1523357 | SoundForceScale 0.3046713 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 2 shot 5 (9i to green less spin) 2026-11-18T22:40:20 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 93.4, el 19.3, az 0, ts 5463, sa 0, cy 0, id 217
+Physics Settings: Green Firmness 1     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 4.147, Mat tvggreen (instance)
+magnitude: 3.662769 | yForce 2.564179 | material TVGgreen | SoundMultiplier 0.158783 | SoundForceScale 0.3175661 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 2 shot 6 (9i to green more spin) 2026-11-18T22:40:30 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 98.6, el 19.3, az 0, ts 9755, sa 0, cy 0, id 218
+Physics Settings: Green Firmness 1     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 8.791, Mat tvggreen (instance)
+magnitude: 2.924181 | yForce 2.657537 | material TVGgreen | SoundMultiplier 0.1659644 | SoundForceScale 0.3319287 | elevation 482
+ResetFriction
+Ball and Pin on the same surface
+--- spot 3 shot 1 (PW to green) 2026-11-18T22:41:30 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 96.3, el 22.4, az 0, ts 8646, sa 0, cy 0, id 219
+Physics Settings: Green Firmness 2     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 5.393, Mat tvggreen (instance)
+magnitude: 2.980248 | yForce 2.750318 | material TVGgreen | SoundMultiplier 0.1731014 | SoundForceScale 0.3462028 | elevation 482
+ResetFriction
+ResetFriction
+Ball and Pin on the same surface
+--- spot 3 shot 2 (PW to green less spin) 2026-11-18T22:41:39 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 93, el 22.4, az 0, ts 6052, sa 0, cy 0, id 220
+Physics Settings: Green Firmness 2     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 3.450, Mat tvggreen (instance)
+magnitude: 3.702637 | yForce 3.05454 | material TVGgreen | SoundMultiplier 0.1965031 | SoundForceScale 0.3930062 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 3 shot 3 (PW to green more spin) 2026-11-18T22:41:49 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 98.1, el 22.4, az 0, ts 10808, sa 0, cy 0, id 221
+Physics Settings: Green Firmness 2     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 7.949, Mat tvggreen (instance)
+magnitude: 2.953977 | yForce 2.879881 | material TVGgreen | SoundMultiplier 0.1830678 | SoundForceScale 0.3661356 | elevation 482
+ResetFriction
+--- spot 3 shot 4 (9i to green) 2026-11-18T22:42:02 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 95.1, el 19.3, az 0, ts 7804, sa 0, cy 0, id 222
+Physics Settings: Green Firmness 2     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 5.053, Mat tvggreen (instance)
+magnitude: 3.377125 | yForce 2.843029 | material TVGgreen | SoundMultiplier 0.180233 | SoundForceScale 0.3604659 | elevation 482
+ResetFriction
+ResetFriction
+--- spot 3 shot 5 (9i to green less spin) 2026-11-18T22:42:11 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 93.4, el 19.3, az 0, ts 5463, sa 0, cy 0, id 223
+Physics Settings: Green Firmness 2     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 3.116, Mat tvggreen (instance)
+magnitude: 4.720872 | yForce 3.304922 | material TVGgreen | SoundMultiplier 0.2157632 | SoundForceScale 0.4315265 | elevation 482
+ResetFriction
+ResetFriction
+Ball and Pin on the same surface
+--- spot 3 shot 6 (9i to green more spin) 2026-11-18T22:42:22 note: gg 126
+* ------- Shot Fired! ------- *
+LaunchExt Vars: sp 98.6, el 19.3, az 0, ts 9755, sa 0, cy 0, id 224
+Physics Settings: Green Firmness 2     Fairway Firmness 0    Course Type 0
+LaunchExt - Regular Mode
+opt -matFriction count 1 :: SpinFriction 6.238, Mat tvggreen (instance)
+magnitude: 2.924181 | yForce 2.657537 | material TVGgreen | SoundMultiplier 0.1659644 | SoundForceScale 0.3319287 | elevation 482
+ResetFriction
+Ball and Pin on the same surface

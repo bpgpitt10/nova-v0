@@ -1034,9 +1034,6 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     if not log_file.exists():
                         print(f"\nNote: GSPro's log was not found at {log_file}. Shots are still recorded, without GSPro's penalty.")
                     notes_file = out.with_name(out.stem + "_log.txt")
-                    earlier = save_shot_table(db_path, out.with_name(out.stem + "_gspro_shots.csv"))
-                    if earlier:
-                        print(f"\nSaved the {earlier} shots already in GSPro's shot table to {out.stem}_gspro_shots.csv. Send that too.")
                     rows = lie_session(path, read_line, writer, handle.flush, labels=labels, round_file=round_file, log_file=log_file,
                                        db_path=db_path, notes_file=notes_file, gap=1.0, record_wait=8.0, first_spot=lie_spots + 1, sleep=sleep)
                     total += len(rows)
