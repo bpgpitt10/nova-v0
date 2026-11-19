@@ -541,13 +541,20 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
     spot = first_spot
     while True:
         try:
-            typed = read_line(f"\nSpot {spot}: drop the ball, then Enter to hit 3 shots. (Type a note first if you like, e.g. sand uphill. q to finish.) ").strip()
+            typed = read_line(f"\nSpot {spot}: drop the ball, then Enter to hit 3 shots. Type the slope first if it is not flat (2 up 3 left). "
+                              "Start with the word all to hit all 25 designed shots from here. q to finish. ").strip()
         except EOFError:
             break
         if typed.lower() in ("q", "quit"):
             break
         origin: tuple[float, float, float] | None = None
-        for index, (name, shot) in enumerate(lie_shots_for_spot(spot), start=1):
+        spot_shots = lie_shots_for_spot(spot)
+        if typed.lower() == "all" or typed.lower().startswith("all "):
+            # One lie, every combination of speed, launch and spin: shows what the penalty depends on.
+            typed = typed[3:].strip()
+            spot_shots = [(name, {"speed": v["speed"], "vla": v["vla"], "hla": 0.0, "spin": v["spin"], "axis": 0.0})
+                          for name, v in designed_shots().items()]
+        for index, (name, shot) in enumerate(spot_shots, start=1):
             before_record = record_fingerprint(newest_round_record(round_file))
             before_log = log_size(log_file)
             before_row = latest_row_safely(db_path)
