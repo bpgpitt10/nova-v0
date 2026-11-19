@@ -19,6 +19,10 @@ remember: press Enter to take the suggested answer. Four tests:
                      the ball released or spun back, and how flat the green was)
   Putt roll          putts at set speeds on a green: how far each rolls on this
                      course type, green firmness and stimp, flat, uphill or down
+  Shots from a lie   On Course practice: drop the ball anywhere (rough, sand,
+                     fringe, a slope), press Enter, and it hits three shots, one
+                     soft, one medium, one hard. Move the ball and repeat. Records
+                     what GSPro took off each shot for the lie, and the carry
 
 Everything from one sitting goes into one file, looper_lab_<time>.csv.
 
@@ -67,6 +71,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -297,6 +302,8 @@ LAB_FIELDS = [
     "slope", "putt_roll_ft", "putt_height_change_in", "putt_to_cup_ft", "sent_hla_deg",
     "sent_speed_mph", "sent_vla_deg", "sent_spin_rpm", "gspro_speed_mph", "gspro_vla_deg", "gspro_spin_rpm",
     "stored_carry_yd", "stored_roll_yd", "row_id", "sent_at",
+    "spot", "note", "lie_surface", "lie_speed_pct", "lie_spin_pct", "lie_vla_pct", "lie_type",
+    "start_surface", "start_x", "start_y", "start_z", "moved_from_spot_yd", "log_speed_mph", "log_vla_deg", "log_spin_rpm",
 ]
 M_TO_FT = 3.280839895
 #: Putt speeds rolled by default, mph off the face.
@@ -400,6 +407,140 @@ def wait_for_new_record(round_file: Path, previous: str | None, timeout_s: float
             return latest
         sleep(0.25)
     return None
+
+
+# --------------------------------------------------------------------------
+# Shots from a lie: what GSPro takes off a shot for where the ball sits.
+
+#: Three shots per spot, one from each row, moving along the row with each new spot.
+#: Fifteen different shots, so every lie is hit soft, medium and hard, and over
+#: a session each lie sees wedges, irons and long clubs.
+LIE_SHOTS: tuple[tuple[tuple[str, float, float, float], ...], ...] = (
+    (("soft 50", 50.0, 28.0, 7500.0), ("soft 60", 60.0, 24.0, 9000.0), ("soft 70", 70.0, 30.0, 6200.0),
+     ("SW", 78.6, 26.6, 9856.0), ("soft 40", 40.0, 30.0, 5000.0)),
+    (("PW", 94.4, 22.4, 8646.0), ("mid 95 low spin", 95.0, 14.0, 4200.0), ("mid 105", 105.0, 19.0, 7000.0),
+     ("7i", 113.1, 16.4, 6175.0), ("mid 100 high", 100.0, 24.0, 9000.0)),
+    (("5i", 123.5, 12.0, 5280.0), ("3H", 134.2, 8.7, 4701.0), ("Driver", 143.8, 11.1, 2812.0),
+     ("hard 120", 120.0, 19.0, 6200.0), ("hard 145", 145.0, 14.0, 3200.0)),
+)
+
+LOG_LAUNCH_RE = re.compile(r"LaunchExt Vars:\s*sp\s*(-?[\d.]+),\s*el\s*(-?[\d.]+),\s*az\s*(-?[\d.]+),\s*ts\s*(-?[\d.]+)", re.I)
+LOG_PENALTY_RE = re.compile(
+    r"Penalty Surface\s+([A-Za-z_]+)\s*,\s*Spin\s*(\d+(?:\.\d+)?)%\s*,\s*Speed\s*(\d+(?:\.\d+)?)%\s*,\s*VLA\s*(\d+(?:\.\d+)?)%", re.I)
+LOG_TYPE_RE = re.compile(r"corrected type\s+(-?\d+)", re.I)
+LOG_KEEP_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|sand|drop", re.I)
+
+
+def gspro_log() -> Path:
+    return gspro_db().parent / "output_log.txt"
+
+
+def log_size(log_file: Path) -> int:
+    try:
+        return log_file.stat().st_size
+    except OSError:
+        return 0
+
+
+def read_log_since(log_file: Path, offset: int) -> str:
+    """What GSPro wrote to its log after `offset` (read only). The whole file if GSPro restarted it."""
+    try:
+        with log_file.open("rb") as handle:
+            handle.seek(offset if offset <= log_file.stat().st_size else 0)
+            return handle.read(2 * 1024 * 1024).decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def lie_from_log(text: str) -> dict[str, Any]:
+    """GSPro's own lie penalty for the shot just hit: the last penalty line in `text`, if there is one."""
+    row: dict[str, Any] = {}
+    for line in text.splitlines():
+        if (m := LOG_PENALTY_RE.search(line)):
+            row.update({"lie_surface": m[1], "lie_spin_pct": float(m[2]), "lie_speed_pct": float(m[3]), "lie_vla_pct": float(m[4])})
+        elif (m := LOG_TYPE_RE.search(line)):
+            row["lie_type"] = int(m[1])
+        elif (m := LOG_LAUNCH_RE.search(line)):
+            row.update({"log_speed_mph": float(m[1]), "log_vla_deg": float(m[2]), "log_spin_rpm": float(m[4])})
+    return row
+
+
+def lie_shots_for_spot(spot: int) -> list[tuple[str, dict[str, float]]]:
+    """The soft, medium and hard shot for spot number `spot` (1, 2, 3...)."""
+    return [(name, {"speed": speed, "vla": vla, "hla": 0.0, "spin": spin, "axis": 0.0})
+            for name, speed, vla, spin in (row[(spot - 1) % len(row)] for row in LIE_SHOTS)]
+
+
+def lie_summary(rows: list[dict[str, Any]]) -> list[str]:
+    """Per lie GSPro named: how many shots, and the range of speed and spin it left on the ball."""
+    by: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        by.setdefault(str(row.get("lie_surface") or f"no penalty line (surface {row.get('start_surface', '?')})"), []).append(row)
+    lines = []
+    for name, group in sorted(by.items()):
+        speeds = [r["lie_speed_pct"] for r in group if r.get("lie_speed_pct") is not None]
+        spins = [r["lie_spin_pct"] for r in group if r.get("lie_spin_pct") is not None]
+        spots = len({r.get("spot") for r in group})
+        detail = f": speed kept {min(speeds):.0f} to {max(speeds):.0f}%, spin kept {min(spins):.0f} to {max(spins):.0f}%" if speeds and spins else ""
+        lines.append(f"  {name:<34} {len(group):>3} shots from {spots} spots{detail}")
+    return lines
+
+
+def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, Any], round_file: Path, log_file: Path,
+                notes_file: Path, gap: float, record_wait: float, first_spot: int = 1, sleep=time.sleep) -> list[dict[str, Any]]:
+    """Spot after spot: the player drops the ball and presses Enter, three shots are hit and recorded."""
+    rows: list[dict[str, Any]] = []
+    spot = first_spot
+    while True:
+        try:
+            typed = read_line(f"\nSpot {spot}: drop the ball, then Enter to hit 3 shots. (Type a note first if you like, e.g. sand uphill. q to finish.) ").strip()
+        except EOFError:
+            break
+        if typed.lower() in ("q", "quit"):
+            break
+        origin: tuple[float, float, float] | None = None
+        for index, (name, shot) in enumerate(lie_shots_for_spot(spot), start=1):
+            before_record = record_fingerprint(newest_round_record(round_file))
+            before_log = log_size(log_file)
+            sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+            try:
+                status = path.fire(shot)
+            except (ConnectionError, OSError) as exc:
+                print(f"  could not send: {exc}")
+                return rows
+            if "at rest" not in status:
+                print(f"  (no ball-at-rest from GSPro; waiting {NO_STOP_SIGNAL_WAIT_S:g} s for the shot to finish)")
+                sleep(NO_STOP_SIGNAL_WAIT_S)
+            record = wait_for_new_record(round_file, before_record, record_wait, sleep=sleep)
+            log_text = read_log_since(log_file, before_log)
+            lie = lie_from_log(log_text)
+            start = _xyz((record or {}).get("StartingPOS"))
+            origin = origin or start
+            moved = round((((start[0] - origin[0]) ** 2 + (start[2] - origin[2]) ** 2) ** 0.5) * M_TO_YD, 1) if start and origin else None
+            row = {"test": "lie", **labels, "spot": spot, "note": typed, "club": name, "n": index, "status": status,
+                   "sent_speed_mph": shot["speed"], "sent_vla_deg": shot["vla"], "sent_spin_rpm": shot["spin"], "sent_at": sent_at,
+                   **measure_landing(record), **lie,
+                   "start_surface": (record or {}).get("StartingSurface"), "moved_from_spot_yd": moved,
+                   **({"start_x": round(start[0], 2), "start_y": round(start[1], 2), "start_z": round(start[2], 2)} if start else {})}
+            writer.writerow(row)
+            flush()
+            rows.append(row)
+            try:
+                kept = [line.strip()[:300] for line in log_text.splitlines() if LOG_KEEP_RE.search(line)][:40]
+                with notes_file.open("a", encoding="utf-8") as notes:
+                    notes.write(f"--- spot {spot} shot {index} ({name}) {sent_at} note: {typed}\n" + "\n".join(kept) + "\n")
+            except OSError:
+                pass
+            if lie.get("lie_speed_pct") is not None:
+                took = f"{lie['lie_surface']}: speed kept {lie['lie_speed_pct']:.0f}%, spin {lie['lie_spin_pct']:.0f}%, launch {lie['lie_vla_pct']:.0f}%"
+            else:
+                took = f"no penalty line in GSPro's log (start surface {row.get('start_surface', 'not recorded')})"
+            carry = f"carried {row['carry_yd']:.1f} yd" if row.get("carry_yd") is not None else "carry not recorded"
+            elsewhere = f"  [hit from {moved:g} yd away from the first shot's spot]" if moved and moved > 2 else ""
+            print(f"  {name:<16} {took}; {carry}{elsewhere}")
+            sleep(gap)
+        spot += 1
+    return rows
 
 
 def clubs_for_distance(distance_yd: float, bag: dict[str, dict[str, float]]) -> list[str]:
@@ -564,11 +705,14 @@ def fire_series(path: Any, read_line, writer: Any, flush, *, test: str, labels: 
 
 
 def guided(read_line=input, db_path: Path | None = None, round_file: Path | None = None, path: Any = None,
-           sleep=time.sleep, bag: dict[str, dict[str, float]] | None = None, out_dir: Path | None = None) -> int:
+           sleep=time.sleep, bag: dict[str, dict[str, float]] | None = None, out_dir: Path | None = None,
+           log_file: Path | None = None) -> int:
     """Double-click mode: asks what to test and what GSPro is set to, then hits the shots."""
     bag = bag or BAG
     db_path = db_path or gspro_db()
     round_file = round_file or gspro_round_file()
+    log_file = log_file or gspro_log()
+    lie_spots = 0
     out = (out_dir or HERE) / f"looper_lab_{time.strftime('%Y%m%d_%H%M%S')}.csv"
     print("Looper lab: measure how GSPro lands and rolls your shots, with no swings.\n")
     print("Before you start: CLOSE THE UNEEKOR LAUNCHER, have GSPro open, and do not have a")
@@ -596,6 +740,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     ("grid", "Designed shots: 25 shots that separate speed, launch and spin (Practice Range)"),
                     ("green", "Landing on a green: irons and wedges in On Course practice"),
                     ("putt", "Putt roll: putts at set speeds on a green"),
+                    ("lie", "Shots from a lie: drop the ball anywhere in On Course practice, 3 shots per spot"),
                     ("quit", "Finished"),
                 ], answers["test"])  # Enter repeats the last test, so nine settings are nine quick passes
                 if test == "quit":
@@ -603,6 +748,26 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                 answers["test"] = test
                 answers["type"] = choose(read_line, "\nCourse Type set in GSPro right now?", TYPE_OPTIONS, answers["type"])
                 labels: dict[str, Any] = {"course_type": answers["type"]}
+                if test == "lie":
+                    print("\nGSPro should be in On Course practice, on any hole.")
+                    print("Drop the ball somewhere, come back here and press Enter. It hits three shots (soft, medium, hard),")
+                    print("then you drop the ball somewhere else. Any lie is useful: rough, deep rough, sand, fringe, slopes,")
+                    print("pine straw, cart path. A couple from the fairway too, as the comparison.")
+                    print("If the ball does not come back to your spot between shots, leave it: each shot is recorded where it was hit.")
+                    if not log_file.exists():
+                        print(f"\nNote: GSPro's log was not found at {log_file}. Shots are still recorded, without GSPro's penalty.")
+                    notes_file = out.with_name(out.stem + "_log.txt")
+                    rows = lie_session(path, read_line, writer, handle.flush, labels=labels, round_file=round_file, log_file=log_file,
+                                       notes_file=notes_file, gap=1.0, record_wait=8.0, first_spot=lie_spots + 1, sleep=sleep)
+                    total += len(rows)
+                    lie_spots = max([lie_spots] + [int(row["spot"]) for row in rows])
+                    print()
+                    for line in lie_summary(rows):
+                        print(line)
+                    if rows and all(row.get("lie_speed_pct") is None for row in rows):
+                        print("  GSPro wrote no penalty line for any of these. Send the files anyway: the carries still show the effect.")
+                    print(f"\nSaved so far: {total} shots in {out.name} (GSPro's log lines in {notes_file.name}).\n")
+                    continue
                 confirm_each = False
                 shot_bag = bag
                 if test == "putt":
@@ -728,6 +893,8 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
         path.close()
     if total:
         print(f"\n{total} shots saved in {out}\nSend that file to Claude.")
+        if out.with_name(out.stem + "_log.txt").exists():
+            print(f"Send {out.stem}_log.txt from the same folder too.")
     else:
         try:
             out.unlink()
