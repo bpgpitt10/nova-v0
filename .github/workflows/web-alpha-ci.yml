@@ -230,6 +230,8 @@ jobs:
 
       - name: Roll by surface and slope at touchdown
         run: node tools/test-roll-model.mjs
+      - name: Altitude and carry (GSPro's measured effect)
+        run: node tools/test-altitude-carry.mjs
 
       - name: Descent meets the terrain (hill faces)
         run: node tools/test-descent-touchdown.mjs
