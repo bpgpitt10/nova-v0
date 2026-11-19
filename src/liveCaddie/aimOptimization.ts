@@ -1,6 +1,7 @@
 import { classifyPoint, fairwayCorridorAtForwardY } from '../courseGeometry/geometry'
 import { classifyTacticalLandingPoint } from '../courseGeometry/tacticalClassification'
 import { makeRollLandingTransform } from './rollModel'
+import { estimateFairwayRoll, type FairwayConditions, type FairwayRollEstimate } from './fairwayRollModel'
 import { estimateGreywolfTerrain as estimateCourseTerrain } from '../courseGeometry/lidar'
 import type { CourseGreenDetail } from '../courseGeometry/courseGreenDetail'
 import type {
@@ -104,6 +105,13 @@ export type AimLabEnvironment = {
   exactPinLocalYds?: CoursePointYds | null
   /** Optional high-resolution course green grid used to shape destination rollout. */
   greenDetail?: CourseGreenDetail | null
+  /** GSPro's Course Type and Fairway Firmness for this round (picked at Start a Round). */
+  fairwayConditions?: FairwayConditions | null
+  /**
+   * Use the fairway roll model for outcomes. Off (the default): the roll it
+   * expects is still worked out and reported, but outcomes keep the range rollout.
+   */
+  applyFairwayRoll?: boolean
   /**
    * Optional per-club strategic target. Used by off-sim natural-landing
    * diagnostics so Driver, 3W, hybrid, etc. can aim through the corridor at
@@ -181,6 +189,8 @@ export type ClubAimEvaluation = {
   /** Carry + mean roll of the best aim's outcomes after surface and slope (what the shot is expected to total). */
   expectedTotalYds?: number | null
   rolloutYds: number
+  /** Roll expected under the round's course conditions, and whether outcomes used it; null without conditions or launch data. */
+  fairwayRoll?: (FairwayRollEstimate & { applied: boolean }) | null
   airAltitudeFt: number | null
   altitudeCarryDeltaYds: number
   altitudeLateralDeltaYds: number
@@ -582,10 +592,29 @@ export const evaluateAimLab = (
         : profile.stock_carry_yds
     const rolloutYds = Math.max(0, stockTotalYds - profile.stock_carry_yds)
     const descentDeg = profile.launch_profile?.descent_angle_deg
+    // Roll for the round's Course Type and Fairway Firmness, from how this club's ball arrives.
+    // Wind and elevation reach it as the flight model's change in landing angle.
+    const landedDeg = modeled.physicsPrior.combined?.landingAngleDeg
+    const calmLandedDeg = modeled.physicsPrior.baseline?.landingAngleDeg
+    const descentDeltaDeg = finiteNumber(landedDeg) && finiteNumber(calmLandedDeg) ? landedDeg - calmLandedDeg : null
+    const fairwayRollEstimate = estimateFairwayRoll({
+      arrival: {
+        ballSpeedMph: profile.launch_profile?.ball_speed_mph,
+        spinRpm: profile.launch_profile?.total_spin_rpm,
+        descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : undefined,
+      },
+      descentDeltaDeg,
+      stockRolloutYds: rolloutYds,
+      conditions: environment.fairwayConditions,
+    })
+    const fairwayRoll = fairwayRollEstimate
+      ? { ...fairwayRollEstimate, applied: environment.applyFairwayRoll === true }
+      : null
     const greenLandingTransform = makeRollLandingTransform(hole, greenRollout,
       ballElevationFt != null && typeof descentDeg === 'number' && Number.isFinite(descentDeg)
         ? { ball, descentDeg, refElevationFt: ballElevationFt + (environment.elevationDeltaFt ?? 0) }
-        : null)
+        : null,
+      fairwayRoll?.applied ? fairwayRoll.scale : 1)
     // Until destination-surface rollout physics are validated, preserve the player's
     // observed Stock rollout and translate both carry and total by the same live carry delta.
     const modeledTotalYds = modeledCarryYds + rolloutYds
@@ -649,6 +678,11 @@ export const evaluateAimLab = (
     }
     if (rolloutYds > 0) {
       notes.push(`Final-position outcomes start from ${rolloutYds.toFixed(1)} yd of observed Stock rollout, scaled by the surface and slope where each ball lands.`)
+    }
+    if (fairwayRoll) {
+      notes.push(`Course conditions (${fairwayRoll.conditions.courseType} type, ${fairwayRoll.conditions.fairwayFirmness} fairways): `
+        + `${fairwayRoll.predictedYds.toFixed(1)} yd of roll on a level fairway against ${fairwayRoll.stockYds.toFixed(1)} yd on the range. `
+        + (fairwayRoll.applied ? 'Applied to shots landing off the green.' : 'Preview only: outcomes still use the range rollout.'))
     }
 
     const candidates = aimOffsetsYds.map((aimOffsetYds): AimCandidateEvaluation => {
@@ -772,6 +806,7 @@ export const evaluateAimLab = (
       modeledTotalYds,
       expectedTotalYds,
       rolloutYds,
+      fairwayRoll,
       airAltitudeFt: altitudeAdjustment.altitudeFt,
       altitudeCarryDeltaYds: altitudeAdjustment.carryDeltaYds,
       altitudeLateralDeltaYds: altitudeAdjustment.lateralDeltaYds,
