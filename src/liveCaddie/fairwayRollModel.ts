@@ -38,7 +38,10 @@ const NOISE = 0.02
 /** Inputs are held inside what was measured (a little beyond), so the trend is never pushed far. */
 const LIMITS = { ballSpeedMph: [55, 185], spinRpm: [1500, 11500], descentDeg: [9, 62] } as const
 
-type Fit = Readonly<{ trend: readonly [number, number, number]; weights: readonly number[] }>
+/** No prediction goes beyond this multiple of the longest roll measured in that setting. */
+const MAX_OVER_MEASURED = 1.5
+
+type Fit = Readonly<{ trend: readonly [number, number, number]; weights: readonly number[]; ceilingYds: number }>
 
 const features = (speed: number, spinK: number, descent: number): readonly [number, number, number] =>
   [descent / SCALE[0], spinK / SCALE[1], Math.log(speed) / SCALE[2]]
@@ -85,7 +88,8 @@ const fitFor = (settingIndex: number): Fit => {
   const trend = solve(normal, moment) as [number, number, number]
   const residual = y.map((value, n) => value - (trend[0] + trend[1] * basis[n][1] + trend[2] * basis[n][2]))
   const gram = POINTS.map((p, i) => POINTS.map((q, j) => kernel(p, q) + (i === j ? NOISE : 0)))
-  const fit: Fit = { trend, weights: solve(gram, residual) }
+  const ceilingYds = MAX_OVER_MEASURED * Math.max(...rows.map((row) => row[3 + settingIndex]))
+  const fit: Fit = { trend, weights: solve(gram, residual), ceilingYds }
   fits.set(settingIndex, fit)
   return fit
 }
@@ -108,7 +112,7 @@ export const predictFairwayRoll = (arrival: Partial<FairwayArrival> | null | und
   const at = features(speed, spinK, descent)
   let value = fit.trend[0] + fit.trend[1] * (descent / 10) + fit.trend[2] * spinK
   for (let n = 0; n < POINTS.length; n += 1) value += fit.weights[n] * kernel(POINTS[n], at)
-  return Math.exp(value) * speed
+  return Math.min(fit.ceilingYds, Math.exp(value) * speed)
 }
 
 /** The Practice Range's fixed setup: what a player's range rollout was measured on (GSPro 4.1.9 on). */
