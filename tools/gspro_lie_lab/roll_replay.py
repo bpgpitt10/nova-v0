@@ -546,6 +546,25 @@ def save_shot_table(db_path: Path, out: Path) -> int:
     return len(rows)
 
 
+#: Carry against the same shot at stock spin (GSPro, 18 Nov: 5i, 6i, 7i, SW at 0.7x and 1.25x spin).
+SPIN_CARRY = {0.7: 1.04, 1.0: 1.0, 1.25: 0.965}
+#: Carry grows about as ball speed to the power 1.5 for a fixed launch and spin (GSPro, 60 to 100 mph at 24 deg).
+CARRY_SPEED_POWER = 1.5
+#: Land this far short of the number typed, so the ball finishes near the pin and not over the back.
+GREEN_SHORT_YD = 2.0
+
+
+def green_speed(shot: dict[str, float], plays: float | None) -> dict[str, float]:
+    """The shot with its ball speed changed so it lands on the yardage typed.
+
+    `plays` is what the last shot from this spot carried as a share of its flat carry; None before any shot.
+    """
+    wanted = max(10.0, shot["_target"] - GREEN_SHORT_YD) / (plays if plays and 0.4 < plays < 1.6 else 1.0)
+    scale = (wanted / shot["_flat_carry"]) ** (1.0 / CARRY_SPEED_POWER)
+    scale = min(1.2, max(0.75, scale))
+    return {"speed": round(shot["speed"] * scale, 1), "vla": shot["vla"], "hla": 0.0, "spin": shot["spin"], "axis": 0.0}
+
+
 def lie_shots_for_spot(spot: int) -> list[tuple[str, dict[str, float]]]:
     """The soft, medium and hard shot for spot number `spot` (1, 2, 3...)."""
     return [(name, {"speed": speed, "vla": vla, "hla": 0.0, "spin": spin, "axis": 0.0})
@@ -601,11 +620,17 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             nearest = sorted((club for club in BAG if "carry" in BAG[club]), key=lambda club: abs(BAG[club]["carry"] - distance))[:2]
             only_green = to_green[1].lower() == "gg"
             spins = ((0.7, " less spin"), (1.0, ""), (1.25, " more spin")) if only_green else ((1.0, ""),)
+            # Each is sped up or slowed down to land on the number typed (see green_speed), stock spin first
+            # so the first landing corrects the rest for the hill, the altitude and the lie.
             green_shots = [(f"{club} to green{tag}", {"speed": BAG[club]["speed"], "vla": BAG[club]["vla"], "hla": 0.0,
-                                                       "spin": round(BAG[club]["spin"] * factor), "axis": 0.0})
-                           for club in nearest for factor, tag in spins]
+                                                       "spin": round(BAG[club]["spin"] * factor), "axis": 0.0,
+                                                       "_flat_carry": BAG[club]["carry"] * SPIN_CARRY.get(factor, 1.0), "_target": distance})
+                           for club in nearest for factor, tag in sorted(spins, key=lambda pair: pair[0] != 1.0)]
             spot_shots = green_shots if only_green else spot_shots + green_shots
+        plays = None  # carry here as a share of the same shot's flat, sea-level carry (hill, altitude, lie)
         for index, (name, shot) in enumerate(spot_shots, start=1):
+            if "_target" in shot:
+                shot = green_speed(shot, plays)
             before_record = record_fingerprint(newest_round_record(round_file))
             before_log = log_size(log_file)
             before_row = latest_row_safely(db_path)
@@ -642,6 +667,9 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             writer.writerow(row)
             flush()
             rows.append(row)
+            flown_yd = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
+            if flown_yd and (row.get("db_raw_carry_game_yd") or 0) > 5:
+                plays = flown_yd / row["db_raw_carry_game_yd"]
             try:
                 kept = [line.strip()[:300] for line in log_text.splitlines() if LOG_KEEP_RE.search(line)][:40]
                 with notes_file.open("a", encoding="utf-8") as notes:
