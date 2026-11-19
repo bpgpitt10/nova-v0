@@ -291,7 +291,7 @@ NO_STOP_SIGNAL_WAIT_S = 15.0
 #: Clubs offered from a spot: stock carry from this far short of the pin to this far past it.
 GREEN_WINDOW_YD = (-14.0, 8.0)
 LAB_FIELDS = [
-    "test", "course_type", "fairway_firmness", "green_firmness", "stimp", "pin_distance_yd", "club", "n", "status",
+    "test", "course_type", "fairway_firmness", "green_firmness", "stimp", "elevation_ft", "pin_distance_yd", "club", "n", "status",
     "carry_yd", "total_yd", "roll_yd", "sideways_yd", "roll_height_change_in", "finish_surface", "holed",
     "offline_yd", "peak_height", "descent_deg",
     "slope", "putt_roll_ft", "putt_height_change_in", "putt_to_cup_ft", "sent_hla_deg",
@@ -636,6 +636,8 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                 elif test == "grid":
                     answers["fairway"] = choose(read_line, "\nFairway Firmness set in GSPro right now?", SETTING_OPTIONS, answers["fairway"])
                     labels["fairway_firmness"] = answers["fairway"]
+                    answers["elevation"] = ask_number(read_line, "Elevation set in GSPro, in feet (0 for Global)?", answers.get("elevation", 0.0), -500, 12000)
+                    labels["elevation_ft"] = answers["elevation"]
                     print("\nGSPro should be on the Practice Range (Driving Range), hitting to the fairway.")
                     print("These are not golf shots: some are fast with wedge spin, some slow and low. That is the point.")
                     shot_bag = designed_shots()
@@ -644,6 +646,9 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                 elif test == "fairway":
                     answers["fairway"] = choose(read_line, "\nFairway Firmness set in GSPro right now?", SETTING_OPTIONS, answers["fairway"])
                     labels["fairway_firmness"] = answers["fairway"]
+                    # Altitude changes carry, not roll: run the bag at two or three elevations to measure it.
+                    answers["elevation"] = ask_number(read_line, "Elevation set in GSPro, in feet (0 for Global)?", answers.get("elevation", 0.0), -500, 12000)
+                    labels["elevation_ft"] = answers["elevation"]
                     print("\nGSPro should be on the Practice Range (Driving Range), hitting to the fairway.")
                     clubs = list(bag)
                     typed = read_line("Which clubs? Enter for the whole bag, or list them (Driver,7i,PW): ").strip()
