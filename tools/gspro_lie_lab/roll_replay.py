@@ -70,6 +70,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import re
 import sqlite3
@@ -306,6 +307,7 @@ LAB_FIELDS = [
     "start_surface", "start_x", "start_y", "start_z", "moved_from_spot_yd", "log_speed_mph", "log_vla_deg", "log_spin_rpm",
     "landing_surface", "landing_material", "landing_spin_rpm", "log_course_type", "log_fairway_firmness", "log_green_firmness",
     "db_carry_yd", "db_total_yd", "db_raw_carry_game_yd", "db_raw_carry_lm_yd", "db_pin_yd",
+    "gspro_hla_deg", "gspro_axis_deg", "peak_height_ft", "start_line_deg", "curve_yd", "offline_from_aim_yd",
     "db_offline_yd", "db_peak_height", "db_descent_deg", "db_vla_deg", "db_hla_deg", "db_backspin_rpm", "db_sidespin_rpm", "db_id",
 ]
 M_TO_FT = 3.280839895
@@ -371,11 +373,15 @@ def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
     if not end and isinstance(shot_data.get("path"), list) and shot_data["path"]:
         end = _xyz((shot_data["path"][-1] or {}).get("pos"))  # practice records: the last point of the roll
     landed = _xyz(shot_data.get("tdpoint"))
+    ghost = record.get("GhostData") or {}
     row: dict[str, Any] = {
         "row_id": record.get("ShotID"),
         "finish_surface": record.get("EndingSurface"),
         "holed": bool(shot_data.get("isHoled")),
         "gspro_speed_mph": _num((record.get("GhostData") or {}).get("lmfSP"), record.get("BallSpeed")),
+        # What GSPro actually launched after the lie: speed above, and launch, direction, spin and tilt here.
+        "gspro_vla_deg": _num(ghost.get("lmfEL")), "gspro_hla_deg": _num(ghost.get("lmfAZ")),
+        "gspro_spin_rpm": _num(ghost.get("lmfTS")), "gspro_axis_deg": _num(ghost.get("lmfSA")),
         "landing_surface": shot_data.get("TDmaterial"),
         "descent_deg": _num(shot_data.get("descentAngle")),
         "landing_spin_rpm": _num(shot_data.get("finalSpin")),
@@ -394,6 +400,25 @@ def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
                 "sideways_yd": round(across * M_TO_YD, 2),
                 "roll_height_change_in": round((end[1] - landed[1]) * M_TO_IN, 1),
             })
+    # The flight itself, from GSPro's own path: how high, and how far it finished off its start line and off the aim.
+    raw_path = (shot_data.get("pos") or ((record.get("activeShot") or {}).get("sd") or {}).get("pos")
+                or (ghost.get("atShotData") or {}).get("pos") or [])
+    flight = [p for p in (_xyz(point) for point in raw_path) if p]
+    if start and landed and len(flight) >= 3:
+        row["peak_height_ft"] = round((max(p[1] for p in flight) - start[1]) * M_TO_FT, 1)
+        sx, sz = flight[1][0] - flight[0][0], flight[1][2] - flight[0][2]
+        length = (sx * sx + sz * sz) ** 0.5
+        if length > 1e-6:
+            ux, uz = sx / length, sz / length
+            lx, lz = landed[0] - start[0], landed[2] - start[2]
+            row["curve_yd"] = round((lx * uz - lz * ux) * M_TO_YD, 2)  # + is right of where it started
+            hla = _num(ghost.get("lmfAZ"))
+            if hla is not None:
+                a = math.radians(hla)
+                # The aim is the start line turned back by the start direction GSPro gave the shot.
+                ax, az = ux * math.cos(a) - uz * math.sin(a), uz * math.cos(a) + ux * math.sin(a)
+                row["start_line_deg"] = round(hla, 2)
+                row["offline_from_aim_yd"] = round((lx * az - lz * ax) * M_TO_YD, 2)
     return row
 
 
@@ -603,9 +628,13 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
                 took = f"no penalty line in GSPro's log (start surface {row.get('start_surface', 'not recorded')})"
             flown = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
             carry = f"carried {flown:.1f} yd" if flown is not None else "carry not recorded"
-            if row.get("db_offline_yd") is not None and row.get("db_peak_height") is not None:
-                side = "right" if row["db_offline_yd"] > 0 else "left"
-                carry += f", {abs(row['db_offline_yd']):.1f} {side}, peak {row['db_peak_height']:.0f}"
+            if row.get("gspro_vla_deg") is not None:
+                carry += f"; launched {row['gspro_vla_deg']:.1f} deg (sent {shot['vla']:g})"
+            if row.get("offline_from_aim_yd") is not None:
+                off = row["offline_from_aim_yd"]
+                carry += f", landed {abs(off):.1f} yd {'right' if off > 0 else 'left'}"
+            if row.get("peak_height_ft") is not None:
+                carry += f", peak {row['peak_height_ft']:.0f} ft"
             elsewhere = f"  [hit from {moved:g} yd away from the first shot's spot]" if moved and moved > 2 else ""
             print(f"  {name:<16} {took}; {carry}{elsewhere}")
             sleep(gap)
