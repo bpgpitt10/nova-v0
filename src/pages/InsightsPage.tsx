@@ -2,6 +2,7 @@ import { useEffect, type CSSProperties, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
 import greensCard from '../assets/insights/insight-01-greens.webp'
 import rangeCard from '../assets/insights/insight-02-range-vs-green.webp'
+import InsightsStackLoop from './InsightsStackLoop'
 import './InsightsPage.css'
 
 /**
@@ -256,6 +257,8 @@ export default function InsightsPage() {
           </div>
         </div>
       </section>
+
+      <InsightsStackLoop />
 
       <nav className="insights-tabs" aria-label="Parts of the series">
         <div className="insights-wrap insights-tabs__row">
