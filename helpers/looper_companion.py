@@ -351,6 +351,8 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "aimPreview": True,
                     "courseLibrary": True,
                     "gsproFiles": True,
+                    # GSPro 4's Player.log: settings, altitude and lie penalty per shot.
+                    "playerLog": True,
                     "roundRecorder": ROUND_RECORDER is not None,
                     "roundPars": ROUND_RECORDER is not None,
                     "nativeCapture": False,

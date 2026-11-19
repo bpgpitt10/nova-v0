@@ -123,6 +123,21 @@ class AimMathTests(unittest.TestCase):
         self.assertLess(result["click"]["windowX"], W * 0.16)
         self.assertAlmostEqual(result["minimap"]["ball"][0], 140, delta=1.5)
 
+    def test_the_pin_is_found_at_any_screen_size(self):
+        # Drawn as on a 4K screen (dots about 18 px across), then shown smaller.
+        big = np.full((2160, 3840, 3), (40, 110, 50), np.uint8)
+        x0, y0 = int(3840 * aim.RIGHT_MINIMAP_ROI[0]), int(2160 * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(big, (x0 + 290, y0 + 860), 9, (0, 0, 235), -1, cv2.LINE_AA)
+        cv2.circle(big, (x0 + 290, y0 + 175), 9, (255, 255, 255), -1, cv2.LINE_AA)
+        for width, height in ((3840, 2160), (2560, 1440), (1920, 1080), (1600, 900)):
+            frame = cv2.resize(big, (width, height), interpolation=cv2.INTER_AREA)
+            crop, _origin, ball, pin, side, _roi = aim.locate_minimap(frame)
+            scale = 3840 / width
+            self.assertEqual(side, "right")
+            self.assertAlmostEqual(pin.x * scale, 290, delta=4, msg=f"{width}x{height}")
+            self.assertAlmostEqual(pin.y * scale, 175, delta=4, msg=f"{width}x{height}")
+            self.assertAlmostEqual(ball.y * scale, 860, delta=4, msg=f"{width}x{height}")
+
     def test_no_minimap_says_so_and_shows_what_it_saw(self):
         img = np.full((H, W, 3), (30, 40, 30), np.uint8)
         x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])

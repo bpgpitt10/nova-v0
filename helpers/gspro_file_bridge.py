@@ -2,9 +2,9 @@
 
 The hosted Looper web app used to need a browser folder grant to read
 currentRound.dat, output_log.txt and GSPro.db. The companion already finds
-GSPro's data folder, so it serves those three files instead:
+GSPro's data folder, so it serves those files (and GSPro 4's Player.log) instead:
 
-* Only the three allowlisted file names are ever served. No paths are accepted
+* Only the allowlisted file names are ever served. No paths are accepted
   from the browser and no absolute paths are returned to it.
 * Reads are read-only. GSPro's folder is never written.
 * The round recorder keeps every round's raw currentRound.dat records in the
@@ -28,7 +28,9 @@ from typing import Callable
 
 import gspro_native_discovery as native
 
-ALLOWED_GSPRO_FILES = ("currentRound.dat", "output_log.txt", "GSPro.db")
+# Player.log is GSPro 4's log: each shot's settings (course type, firmness),
+# altitude and lie penalty are written there, no longer in output_log.txt.
+ALLOWED_GSPRO_FILES = ("currentRound.dat", "output_log.txt", "GSPro.db", "Player.log")
 MAX_RESPONSE_BYTES = 256 * 1024 * 1024
 MAX_CURRENT_ROUND_BYTES = 64 * 1024 * 1024
 FOLDER_CACHE_SECONDS = 15.0

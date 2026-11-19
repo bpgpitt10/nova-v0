@@ -182,22 +182,48 @@ def find_ball_dot(roi: np.ndarray, pin: Pixel, hue: int | None = None) -> Pixel:
 find_red_ball_dot = find_ball_dot
 
 
+#: The pin search looks for circles of a fixed size in pixels, set up on a 4K
+#: screen where the minimap is this wide. Smaller screens are enlarged to it.
+PIN_SEARCH_WIDTH = 565
+
+
+def _pin_candidates(roi: np.ndarray):
+    """GSPro's white pin marker, at any screen size: enlarged to 4K size first, then as it is."""
+    scale = PIN_SEARCH_WIDTH / max(roi.shape[1], 1)
+    if scale >= 1.15:
+        try:
+            enlarged = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+            point = markers.detect_pin_marker(enlarged)
+            yield Pixel(float(point.x) / scale, float(point.y) / scale)
+        except Exception:  # the pin detector raises its own types
+            pass
+    point = markers.detect_pin_marker(roi)
+    yield Pixel(float(point.x), float(point.y))
+
+
+def _ball_under(roi: np.ndarray, pin: Pixel, hue: int | None) -> Pixel:
+    if pin.y > PIN_MAX_DOWN * roi.shape[0]:
+        raise RuntimeError("The white marker is too low on the map to be GSPro's pin")
+    try:
+        return find_ball_dot(roi, pin, hue)
+    except RuntimeError:
+        if hue is None:
+            raise
+        return find_ball_dot(roi, pin)   # the banner was misread or hidden: try every ball colour
+
+
 def find_ball_and_pin(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, Pixel]:
     """Pin and ball as a pair: a white marker in the upper part of the map with a ball dot under it.
 
     A white shape with no ball under it (text, a data tile) is not a minimap.
     """
-    pin_point = markers.detect_pin_marker(roi)
-    pin = Pixel(float(pin_point.x), float(pin_point.y))
-    if pin.y > PIN_MAX_DOWN * roi.shape[0]:
-        raise RuntimeError("The white marker is too low on the map to be GSPro's pin")
-    try:
-        ball = find_ball_dot(roi, pin, hue)
-    except RuntimeError:
-        if hue is None:
-            raise
-        ball = find_ball_dot(roi, pin)   # the banner was misread or hidden: try every ball colour
-    return ball, pin
+    failure: Exception | None = None
+    for pin in _pin_candidates(roi):
+        try:
+            return _ball_under(roi, pin, hue), pin
+        except RuntimeError as error:
+            failure = failure or error
+    raise failure or RuntimeError("Could not detect white pin marker.")
 
 
 def locate_minimap(frame_bgr: np.ndarray, roi=None):
