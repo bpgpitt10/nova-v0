@@ -110,6 +110,8 @@ export type RoundHole = {
   complete: boolean
   /** Shots that don't chain (test re-hits, copied rows). */
   broken: boolean
+  /** Re-hits from the same spot (GSPro mulligans): kept out of the score, as GSPro does. */
+  mulligans: number
   strokes: number
   putts: number
   gir: boolean | null
@@ -149,6 +151,8 @@ export type RoundSummary = {
   counts: boolean
   unknownLieShots: number
   brokenHoles: number
+  /** Mulligans across the round (re-hits GSPro did not count). */
+  mulligans: number
   shotCount: number
 }
 
@@ -322,13 +326,53 @@ const emptyCategories = (): CategoryTotals => ({
   putting: { sg: 0, shots: 0 },
 })
 
+/**
+ * GSPro mulligans. A mulligan leaves two records with the same shot number,
+ * both starting from the same spot; the round carries on from one of them.
+ * Keep the one the next shot was played from (or the one that holed out, or
+ * the later one), and count the rest. Without this the two shots "don't follow
+ * on", the hole is thrown out, and a round with a few mulligans looks like a
+ * test session (a player's first full round, 18 Nov: 7 holes lost to 9 re-hits).
+ */
+export const resolveMulligans = (records: readonly RoundShotRecord[]): { shots: RoundShotRecord[]; mulligans: number } => {
+  const byNumber = new Map<number, RoundShotRecord[]>()
+  records.forEach((record) => {
+    const list = byNumber.get(record.holeShot) ?? []
+    list.push(record)
+    byNumber.set(record.holeShot, list)
+  })
+  const near = (a: WorldPoint | null, b: WorldPoint | null) =>
+    a != null && b != null && horizontalMeters(a, b) <= CHAIN_TOLERANCE_M
+  const numbers = [...byNumber.keys()].sort((a, b) => a - b)
+  const shots: RoundShotRecord[] = []
+  let mulligans = 0
+  numbers.forEach((number, index) => {
+    const candidates = byNumber.get(number) as RoundShotRecord[]
+    // Only re-hits from one spot are mulligans; anything else is left for the chain check to judge.
+    const sameSpot = candidates.length > 1 && candidates.every((candidate) => near(candidate.start, candidates[0].start))
+    if (!sameSpot) {
+      shots.push(...candidates)
+      return
+    }
+    const next = byNumber.get(numbers[index + 1]) ?? []
+    const playedOn = candidates.filter((candidate) =>
+      next.length ? next.some((following) => near(candidate.end, following.start)) : candidate.isHoled)
+    // Records arrive in the order GSPro wrote them, so the last of the choices is the latest hit.
+    const pool = playedOn.length ? playedOn : candidates
+    shots.push(pool[pool.length - 1])
+    mulligans += candidates.length - 1
+  })
+  return { shots, mulligans }
+}
+
 const buildHole = (
   holeNumber: number,
   records: RoundShotRecord[],
   par: number | null,
   autoPutt: boolean,
 ): RoundHole => {
-  const ordered = [...records].sort((a, b) => a.holeShot - b.holeShot)
+  const resolved = resolveMulligans(records)
+  const ordered = [...resolved.shots].sort((a, b) => a.holeShot - b.holeShot)
   const kept: RoundShotRecord[] = []
   let broken = false
   for (const record of ordered) {
@@ -422,6 +466,7 @@ const buildHole = (
     par,
     complete,
     broken,
+    mulligans: resolved.mulligans,
     strokes: complete ? kept.length : shots.length,
     putts,
     gir,
@@ -508,6 +553,7 @@ export const buildRound = (
       0,
     ),
     brokenHoles,
+    mulligans: holes.reduce((sum, hole) => sum + hole.mulligans, 0),
     shotCount: records.length,
   }
   summary.looksLikeTest = roundLooksLikeTest(summary)

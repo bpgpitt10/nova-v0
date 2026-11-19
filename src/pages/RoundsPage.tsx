@@ -744,6 +744,7 @@ function RoundDetail({
     `${round.putts} putts`,
     round.fir.of > 0 ? `${round.fir.hit}/${round.fir.of} fairways` : null,
     round.gir.of > 0 ? `${round.gir.hit}/${round.gir.of} greens` : null,
+    round.mulligans > 0 ? `${round.mulligans} ${round.mulligans === 1 ? 'mulligan' : 'mulligans'} not counted` : null,
   ].filter(Boolean).join(' · ')
 
   return (
