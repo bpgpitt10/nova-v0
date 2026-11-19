@@ -76,3 +76,20 @@ export const rememberRoundConditions = (courseId: string, conditions: RoundCondi
     // remembering is a convenience only
   }
 }
+
+const FAIRWAY_ROLL_KEY = 'looper.fairway-roll-model'
+
+/**
+ * Whether Live Caddie uses the fairway roll model for its outcomes. Off unless
+ * switched on: `?fairwayRoll=on` (or `off`) in the address sets it for this
+ * browser. Off, the model's roll is still shown in the conditions panel.
+ */
+export const fairwayRollModelOn = (): boolean => {
+  try {
+    const asked = new URLSearchParams(window.location.search).get('fairwayRoll')
+    if (asked === 'on' || asked === 'off') window.localStorage.setItem(FAIRWAY_ROLL_KEY, asked)
+    return window.localStorage.getItem(FAIRWAY_ROLL_KEY) === 'on'
+  } catch {
+    return false
+  }
+}

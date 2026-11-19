@@ -93,6 +93,8 @@ const leftRightLie = (value: number | null | undefined) => {
   return `${Math.abs(value).toFixed(1)}° ${value > 0 ? 'LEFT' : 'RIGHT'}`
 }
 
+const FIRMNESS_LABEL = { soft: 'Soft', medium: 'Medium', firm: 'Firm' } as const
+
 function AdjustmentRow({
   label,
   distance,
@@ -338,6 +340,18 @@ export default function ConditionsMathPanel({
             detail={lieDetail}
             muted={!hasLie}
           />
+          {evaluation?.fairwayRoll ? (
+            // Roll for the round's Course Type and Fairway Firmness against the range rollout.
+            <AdjustmentRow
+              label="Roll"
+              distance={signedYards(evaluation.fairwayRoll.predictedYds - evaluation.fairwayRoll.stockYds)}
+              lateral="—"
+              detail={`${FIRMNESS_LABEL[evaluation.fairwayRoll.conditions.courseType]} course, ${FIRMNESS_LABEL[evaluation.fairwayRoll.conditions.fairwayFirmness].toLowerCase()} fairways: `
+                + `${Math.round(evaluation.fairwayRoll.predictedYds)} yd of roll on a level fairway, ${Math.round(evaluation.fairwayRoll.stockYds)} on the range. `
+                + (evaluation.fairwayRoll.applied ? 'Applied.' : 'Preview: not applied yet.')}
+              muted={!evaluation.fairwayRoll.applied}
+            />
+          ) : null}
         </div>
 
         <div className="live-condition-net">

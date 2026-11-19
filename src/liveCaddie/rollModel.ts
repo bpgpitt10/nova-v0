@@ -146,6 +146,12 @@ export const makeRollLandingTransform = (
   hole: CourseHoleGeometry,
   inner?: LandingTransform,
   flight?: DescentFlight | null,
+  /**
+   * The round's course conditions against the range (fairwayRollModel): each
+   * shot's roll is multiplied by this before the surface and slope factors.
+   * Not on the green: the model was measured on fairways only.
+   */
+  fairwayRollScale = 1,
 ): LandingTransform => {
   const resolve = (carryLanding: CoursePointYds, baselineLanding: CoursePointYds): LandingResolution => {
     const rx = baselineLanding[0] - carryLanding[0]
@@ -158,8 +164,9 @@ export const makeRollLandingTransform = (
       return { touchdown: start, rest: inner ? inner(start, rest) : rest }
     }
     const dir: CoursePointYds = [rx / stockRoll, ry / stockRoll]
-    const { surfaceFactor, slopeFactor } = rollFactorAt(hole, start, dir)
-    const roll = stockRoll * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
+    const { surface, surfaceFactor, slopeFactor } = rollFactorAt(hole, start, dir)
+    const conditions = surface === 'green' ? 1 : fairwayRollScale
+    const roll = stockRoll * conditions * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
     const scaled: CoursePointYds = [start[0] + dir[0] * roll, start[1] + dir[1] * roll]
     return { touchdown: start, rest: inner ? inner(start, scaled) : scaled }
   }

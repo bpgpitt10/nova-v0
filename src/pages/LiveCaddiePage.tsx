@@ -59,6 +59,7 @@ import {
   LIVE_CADDIE_START_ROUND_EVENT,
   type LiveCaddieStartRoundDetail,
 } from '../liveCaddie/roundRuntime'
+import { fairwayRollModelOn } from '../liveCaddie/roundConditions'
 import {
   firstTeeCaptureKey,
   isNewLooperRoundForCapture,
@@ -256,6 +257,14 @@ export default function LiveCaddiePage() {
   const [evaluations, setEvaluations] = useState<ClubAimEvaluation[]>([])
   // The player's Quick Bag (handicap + three carries), laid under the range data.
   const quickBagPrior = useQuickBagPrior()
+  // GSPro's Course Type and Fairway Firmness from Start a Round, for the fairway roll model.
+  const [fairwayConditions] = useState(() => {
+    const picked = loadActiveLiveCaddieRound()?.conditions
+    return picked?.courseType && picked.fairwayFirmness
+      ? { courseType: picked.courseType, fairwayFirmness: picked.fairwayFirmness }
+      : null
+  })
+  const [applyFairwayRoll] = useState(() => fairwayRollModelOn())
   const [livePrepared, setLivePrepared] = useState(false)
   const [liveStatus, setLiveStatus] = useState<BrowserGsproCourseStatus>('idle')
   const [liveSnapshot, setLiveSnapshot] = useState<BrowserGsproCourseSnapshot | null>(null)
@@ -1297,6 +1306,8 @@ export default function LiveCaddiePage() {
         lieLeftRightDeg,
         lieSource,
         exactPinLocalYds: trustedLivePin,
+        fairwayConditions,
+        applyFairwayRoll,
         layupPin,
         greenDetail: trustedLivePin && liveSnapshot?.ballSource !== 'world-provisional'
           ? greenDetail : null,
@@ -1342,7 +1353,7 @@ export default function LiveCaddiePage() {
     lieUpDownDeg,
     lieLeftRightDeg,
     lieSource,
-    trustedLivePin, greenDetail, layupPin, quickBagPrior,
+    trustedLivePin, greenDetail, layupPin, quickBagPrior, fairwayConditions, applyFairwayRoll,
   ])
 
   const shotStrategy = hole && !isGreenSurface && !holdFirstTeeRecommendation
