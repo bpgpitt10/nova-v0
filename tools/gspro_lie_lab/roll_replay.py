@@ -304,6 +304,8 @@ LAB_FIELDS = [
     "stored_carry_yd", "stored_roll_yd", "row_id", "sent_at",
     "spot", "note", "lie_surface", "lie_speed_pct", "lie_spin_pct", "lie_vla_pct", "lie_type",
     "start_surface", "start_x", "start_y", "start_z", "moved_from_spot_yd", "log_speed_mph", "log_vla_deg", "log_spin_rpm",
+    "landing_surface", "landing_material", "landing_spin_rpm", "log_course_type", "log_fairway_firmness", "log_green_firmness",
+    "db_carry_yd", "db_total_yd", "db_raw_carry_game_yd", "db_raw_carry_lm_yd", "db_pin_yd",
 ]
 M_TO_FT = 3.280839895
 #: Putt speeds rolled by default, mph off the face.
@@ -351,7 +353,8 @@ def newest_round_record(round_file: Path) -> dict[str, Any] | None:
     candidates: list[Any] = parsed if isinstance(parsed, list) else [
         item for value in (parsed.values() if isinstance(parsed, dict) else []) if isinstance(value, list) for item in value]
     shots = [c for c in candidates if isinstance(c, dict) and c.get("ShotID") and isinstance(c.get("GlobalShotNumber"), (int, float))]
-    return max(shots, key=lambda c: c["GlobalShotNumber"]) if shots else None
+    # Practice re-hits are added with the same shot number: the newest is the last one written.
+    return max(enumerate(shots), key=lambda pair: (pair[1]["GlobalShotNumber"], pair[0]))[1] if shots else None
 
 
 def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
@@ -361,14 +364,20 @@ def measure_landing(record: dict[str, Any] | None) -> dict[str, Any]:
     """
     if not record:
         return {}
-    start, end = _xyz(record.get("StartingPOS")), _xyz(record.get("EndingPOS"))
     shot_data = ((record.get("GhostData") or {}).get("atShotData")) or ((record.get("activeShot") or {}).get("sd")) or {}
+    start = _xyz(record.get("StartingPOS")) or _xyz(shot_data.get("BallStartPos"))
+    end = _xyz(record.get("EndingPOS"))
+    if not end and isinstance(shot_data.get("path"), list) and shot_data["path"]:
+        end = _xyz((shot_data["path"][-1] or {}).get("pos"))  # practice records: the last point of the roll
     landed = _xyz(shot_data.get("tdpoint"))
     row: dict[str, Any] = {
         "row_id": record.get("ShotID"),
         "finish_surface": record.get("EndingSurface"),
         "holed": bool(shot_data.get("isHoled")),
         "gspro_speed_mph": _num((record.get("GhostData") or {}).get("lmfSP"), record.get("BallSpeed")),
+        "landing_surface": shot_data.get("TDmaterial"),
+        "descent_deg": _num(shot_data.get("descentAngle")),
+        "landing_spin_rpm": _num(shot_data.get("finalSpin")),
     }
     if start and landed and end:
         dx, dz = landed[0] - start[0], landed[2] - start[2]
@@ -395,8 +404,10 @@ def record_fingerprint(record: dict[str, Any] | None) -> str | None:
     """
     if not record:
         return None
+    shot_data = ((record.get("GhostData") or {}).get("atShotData")) or ((record.get("activeShot") or {}).get("sd")) or {}
     return json.dumps([record.get("ShotID"), record.get("GlobalShotNumber"), record.get("StartingPOS"),
-                       record.get("EndingPOS"), record.get("BallSpeed"), record.get("TotalDistance")], sort_keys=True, default=str)
+                       record.get("EndingPOS"), record.get("BallSpeed"), record.get("TotalDistance"),
+                       shot_data.get("tdpoint"), shot_data.get("finalSpin")], sort_keys=True, default=str)
 
 
 def wait_for_new_record(round_file: Path, previous: str | None, timeout_s: float, sleep=time.sleep) -> dict[str, Any] | None:
@@ -428,11 +439,16 @@ LOG_LAUNCH_RE = re.compile(r"LaunchExt Vars:\s*sp\s*(-?[\d.]+),\s*el\s*(-?[\d.]+
 LOG_PENALTY_RE = re.compile(
     r"Penalty Surface\s+([A-Za-z_]+)\s*,\s*Spin\s*(\d+(?:\.\d+)?)%\s*,\s*Speed\s*(\d+(?:\.\d+)?)%\s*,\s*VLA\s*(\d+(?:\.\d+)?)%", re.I)
 LOG_TYPE_RE = re.compile(r"corrected type\s+(-?\d+)", re.I)
-LOG_KEEP_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|sand|drop", re.I)
+LOG_PHYSICS_RE = re.compile(r"Physics Settings:\s*Green Firmness\s*(-?\d+)\s*Fairway Firmness\s*(-?\d+)\s*Course Type\s*(-?\d+)", re.I)
+LOG_MATERIAL_RE = re.compile(r"\|\s*material\s+([A-Za-z_]+)", re.I)
+LOG_KEEP_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|sand|drop|physics|friction|shot fired", re.I)
 
 
 def gspro_log() -> Path:
-    return gspro_db().parent / "output_log.txt"
+    """GSPro's log: Player.log on GSPro 4, output_log.txt before it. Whichever was written last."""
+    folder = gspro_db().parent
+    found = [p for p in (folder / "Player.log", folder / "output_log.txt") if p.exists()]
+    return max(found, key=lambda p: p.stat().st_mtime) if found else folder / "Player.log"
 
 
 def log_size(log_file: Path) -> int:
@@ -462,6 +478,10 @@ def lie_from_log(text: str) -> dict[str, Any]:
             row["lie_type"] = int(m[1])
         elif (m := LOG_LAUNCH_RE.search(line)):
             row.update({"log_speed_mph": float(m[1]), "log_vla_deg": float(m[2]), "log_spin_rpm": float(m[4])})
+        elif (m := LOG_PHYSICS_RE.search(line)):
+            row.update({"log_green_firmness": int(m[1]), "log_fairway_firmness": int(m[2]), "log_course_type": int(m[3])})
+        elif "landing_material" not in row and (m := LOG_MATERIAL_RE.search(line)):
+            row["landing_material"] = m[1]  # the first thing the ball hit
     return row
 
 
@@ -486,7 +506,7 @@ def lie_summary(rows: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, Any], round_file: Path, log_file: Path,
+def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, Any], round_file: Path, log_file: Path, db_path: Path,
                 notes_file: Path, gap: float, record_wait: float, first_spot: int = 1, sleep=time.sleep) -> list[dict[str, Any]]:
     """Spot after spot: the player drops the ball and presses Enter, three shots are hit and recorded."""
     rows: list[dict[str, Any]] = []
@@ -502,6 +522,7 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
         for index, (name, shot) in enumerate(lie_shots_for_spot(spot), start=1):
             before_record = record_fingerprint(newest_round_record(round_file))
             before_log = log_size(log_file)
+            before_row = latest_row_safely(db_path)
             sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
             try:
                 status = path.fire(shot)
@@ -514,12 +535,17 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             record = wait_for_new_record(round_file, before_record, record_wait, sleep=sleep)
             log_text = read_log_since(log_file, before_log)
             lie = lie_from_log(log_text)
+            found = wait_for_new_row(db_path, before_row[0] if before_row else None, 3.0, sleep=sleep)
+            data = found[1] if found else {}
+            table = {"db_carry_yd": _num(data.get("Carry")), "db_total_yd": _num(data.get("TotalDistance")),
+                     "db_raw_carry_game_yd": _num(data.get("rawCarryGame")), "db_raw_carry_lm_yd": _num(data.get("rawCarryLM")),
+                     "db_pin_yd": _num(data.get("DistanceToPin"))} if found else {}
             start = _xyz((record or {}).get("StartingPOS"))
             origin = origin or start
             moved = round((((start[0] - origin[0]) ** 2 + (start[2] - origin[2]) ** 2) ** 0.5) * M_TO_YD, 1) if start and origin else None
             row = {"test": "lie", **labels, "spot": spot, "note": typed, "club": name, "n": index, "status": status,
                    "sent_speed_mph": shot["speed"], "sent_vla_deg": shot["vla"], "sent_spin_rpm": shot["spin"], "sent_at": sent_at,
-                   **measure_landing(record), **lie,
+                   **measure_landing(record), **lie, **table,
                    "start_surface": (record or {}).get("StartingSurface"), "moved_from_spot_yd": moved,
                    **({"start_x": round(start[0], 2), "start_y": round(start[1], 2), "start_z": round(start[2], 2)} if start else {})}
             writer.writerow(row)
@@ -535,7 +561,8 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
                 took = f"{lie['lie_surface']}: speed kept {lie['lie_speed_pct']:.0f}%, spin {lie['lie_spin_pct']:.0f}%, launch {lie['lie_vla_pct']:.0f}%"
             else:
                 took = f"no penalty line in GSPro's log (start surface {row.get('start_surface', 'not recorded')})"
-            carry = f"carried {row['carry_yd']:.1f} yd" if row.get("carry_yd") is not None else "carry not recorded"
+            flown = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
+            carry = f"carried {flown:.1f} yd" if flown is not None else "carry not recorded"
             elsewhere = f"  [hit from {moved:g} yd away from the first shot's spot]" if moved and moved > 2 else ""
             print(f"  {name:<16} {took}; {carry}{elsewhere}")
             sleep(gap)
@@ -880,7 +907,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                         print(f"\nNote: GSPro's log was not found at {log_file}. Shots are still recorded, without GSPro's penalty.")
                     notes_file = out.with_name(out.stem + "_log.txt")
                     rows = lie_session(path, read_line, writer, handle.flush, labels=labels, round_file=round_file, log_file=log_file,
-                                       notes_file=notes_file, gap=1.0, record_wait=8.0, first_spot=lie_spots + 1, sleep=sleep)
+                                       db_path=db_path, notes_file=notes_file, gap=1.0, record_wait=8.0, first_spot=lie_spots + 1, sleep=sleep)
                     total += len(rows)
                     lie_spots = max([lie_spots] + [int(row["spot"]) for row in rows])
                     print()
