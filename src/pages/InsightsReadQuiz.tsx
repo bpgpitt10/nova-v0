@@ -100,17 +100,11 @@ const rollLie = (): InsightLie => often<InsightLie>([
 const rollGrass = () => often<(typeof LEVELS)[number]>([[0.35, () => 'soft'], [0.45, () => 'medium'], [0.2, () => 'firm']])
 const rollFirmness = () => often<(typeof LEVELS)[number]>([[0.25, () => 'soft'], [0.5, () => 'medium'], [0.25, () => 'firm']])
 
-/** Conditions that each move the ball a lot. A shot gets two of them at most. */
-const bigOnes = (c: InsightConditions) => [
-  c.windMph >= 13,
-  Math.abs(c.slopeUpDeg) >= 4,
-  Math.abs(c.elevationFt) >= 30,
-  c.altitudeFt >= 3500,
-  c.lie === 'deep-rough',
-].filter(Boolean).length
-
-/** A shot that ends up further than this from normal is drawn again: it stops looking like golf. */
-const MAX_MOVE_YDS = 45
+/**
+ * A shot that ends up further than this from normal is dealt again. Deep rough
+ * alone can cost 30 yards, so this only catches the truly silly stack-ups.
+ */
+const MAX_MOVE_YDS = 60
 
 const makeScenario = (): Scenario => {
   for (let tries = 0; ; tries += 1) {
@@ -126,7 +120,6 @@ const makeScenario = (): Scenario => {
       windMph: rollWind(),
       windFromDeg: Math.round((Math.random() * 360) / 15) * 15,
     }
-    if (bigOnes(conditions) > 2 && tries < 40) continue
     // The pin is wherever this club normally finishes: find the carry first so the ball lands on the green.
     const carryYds = finishOf(INSIGHT_BASELINE, 150, club.swing).carryYds
     const baseYds = Math.round(finishOf(INSIGHT_BASELINE, carryYds + 5, club.swing).totalYds)
