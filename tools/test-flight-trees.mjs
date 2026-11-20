@@ -38,10 +38,13 @@ try {
   assert.equal(flightBlockedAt(stand(115, 150), [0, 0], [0, 240], 38, 30), null)
   assert.equal(flightBlockedAt(stand(115, 150), [0, 0], [0, 240], 38, 12)?.tag, 'trees-mid')
   // Coming down 40-60 yd short of the landing, still below the canopy: trees.
-  assert.equal(flightBlockedAt(stand(180, 200), [0, 0], [0, 240], 38, 30)?.tag, 'trees-mid')
+  assert.equal(flightBlockedAt({ ...stand(180, 200), surfaces: [tee] }, [0, 0], [0, 240], 38, 30)?.tag, 'trees-mid')
   // Trees standing on mapped rough count too (the woods layer, not the surface under it).
   const roughUnder = { id: 'r', kind: 'rough', polygons: [[[-100, 0], [100, 0], [100, 300], [-100, 300]]], provenance: prov }
   assert.equal(flightBlockedAt({ ...boxedIn, surfaces: [tee, fairway, roughUnder] }, [0, 0], [0, 240], 38)?.tag, 'trees-early')
+  // A tree outline over the fairway or green is an outline error: ignored there.
+  const overFairway = { ...boxedIn, contextLayers: [woodsLayer([[[-60, 150], [60, 150], [60, 300], [-60, 300]]])] }
+  assert.equal(flightBlockedAt(overFairway, [0, 0], [0, 240], 38, 30), null)
   // A single 6-yd row is one point, not a stand.
   assert.equal(flightBlockedAt(stand(60, 66), [0, 0], [0, 240], 38, 30), null)
   // The height model: 0 at launch, the peak a little past halfway, 0 at the carry.
