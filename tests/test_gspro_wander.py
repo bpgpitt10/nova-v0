@@ -26,7 +26,8 @@ class FakeDesktop:
             return x + 200, y  # the player picked up the mouse
         return x, y
 
-    def click(self, hwnd, x, y):
+    def move_ball(self, hwnd, button, x, y):
+        self.buttons = getattr(self, "buttons", []) + [button]
         self.clicks.append((x, y))
 
 
@@ -69,6 +70,8 @@ class WanderTests(unittest.TestCase):
         for x, y in desktop.clicks:
             self.assertTrue(left <= x <= right and top <= y <= bottom, (x, y))
         self.assertEqual(len(rows), 18)  # three shots a spot
+        # The move-ball button: top left of GSPro's window.
+        self.assertTrue(all(bx < 0.1 * WINDOW[2] and by < 0.1 * WINDOW[3] for bx, by in desktop.buttons))
         self.assertEqual(rows[0]["slope_up_deg"], 2.0)
         self.assertIn("slope 2.0 up 1.5 left", rows[0]["note"])
 

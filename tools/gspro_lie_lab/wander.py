@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Looper wander: walk the ball around a hole on its own and hit shots from every spot.
 
-In GSPro's On Course practice, clicking the minimap moves the ball there. This
-does that for you: it clicks a new spot on the minimap, reads the slope under
+In GSPro's On Course practice you move the ball by clicking the golf-ball button
+at the top left, then clicking the minimap where it should go. This does that
+for you: it moves the ball to a new spot on the minimap, reads the slope under
 the ball (from the Looper Companion), hits three shots (soft, medium, hard)
 exactly like the "Shots from a lie" test, then moves on. Left alone it keeps
 going until it has done the number of spots you asked for.
@@ -58,6 +59,10 @@ hit_spot, lie_shots_for_spot, newest_round_record = _tool.hit_spot, _tool.lie_sh
 
 #: Where GSPro draws the minimap, as shares of its window (the same boxes Auto Aim uses).
 MINIMAP_BOX = {"right": (0.848, 0.520, 0.995, 0.960), "left": (0.005, 0.520, 0.152, 0.960)}
+#: Practice mode's "move ball" button (the golf ball, second in the toolbar at the top
+#: left), as shares of GSPro's window. Moving the ball is: click this, carry the
+#: pointer over to the minimap, click where the ball should go (Brian, 20 Nov).
+BALL_BUTTON = (0.063, 0.052)  # measured on two of Brian's screenshots: (0.060, 0.049) and (0.066, 0.056)
 #: The part of that box that is map: under its title bar ("Tee ▾"), above the slope
 #: footer, and in from the edges.
 MAP_AREA = (0.10, 0.17, 0.90, 0.88)
@@ -128,14 +133,27 @@ class Desktop:
         self.user32.GetCursorPos(self.ctypes.byref(point))
         return point.x, point.y
 
-    def click(self, hwnd: int, x: int, y: int) -> None:
-        self.user32.SetForegroundWindow(hwnd)
-        time.sleep(0.25)
-        self.user32.SetCursorPos(x, y)
-        time.sleep(0.1)
+    def _press(self) -> None:
         self.user32.mouse_event(0x0002, 0, 0, 0, 0)  # left down
         time.sleep(0.06)
         self.user32.mouse_event(0x0004, 0, 0, 0, 0)  # left up
+
+    def move_ball(self, hwnd: int, button: tuple[int, int], x: int, y: int) -> None:
+        """Click the move-ball button, glide the pointer to (x, y) on the minimap, click there."""
+        self.user32.SetForegroundWindow(hwnd)
+        time.sleep(0.25)
+        self.user32.SetCursorPos(*button)
+        time.sleep(0.15)
+        self._press()
+        time.sleep(0.5)
+        # Glide rather than jump, so GSPro sees the pointer travel onto the map.
+        steps = 15
+        for i in range(1, steps + 1):
+            self.user32.SetCursorPos(round(button[0] + (x - button[0]) * i / steps),
+                                     round(button[1] + (y - button[1]) * i / steps))
+            time.sleep(0.03)
+        time.sleep(0.3)
+        self._press()
 
 
 # ---- Where to click ---------------------------------------------------------------------------
@@ -220,7 +238,9 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             break
         hwnd, window = found
         x, y, why = pick_spot(map_rect(window, side), pin_yd, rng)
-        desktop.click(hwnd, x, y)
+        left, top, right, bottom = window
+        button = (round(left + BALL_BUTTON[0] * (right - left)), round(top + BALL_BUTTON[1] * (bottom - top)))
+        desktop.move_ball(hwnd, button, x, y)
         left_at = (x, y)
         sleep(settle)
         slope = read_lie()
