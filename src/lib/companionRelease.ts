@@ -25,13 +25,30 @@ export type CompanionLatest = Readonly<{
   publishedAt?: string | null
   notes?: string | null
   sizeBytes?: number | null
+  /**
+   * The newest release that matters to play (a bug fix, not a nicety). Anyone
+   * on an older companion gets the red update box, however many small
+   * releases have come out since.
+   */
+  importantRelease?: string | null
+  /** One line: the bug that release fixed. */
+  bugFix?: string | null
+  /** One optional line: what else is new. */
+  feature?: string | null
 }>
 
 const CACHE_KEY = 'looper.companion-latest.v1'
 const CACHE_MS = 60 * 60 * 1000
 let memo: { at: number; latest: CompanionLatest | null } | null = null
 
-const parseLatest = (value: unknown): CompanionLatest | null => {
+/** One short line of plain text, or null. Long text belongs in the release notes. */
+const line = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const text = value.replace(/\s+/g, ' ').trim()
+  return text ? text.slice(0, 160) : null
+}
+
+export const parseLatest = (value: unknown): CompanionLatest | null => {
   if (!value || typeof value !== 'object') return null
   const v = value as Record<string, unknown>
   if (typeof v.release !== 'string' || typeof v.url !== 'string') return null
@@ -43,6 +60,9 @@ const parseLatest = (value: unknown): CompanionLatest | null => {
     publishedAt: typeof v.publishedAt === 'string' ? v.publishedAt : null,
     notes: typeof v.notes === 'string' ? v.notes : null,
     sizeBytes: typeof v.sizeBytes === 'number' ? v.sizeBytes : null,
+    importantRelease: typeof v.importantRelease === 'string' && v.importantRelease.trim() ? v.importantRelease.trim() : null,
+    bugFix: line(v.bugFix),
+    feature: line(v.feature),
   }
 }
 
@@ -110,6 +130,39 @@ export const companionUpdateState = (
   if (compareReleases(installed, latest.minRelease) < 0) return 'needs-update'
   if (compareReleases(installed, latest.release) < 0) return 'update-available'
   return 'current'
+}
+
+export type CompanionUpdateNotice = Readonly<{
+  /** required: Looper no longer works with this companion. important: a bug fix that affects play. */
+  level: 'required' | 'important'
+  installed: string | null
+  release: string
+  bugFix: string | null
+  feature: string | null
+}>
+
+/**
+ * The red update box, or null when a quiet "update available" (or nothing) is
+ * enough. Small releases never raise it; a release marked important does for
+ * everyone still behind it.
+ */
+export const companionUpdateNotice = (
+  installed: string | null | undefined,
+  latest: CompanionLatest | null,
+): CompanionUpdateNotice | null => {
+  if (!latest) return null
+  const required = compareReleases(installed, latest.minRelease) < 0
+  const important = latest.importantRelease != null
+    && compareReleases(installed, latest.importantRelease) < 0
+    && compareReleases(latest.importantRelease, latest.release) <= 0
+  if (!required && !important) return null
+  return {
+    level: required ? 'required' : 'important',
+    installed: installed ?? null,
+    release: latest.release,
+    bugFix: important ? latest.bugFix ?? null : null,
+    feature: important ? latest.feature ?? null : null,
+  }
 }
 
 /** True in a browser on Windows: the companion can be installed on this machine. */

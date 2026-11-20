@@ -481,6 +481,14 @@ jobs:
           $tag = "v$release"
           gh release view $tag --repo $env:COMPANION_RELEASES_REPO *> $null
           if ($LASTEXITCODE -eq 0) { Write-Host "$tag is already published; bump COMPANION_RELEASE to ship a new build."; exit 0 }
+          # Checked before anything is published, so a bad notice can't leave a release half done.
+          $notice = Get-Content helpers/companion-release-notice.json -Raw | ConvertFrom-Json
+          if ($notice.importantRelease -and ([version]$notice.importantRelease -gt [version]$release)) {
+            throw "companion-release-notice.json marks $($notice.importantRelease) as important, but this release is $release."
+          }
+          foreach ($field in @("bugFix", "feature")) {
+            if ($notice.$field -and $notice.$field.Length -gt 160) { throw "$field in companion-release-notice.json is over 160 characters." }
+          }
           $notes = (git log -1 --pretty=%s)
           gh release create $tag LooperCompanionSetup.exe looper-windows-companion.zip `
             --repo $env:COMPANION_RELEASES_REPO `
@@ -498,6 +506,10 @@ jobs:
             publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
             notes = $notes
             source = "nova-v0@$env:GITHUB_SHA"
+            # The red update box on the site (helpers/companion-release-notice.json).
+            importantRelease = $notice.importantRelease
+            bugFix = $notice.bugFix
+            feature = $notice.feature
           } | ConvertTo-Json
           function Put-File($path, $content, $message) {
             $existing = gh api "repos/$env:COMPANION_RELEASES_REPO/contents/$path" --jq .sha 2>$null
