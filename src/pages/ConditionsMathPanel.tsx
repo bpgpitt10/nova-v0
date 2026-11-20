@@ -409,12 +409,9 @@ export default function ConditionsMathPanel({
           // Set apart from the carry factors: it is part of the total, not the carry.
           <div className="live-condition-after-landing">
             <div className="live-condition-row">
-              <span className="live-condition-factor">After it lands</span>
-              {/* The roll itself, not a change: carry plus this is the Total above. */}
-              <strong className="live-condition-distance">
-                {landing.yards < -0.05 ? `back ${Math.abs(landing.yards).toFixed(1)} yd` : `${Math.max(0, landing.yards).toFixed(1)} yd`}
-              </strong>
-              <strong className="live-condition-lateral">—</strong>
+              <span className="live-condition-factor">Expected rollout</span>
+              <strong className="live-condition-distance">{signedYards(landing.yards)}</strong>
+              <strong className="live-condition-lateral" aria-hidden="true" />
               <small>{landing.detail} Carry plus this is the Total.</small>
             </div>
           </div>

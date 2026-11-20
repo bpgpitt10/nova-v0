@@ -564,10 +564,21 @@
   to { transform: rotate(360deg); }
 }
 
-/* After it lands: below the carry factors, set apart, part of the total. */
+/* Expected rollout: its own small box below the carry table, with a clear gap,
+   in a muted green: part of the total, not one of the carry factors. */
 .live-condition-after-landing {
   order: 4;
-  margin-top: 6px;
-  border-top: 1px dashed rgba(234, 179, 8, 0.35);
-  background: rgba(118, 211, 155, 0.05);
+  margin-top: 14px;
+  border: 1px solid rgba(118, 160, 128, 0.28);
+  border-radius: 10px;
+  background: rgba(70, 110, 80, 0.12);
+}
+
+.live-condition-after-landing .live-condition-factor,
+.live-condition-after-landing .live-condition-distance {
+  color: #9fc4a8 !important;
+}
+
+.live-condition-after-landing small {
+  color: #7f9785 !important;
 }
