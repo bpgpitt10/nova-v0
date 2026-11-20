@@ -69,10 +69,10 @@ const PARTS: readonly Part[] = [
             nine settings. A 5 iron ran under a yard on soft Bentgrass and nearly 20 on firm Links.
           </li>
         </ul>
-        <h3>What I do with it</h3>
+        <h3>What to do with it</h3>
         <p>
-          On Bentgrass I fly it to the number. On Bermuda I take a few yards off mid irons and more off long irons. On
-          Links I land anything longer than a 9 iron well short and let it run.
+          On Bentgrass, fly it to the number. On Bermuda, take a few yards off mid irons and more off long irons. On
+          Links, land anything longer than a 9 iron well short and let it run.
         </p>
         <h3>The catch</h3>
         <p>
@@ -121,14 +121,14 @@ const PARTS: readonly Part[] = [
             each other.
           </li>
         </ul>
-        <h3>What I do with it</h3>
+        <h3>What to do with it</h3>
         <p>
-          I build my yardages from carry. Into a green I add the green&rsquo;s release, not the range&rsquo;s. Laying
-          up to a fairway, I add the roll back.
+          Build your yardages from carry. Into a green, add the green&rsquo;s release, not the range&rsquo;s. Laying
+          up to a fairway, add the roll back.
         </p>
         <h3>The catch</h3>
         <p>
-          This is the best case, with the range and the course on the same settings. Practise on one grass type and
+          This is the best case, with the range and the course on the same settings. Practice on one grass type and
           play another and the gap is bigger than anything on this card.
         </p>
         <p className="insights-limits">
@@ -212,11 +212,11 @@ const PARTS: readonly Part[] = [
           or two. Across, the ball starts toward the low side by a similar share, and that adds up fast: a 6&deg; side
           slope sends a 5 iron about 16 yards offline. On the sim, it&rsquo;s the side slope that catches people out.
         </p>
-        <h3>What I do with it</h3>
+        <h3>What to do with it</h3>
         <p>
-          In deep rough I take the club that launches highest and still gets there, not one more than normal: the
-          longer club usually buys nothing. In the rough I plan for the ball to release. On a side slope I aim off
-          before I worry about the distance.
+          In deep rough, take the club that launches highest and still gets there, not one more than normal: the
+          longer club usually buys nothing. In the rough, plan for the ball to release. On a side slope, aim off
+          before you worry about the distance.
         </p>
         <p className="insights-limits">
           Measured in GSPro 4.1.9 from about 330 shots fired from rough, deep rough, sand, first cut, cart path and
