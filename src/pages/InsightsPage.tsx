@@ -99,7 +99,7 @@ const PARTS: readonly Part[] = [
           iron. So the same shot from the rough needs a different number again.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9 from 131 landings at stimp 11 on level greens. Stimp and slope are parts 03 and 04.
+          Measured in GSPro 4.1.9 from 131 landings at stimp 11 on level greens. Stimp is part 03; the slope of your lie is part 06.
         </p>
       </>
     ),
@@ -201,6 +201,69 @@ const PARTS: readonly Part[] = [
     question: 'How do chips react on each green?',
     coming: 'Bump and run, chip, pitch and flop across the grass types.',
   },
+  {
+    id: 'lies',
+    number: '06',
+    name: 'Lies',
+    colour: '#c9a46a',
+    question: 'Your bag stops working in deep rough',
+    caddie: 'Looper reads the lie and its slope from GSPro before every shot, and works out each club from there, not from your fairway numbers.',
+    article: (
+      <>
+        <p className="insights-lead">
+          From the fairway, more club means more distance. From GSPro&rsquo;s deep rough it mostly doesn&rsquo;t. Run what I
+          measured through an 8 iron, a 5 iron and a hybrid and all three carry about 105 yards out of the same deep rough, from clean
+          carries of 146, 182 and 198.
+        </p>
+        <h3>How GSPro handles the lie</h3>
+        <p>
+          GSPro doesn&rsquo;t take a flat percentage off. It takes away some of the ball&rsquo;s speed and some of its
+          spin, and how much depends on how the ball comes off the face. The lower the launch, the more the grass
+          grabs it. That is why the longest clubs suffer most.
+        </p>
+        <ul>
+          <li>
+            <strong>Deep rough is a launch-angle problem.</strong> A high-launching wedge keeps about 80% of its ball
+            speed. A low-launching long iron keeps about 65%. Spin is cut roughly in half either way, so whatever does
+            come out runs on landing.
+          </li>
+          <li>
+            <strong>Rough is a flyer, not a penalty.</strong> It costs a few percent of speed but up to a third of the
+            spin. A 5 iron from the rough carried 12 yards less than from the fairway and finished 2 yards further,
+            because it ran out.
+          </li>
+          <li>
+            <strong>Sand is gentler than you think on full swings.</strong> It takes about 7% of ball speed from a full
+            iron and leaves the spin alone. Slower swings lose more of both.
+          </li>
+          <li>
+            <strong>The first cut barely counts.</strong> About 1.5% of speed and 5% of spin.
+          </li>
+          <li>
+            <strong>The cart path is free</strong>, unless you hit a driver-type shot off it, which loses about a
+            quarter of its speed.
+          </li>
+        </ul>
+        <h3>The slope matters too</h3>
+        <p>
+          A slope under the ball changes the launch, and GSPro shows it only in the flight. Up or down, the launch moves
+          by roughly half to nine-tenths of the slope, more for low-launching clubs, which changes distance by a yard
+          or two. Across, the ball starts toward the low side by a similar share, and that adds up fast: a 6&deg; side
+          slope sends a 5 iron about 16 yards offline. On the sim, it&rsquo;s the side slope that catches people out.
+        </p>
+        <h3>What I do with it</h3>
+        <p>
+          In deep rough I take the club that launches highest and still gets there, not one more than normal: the
+          longer club usually buys nothing. In the rough I plan for the ball to release. On a side slope I aim off
+          before I worry about the distance.
+        </p>
+        <p className="insights-limits">
+          Measured in GSPro 4.1.9 from about 330 shots fired from rough, deep rough, sand, first cut, cart path and
+          sloped lies on four courses.
+        </p>
+      </>
+    ),
+  },
 ]
 
 const OVERVIEW_COLOUR = '#f2e2b8'
@@ -273,7 +336,7 @@ export default function InsightsPage() {
               key={part.id}
               style={colourVar(part.colour)}
             >
-              <span>{part.article ? part.number : `${part.number} · in testing`}</span>
+              <span>{part.article ? part.number : `${part.number} · testing`}</span>
               {part.name}
             </a>
           ))}
@@ -285,7 +348,7 @@ export default function InsightsPage() {
           <p className="insights-eyebrow">Overview</p>
           <h2>The whole picture</h2>
           <div className="insights-open-slot">
-            <strong>Written once all five parts are measured.</strong>
+            <strong>Written once every part is measured.</strong>
             <p>
               Grass type, firmness, stimp, slope, lie and spin each move the number, and they all move it at once.
               This piece will add them up and show why it can&rsquo;t be done as mental maths.
@@ -324,6 +387,16 @@ export default function InsightsPage() {
                   </aside>
                 </article>
               </div>
+            ) : part.article ? (
+              <article className="insights-entry__text insights-entry__text--wide">
+                {part.article}
+                <aside className="insights-caddie">
+                  <p>
+                    <strong>In the live caddie:</strong> {part.caddie}
+                  </p>
+                  <AccountButton colour={part.colour} />
+                </aside>
+              </article>
             ) : (
               <div className="insights-open-slot">
                 <strong>In testing.</strong>

@@ -602,8 +602,8 @@
 
 .insights-tab {
   flex: 1 0 auto;
-  min-width: 132px;
-  padding: 9px 14px 10px;
+  min-width: 112px;
+  padding: 9px 12px 10px;
   border: 1px solid transparent;
   border-radius: 10px;
   font-size: 15px;
@@ -848,6 +848,12 @@
 
 .insights-open-slot p {
   margin: 0;
+}
+
+/* A written part with no card: one readable column. */
+.insights-entry__text--wide {
+  max-width: 760px;
+  margin-top: 24px;
 }
 
 /* ---- Close: the course again, clear of the dark panels ---- */
