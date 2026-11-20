@@ -155,7 +155,8 @@ const windWords = (mph: number, fromDeg: number): ReactNode => {
   const fromRight = Math.sin((fromDeg * Math.PI) / 180)
   const along = into > 0.38 ? 'into' : into < -0.38 ? 'behind' : ''
   const across = fromRight > 0.38 ? 'from right' : fromRight < -0.38 ? 'from left' : ''
-  return <em className="insights-quiz__wind-text">{mph} mph<br />{[along, across].filter(Boolean).join(', ')}</em>
+  // "12 mph into" then "from right": two short lines that fit a narrow tile.
+  return <em className="insights-quiz__wind-text">{mph} mph{along ? ` ${along}` : ''}{across ? <><br />{across}</> : null}</em>
 }
 
 const signed = (value: number) => (Math.round(value) === 0 ? '±0' : `${value > 0 ? '+' : '−'}${Math.abs(Math.round(value))}`)
@@ -223,13 +224,15 @@ export default function InsightsReadQuiz() {
 
   /** The answer, and what each known was worth on the way to it, in the order they are shown. */
   const answer = useMemo(() => {
+    // In the order a player thinks it through over the ball (and the tiles show it):
+    // where it sits, the slope, the flight, then what the green does.
     const layers: { key: string; change: Partial<InsightConditions> }[] = [
-      { key: 'green', change: { grass: conditions.grass, firmness: conditions.firmness } },
       { key: 'surface', change: { lie: conditions.lie } },
       { key: 'lie', change: { slopeUpDeg: conditions.slopeUpDeg, slopeRightDeg: conditions.slopeRightDeg } },
       { key: 'wind', change: { windMph: conditions.windMph, windFromDeg: conditions.windFromDeg } },
       { key: 'altitude', change: { altitudeFt: conditions.altitudeFt } },
       { key: 'elevation', change: { elevationFt: conditions.elevationFt } },
+      { key: 'green', change: { grass: conditions.grass, firmness: conditions.firmness } },
     ]
     let running: InsightConditions = INSIGHT_BASELINE
     let before = finishOf(running, baseYds, club.swing)
@@ -303,16 +306,15 @@ export default function InsightsReadQuiz() {
     setChecked(false)
   }
 
-  const knowns: { key: string; name: string; value: ReactNode }[] = [
-    { key: 'green', name: 'Green', value: `${GRASS[conditions.grass]}, ${conditions.firmness}` },
-    { key: 'stimp', name: 'Stimp', value: `${STIMP}` },
+  const knowns: { key: string; name: ReactNode; value: ReactNode }[] = [
     { key: 'surface', name: 'Surface', value: LIE_NAMES[conditions.lie] },
     { key: 'lie', name: 'Lie', value: slopeText(conditions.slopeUpDeg, conditions.slopeRightDeg) },
     {
       key: 'wind',
-      name: 'Wind',
-      value: (
+      // The arrow sits by the label so the words get the tile's full width.
+      name: (
         <>
+          Wind
           {conditions.windMph > 0 ? (
             <svg aria-hidden="true" className="insights-quiz__wind" viewBox="-12 -12 24 24">
               {/* Up the page is toward the target; the arrow shows where the wind is blowing to. */}
@@ -321,12 +323,14 @@ export default function InsightsReadQuiz() {
               </g>
             </svg>
           ) : null}
-          {windWords(conditions.windMph, conditions.windFromDeg)}
         </>
       ),
+      value: windWords(conditions.windMph, conditions.windFromDeg),
     },
     { key: 'altitude', name: 'Altitude', value: conditions.altitudeFt === 0 ? 'Sea level' : `${conditions.altitudeFt.toLocaleString('en-US')} ft` },
     { key: 'elevation', name: 'Elevation', value: conditions.elevationFt === 0 ? 'Level' : `${Math.round(Math.abs(conditions.elevationFt) / 3)} yd ${conditions.elevationFt > 0 ? 'up' : 'down'}` },
+    { key: 'green', name: 'Green', value: `${GRASS[conditions.grass]}, ${conditions.firmness}` },
+    { key: 'stimp', name: 'Stimp', value: `${STIMP}` },
   ]
 
 

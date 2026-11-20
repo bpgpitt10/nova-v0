@@ -48,11 +48,9 @@
 
 /* ---- Top bar ---- */
 
+/* No bar: the logo and sign-in sit straight on the course, like the opening. */
 .insights-top {
-  background: rgba(5, 11, 7, 0.78);
-  border-bottom: 1px solid rgba(49, 66, 51, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: none;
 }
 
 .insights-top__row {
@@ -83,7 +81,8 @@
 
 .insights-top__nav > a:not(.insights-button) {
   padding: 12px 4px;
-  color: #d8e2d6;
+  color: #e7efe4;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
   text-decoration: none;
 }
 
@@ -279,10 +278,9 @@
 }
 
 .insights-quiz__wind {
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
-  margin-top: 1px;
+  width: 14px;
+  height: 14px;
+  margin: 0 0 -2px 6px;
   color: #8bb8ff;
 }
 
