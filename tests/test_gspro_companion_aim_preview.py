@@ -150,6 +150,26 @@ class AimMathTests(unittest.TestCase):
         self.assertAlmostEqual(ball.x, 245, delta=2)
         self.assertAlmostEqual(ball.y, 860, delta=2)
 
+    def test_a_lit_purple_ball_and_a_white_bunker_beside_the_pin(self):
+        # Payne's Valley, 19 Nov: the purple dot is dark on top, pink below, with a shine;
+        # a white bunker sits beside the green, off the ball's line.
+        frame = np.full((2160, 3840, 3), (40, 110, 50), np.uint8)
+        x0, y0 = int(3840 * aim.RIGHT_MINIMAP_ROI[0]), int(2160 * aim.RIGHT_MINIMAP_ROI[1])
+        bx, by = x0 + 288, y0 + 843
+        cv2.circle(frame, (bx, by), 9, (200, 60, 210), -1, cv2.LINE_AA)             # pink
+        cv2.ellipse(frame, (bx, by), (9, 9), 0, 180, 360, (75, 20, 70), -1)          # dark top half
+        cv2.circle(frame, (bx, by + 2), 3, (240, 220, 245), -1)                      # shine
+        cv2.circle(frame, (x0 + 200, y0 + 200), 9, (255, 255, 255), -1, cv2.LINE_AA)  # bunker
+        cv2.circle(frame, (x0 + 286, y0 + 168), 9, (255, 255, 255), -1, cv2.LINE_AA)  # pin
+        cv2.rectangle(frame, (40, 40), (int(3840 * 0.2), 125), (176, 39, 156), -1)   # purple banner
+        cv2.putText(frame, "Brian", (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+        self.assertAlmostEqual(aim.read_player_colour(frame), 146, delta=4)
+        _crop, _origin, ball, pin, side, _roi = aim.locate_minimap(frame)
+        self.assertEqual(side, "right")
+        self.assertAlmostEqual(ball.x, 288, delta=3)
+        self.assertAlmostEqual(pin.x, 286, delta=3)
+        self.assertAlmostEqual(pin.y, 168, delta=3)
+
     def test_no_minimap_says_so_and_shows_what_it_saw(self):
         img = np.full((H, W, 3), (30, 40, 30), np.uint8)
         x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])

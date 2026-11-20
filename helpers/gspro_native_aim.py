@@ -117,11 +117,11 @@ def read_player_colour(frame_bgr: np.ndarray) -> int | None:
     return int(round((mean * 90.0 / math.pi) % 180)) % 180
 
 
-def _hue_mask(hsv: np.ndarray, hue: int, spread: int = 12) -> np.ndarray:
+def _hue_mask(hsv: np.ndarray, hue: int, spread: int = 12, sat: int = 110, val: int = 120) -> np.ndarray:
     """Vivid pixels within `spread` of this hue (wrapping at red)."""
     low, high = hue - spread, hue + spread
     def band(a, b):
-        return cv2.inRange(hsv, np.array([a, 110, 120]), np.array([b, 255, 255]))
+        return cv2.inRange(hsv, np.array([a, sat, val]), np.array([b, 255, 255]))
     if low < 0:
         return cv2.bitwise_or(band(0, high), band(180 + low, 179))
     if high > 179:
@@ -144,6 +144,19 @@ def find_ball_dot(roi: np.ndarray, pin: Pixel, hue: int | None = None) -> Pixel:
     expected = max(6.0, BALL_DOT_FRACTION * w)
     # With the player's colour known, only a dot of that colour will do.
     masks = [_hue_mask(hsv, hue)] if hue is not None else _ball_colour_masks(hsv)
+    shine = cv2.inRange(hsv[:, :, 2], 170, 255)   # a lit ball's light spot, any colour
+    try:
+        return _best_ball_dot(masks, pin, h, w, expected, shine)
+    except RuntimeError:
+        if hue is None:
+            raise
+    # Some courses (Payne's Valley) draw the dot as a lit ball: its top half is
+    # dark (a purple dot's top is value 71). Look again with dark pixels of the
+    # same strong colour allowed in.
+    return _best_ball_dot([_hue_mask(hsv, hue, spread=16, sat=150, val=55)], pin, h, w, expected, shine)
+
+
+def _best_ball_dot(masks, pin: Pixel, h: int, w: int, expected: float, shine: np.ndarray) -> Pixel:
     contours = [(contour, mask) for mask in masks
                 for contour in cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]]
     best: tuple[float, Pixel] | None = None
@@ -161,13 +174,14 @@ def find_ball_dot(roi: np.ndarray, pin: Pixel, hue: int | None = None) -> Pixel:
             continue
         cx, cy = m["m10"] / m["m00"], m["m01"] / m["m00"]
         # A dot is solid: it fills its own outline and its box as a disc does (0.79).
-        # The letter "o" in on-screen text is a ring and fails both. A small shine
-        # can sit right in the middle of the dot (Payne's Valley, 19 Nov), so the
-        # test is how much of the outline is filled, not the one middle pixel.
+        # The letter "o" in on-screen text is a ring and fails both. A shine can sit
+        # right in the middle of the dot (Payne's Valley, 19 Nov), so the test is how
+        # much of the outline is the dot's colour or bright; an "o" has dark grass inside.
         outline = np.zeros((ch, cw), np.uint8)
         cv2.drawContours(outline, [contour], -1, 255, -1, offset=(-x, -y))
         inside = cv2.countNonZero(outline)
-        if not inside or cv2.countNonZero(cv2.bitwise_and(outline, mask[y:y + ch, x:x + cw])) < 0.85 * inside:
+        if not inside or cv2.countNonZero(cv2.bitwise_and(outline, cv2.bitwise_or(
+                mask[y:y + ch, x:x + cw], shine[y:y + ch, x:x + cw]))) < 0.85 * inside:
             continue
         if cv2.countNonZero(mask[y:y + ch, x:x + cw]) < 0.62 * cw * ch:
             continue
@@ -190,11 +204,15 @@ find_red_ball_dot = find_ball_dot
 #: The pin search looks for circles of a fixed size in pixels, set up on a 4K
 #: screen where the minimap is this wide. Smaller screens are enlarged to it.
 PIN_SEARCH_WIDTH = 565
+#: Where GSPro draws the pin (18-22% down every capture) and how far either side
+#: of the ball's line to look for it, as shares of the minimap.
+PIN_TYPICAL_DOWN = 0.19
+PIN_STRIP_HALF_WIDTH = 0.08
 
 
-def _pin_candidates(roi: np.ndarray):
+def _pin_candidates(roi: np.ndarray, minimap_width: int | None = None):
     """GSPro's white pin marker, at any screen size: enlarged to 4K size first, then as it is."""
-    scale = PIN_SEARCH_WIDTH / max(roi.shape[1], 1)
+    scale = PIN_SEARCH_WIDTH / max(minimap_width or roi.shape[1], 1)
     if scale >= 1.15:
         try:
             enlarged = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
@@ -217,18 +235,55 @@ def _ball_under(roi: np.ndarray, pin: Pixel, hue: int | None) -> Pixel:
         return find_ball_dot(roi, pin)   # the banner was misread or hidden: try every ball colour
 
 
+def _lined_up(ball: Pixel, pin: Pixel) -> bool:
+    return abs(ball.x - pin.x) <= MAX_ALIGNMENT_RATIO * max(ball.y - pin.y, 1.0)
+
+
+def _pin_above(roi: np.ndarray, ball: Pixel) -> Pixel:
+    """The pin, looked for only in a strip straight above the ball, where GSPro always draws it.
+
+    Light sand bunkers round a green can outshine a shaded pin (Payne's Valley);
+    off this strip they are never considered.
+    """
+    h, w = roi.shape[:2]
+    half = max(12, int(PIN_STRIP_HALF_WIDTH * w))
+    x0, x1 = max(0, int(ball.x) - half), min(w, int(ball.x) + half)
+    strip = roi[: int(PIN_MAX_DOWN * h), x0:x1]
+    failure: Exception | None = None
+    for pin in _pin_candidates(strip, minimap_width=w):
+        pin = Pixel(pin.x + x0, pin.y)
+        if _lined_up(ball, pin):
+            return pin
+        failure = failure or RuntimeError("The white marker above the ball is not in line with it")
+    raise failure or RuntimeError("Could not detect white pin marker.")
+
+
 def find_ball_and_pin(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, Pixel]:
     """Pin and ball as a pair: a white marker in the upper part of the map with a ball dot under it.
 
     A white shape with no ball under it (text, a data tile) is not a minimap.
+    First the pin, then the ball under it; if that gives no pair in line the way
+    GSPro draws it, the ball first (its colour is known), then the pin above it.
     """
     failure: Exception | None = None
+    unaligned: tuple[Pixel, Pixel] | None = None
     for pin in _pin_candidates(roi):
         try:
-            return _ball_under(roi, pin, hue), pin
+            ball = _ball_under(roi, pin, hue)
         except RuntimeError as error:
             failure = failure or error
-    raise failure or RuntimeError("Could not detect white pin marker.")
+            continue
+        if _lined_up(ball, pin):
+            return ball, pin
+        unaligned = unaligned or (ball, pin)
+    try:
+        h, w = roi.shape[:2]
+        ball = _ball_under(roi, Pixel(w / 2.0, PIN_TYPICAL_DOWN * h), hue)
+        return ball, _pin_above(roi, ball)
+    except RuntimeError as error:
+        if unaligned is not None:
+            return unaligned   # the page's alignment check says what is wrong
+        raise failure or error
 
 
 def locate_minimap(frame_bgr: np.ndarray, roi=None):
