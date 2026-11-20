@@ -52,6 +52,23 @@ class AnalysisTests(unittest.TestCase):
                                                    "green shot swung too hard (old Wander)", "not taken (no carry)"})
         self.assertIn("Left out", text)
 
+    def test_a_shot_that_clipped_leaves_is_left_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "looper_lab_x.csv"
+            rows = [shot(0, sent_at="2026-11-20T15:06:34", spot=18, club="soft 70"),
+                    shot(1, sent_at="2026-11-20T15:06:42", spot=18, club="mid 105")]
+            with open(path, "w", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=FIELDS + ["sent_at"])
+                writer.writeheader()
+                writer.writerows(rows)
+            path.with_name("looper_lab_x_log.txt").write_text(
+                "--- spot 18 shot 1 (soft 70) 2026-11-20T15:06:34 note: wander\n* Shot Fired *\n"
+                "Bush penalty applied\n** Leaves hitTime, 0.53 , HitCount 1, Penalty 34.0%\n"
+                "--- spot 18 shot 1 (mid 105) 2026-11-20T15:06:42 note: wander\n* Shot Fired *\n")
+            result, kept = aw.analyse(aw.load([path]))
+        self.assertEqual(result["left_out"], {"clipped leaves or a bush in flight": 1})
+        self.assertEqual([r["shot"] for r in kept], ["mid 105"])
+
     def test_driver_off_the_tee_is_kept(self):
         _, result, kept, _ = self.run_rows([shot(0, club="Driver off the tee", aim="tee", start_surface=18, sent_speed_mph=143.8)])
         self.assertEqual(result["kept"], 1)

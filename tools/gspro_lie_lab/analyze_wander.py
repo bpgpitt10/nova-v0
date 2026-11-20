@@ -124,6 +124,27 @@ def altitude_ft(csv_path: Path) -> float | None:
     return float(found.most_common(1)[0][0]) if found else None
 
 
+LOG_SHOT_RE = re.compile(r"^--- spot (\d+) shot \d+ \((.*)\) (\S+)")
+FOLIAGE_RE = re.compile(r"Leaves hitTime|Bush penalty", re.I)
+
+
+def foliage_hits(csv_path: Path) -> set[tuple[str, str, str]]:
+    """Shots that clipped leaves or a bush in flight (GSPro: "Leaves hitTime ... Penalty 34%"):
+    (spot, shot name, time sent), from the log beside the CSV."""
+    log = csv_path.with_name(csv_path.stem + "_log.txt")
+    hits: set[tuple[str, str, str]] = set()
+    if not log.exists():
+        return hits
+    current = None
+    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+        found = LOG_SHOT_RE.match(line)
+        if found:
+            current = (found[1], found[2], found[3][:19])
+        elif current and FOLIAGE_RE.search(line):
+            hits.add(current)
+    return hits
+
+
 def setting(row: dict[str, Any], log_key: str, text_key: str | None) -> int | None:
     value = num(row.get(log_key))
     if value is not None:
@@ -140,6 +161,7 @@ def load(paths: Iterable[Path]) -> list[dict[str, Any]]:
         files = sorted(path.glob("looper_lab_*.csv")) if path.is_dir() else [path]
         for file in files:
             altitude = altitude_ft(file)
+            leaves = foliage_hits(file)
             with open(file, newline="", encoding="utf-8-sig") as handle:
                 for raw in csv.DictReader(handle):
                     if raw.get("test") not in ("wander", "lie"):
@@ -148,7 +170,8 @@ def load(paths: Iterable[Path]) -> list[dict[str, Any]]:
                     if key in seen:
                         continue
                     seen.add(key)
-                    rows.append(derive({**raw, "source_file": file.name, "altitude_ft": altitude}))
+                    clipped = (str(raw.get("spot")), str(raw.get("club")), str(raw.get("sent_at") or "")[:19]) in leaves
+                    rows.append(derive({**raw, "source_file": file.name, "altitude_ft": altitude, "clipped_foliage": clipped}))
     return rows
 
 
@@ -194,6 +217,8 @@ def why_left_out(row: dict[str, Any]) -> str | None:
         return "hit from water"
     if row["landed_on"] == "trees" or row["finished_on"] == "trees":
         return "into the trees"
+    if row.get("clipped_foliage"):
+        return "clipped leaves or a bush in flight"
     if "water" in (row["landed_on"], row["finished_on"]):
         return "into water"
     if "no surface" in (row["lie"], row["landed_on"], row["finished_on"]):
