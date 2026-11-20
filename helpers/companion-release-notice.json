@@ -1,6 +1,6 @@
 {
   "_how": "Published with each companion release, for the red update box on thelooper.golf. importantRelease: the newest release with a bug fix that affects play; everyone on an older companion gets the box. Leave it alone for a small release. bugFix and feature: one short line each (160 characters at most); the rest goes in the GitHub release notes. null importantRelease: no box.",
-  "importantRelease": null,
-  "bugFix": null,
-  "feature": null
+  "importantRelease": "1.1.0",
+  "bugFix": "Auto Aim now works with GSPro's minimap on the left, and on courses like Payne's Valley that draw shaded ball and pin markers.",
+  "feature": "Voice arming: say \"Looper, three wood\" to arm a club. Looper also reads GSPro's green, fairway and course type settings each shot."
 }

@@ -26,9 +26,9 @@ WINDOW = {
 BALL, PIN, TARGET = (100.0, 50.0), (100.0, 250.0), (110.0, 200.0)
 
 
-def frame_with(ball_px=(140, 400), pin_px=(140, 60), marker=None):
+def frame_with(ball_px=(140, 400), pin_px=(140, 60), marker=None, ball_bgr=(0, 0, 235)):
     frame = np.full((H, W, 3), (40, 110, 50), np.uint8)
-    cv2.circle(frame, (X0 + ball_px[0], Y0 + ball_px[1]), 5, (0, 0, 235), -1)
+    cv2.circle(frame, (X0 + ball_px[0], Y0 + ball_px[1]), 5, ball_bgr, -1)
     cv2.circle(frame, (X0 + pin_px[0], Y0 + pin_px[1]), 5, (255, 255, 255), -1)
     if marker is not None:
         x, y = int(round(X0 + marker[0])), int(round(Y0 + marker[1]))
@@ -77,6 +77,16 @@ class AimClickTests(unittest.TestCase):
         result, _ = run([frame_with(), frame_with()])
         self.assertEqual(result["verified"], "marker-not-seen")
 
+    def test_a_purple_ball_is_not_mistaken_for_the_aim_marker(self):
+        # Farmlinks, 19 Nov: a purple ball is the reticle's colour and read as "285 px off".
+        purple = (200, 40, 190)
+        preview = aim.aim_preview(frame_with(ball_bgr=purple), ball_world=BALL, pin_world=PIN, target_world=TARGET)
+        target = preview["minimap"]["target"]
+        result, _ = run([frame_with(ball_bgr=purple), frame_with(ball_bgr=purple, marker=target)])
+        self.assertEqual(result["verified"], "match", result)
+        result, _ = run([frame_with(ball_bgr=purple), frame_with(ball_bgr=purple)])
+        self.assertEqual(result["verified"], "marker-not-seen", result)
+
     def test_never_clicks_when_a_check_fails(self):
         cases = [
             ({"window": {**WINDOW, "status": "waiting"}}, "gspro-not-connected"),
@@ -89,14 +99,22 @@ class AimClickTests(unittest.TestCase):
             self.assertEqual((result["status"], result["reason"]), ("blocked", reason), kwargs)
             self.assertEqual(clicks, [])
         # Ball and pin dots not lined up the way GSPro draws them.
-        result, clicks = run([frame_with(ball_px=(40, 400), pin_px=(240, 60))])
+        result, clicks = run([frame_with(ball_px=(104, 400), pin_px=(140, 60))])
         self.assertEqual(result["reason"], "minimap-not-aligned")
+        self.assertEqual(clicks, [])
+        # A dot nowhere near the pin's line is not the ball: the map is not read at all.
+        result, clicks = run([frame_with(ball_px=(40, 400), pin_px=(240, 60))])
+        self.assertEqual(result["reason"], "minimap-not-read")
         self.assertEqual(clicks, [])
         # No dots at all (minimap hidden): nothing to anchor on.
         blank = np.full((H, W, 3), (40, 110, 50), np.uint8)
         result, clicks = run([blank])
         self.assertEqual(result["reason"], "minimap-not-read")
         self.assertEqual(clicks, [])
+        # Both sides' reasons reach the page (Payne's, 19 Nov: the left one was cut off),
+        # with the crop Looper looked at.
+        self.assertRegex(result["detail"], r"right: \w.*; left: \w")
+        self.assertTrue(result.get("seenPng"))
 
     def test_click_failure_is_reported(self):
         def failing(plan, *, latest_window, allow_native_input):

@@ -33,6 +33,8 @@ import gspro_live_observations as observations  # read-only diagnostic; no deskt
 import gspro_native_lie_ocr as native_lie
 import gspro_native_wind_ocr as native_wind  # HWND-only wind OCR; no desktop screenshot
 import gspro_file_bridge as file_bridge  # read-only GSPro files + round recorder
+import looper_voice as voice  # EXPERIMENTAL: local voice commands; reports only, no input
+import gspro_hotkeys as hotkeys  # EXPERIMENTAL: one named GSPro shortcut per request
 
 base = lie_footer.base
 COMPANION_VERSION = "courses.10"
@@ -40,7 +42,7 @@ COMPANION_VERSION = "courses.10"
 # the release workflow publishes v<COMPANION_RELEASE> to the public releases
 # repo and writes latest.json, which the web app compares with the running
 # companion's "release" to show "update available" / "needs update".
-COMPANION_RELEASE = "1.0.7"
+COMPANION_RELEASE = "1.1.0"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
@@ -65,6 +67,16 @@ COMPANION_READ_PATHS = (
     COMPANION_OBSERVATIONS_PATH,
     COMPANION_COURSE_LAYOUTS_PATH,
 )
+
+# EXPERIMENTAL voice commands: what the microphone heard after a wake word.
+COMPANION_VOICE_PATH = "/companion/v1/voice"
+COMPANION_READ_PATHS = (*COMPANION_READ_PATHS, COMPANION_VOICE_PATH)
+# EXPERIMENTAL: press one of GSPro's own shortcuts (flyover, scorecard...).
+# POST only, explicit intent header, allowlisted Origin: the aim-click rules.
+COMPANION_GSPRO_KEY_PATH = "/companion/v1/gspro-key"
+GSPRO_KEY_INTENT = "gspro-key"
+GSPRO_KEY_LOCK = threading.Lock()
+LAST_GSPRO_KEY_AT = float("-inf")
 
 EXACT_ALLOWED_ORIGINS = frozenset({
     "https://thelooper.golf",
@@ -196,18 +208,53 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
             self.headers.get("Origin")
         )
 
-    def _aim_click_authorized(self) -> bool:
+    def _input_authorized(self, intent: str) -> bool:
         """Stricter than reads: a real allowlisted Origin (no header-less
         callers), JSON body, and the explicit intent header, which also forces
-        a CORS preflight so no other site can trigger a click."""
+        a CORS preflight so no other site can trigger input."""
         origin = self.headers.get("Origin")
         return (
             self._is_loopback_host()
             and origin is not None
             and is_allowed_origin(origin)
             and (self.headers.get("Content-Type") or "").split(";")[0].strip() == "application/json"
-            and self.headers.get("X-Looper-Intent") == AIM_CLICK_INTENT
+            and self.headers.get("X-Looper-Intent") == intent
         )
+
+    def _aim_click_authorized(self) -> bool:
+        return self._input_authorized(AIM_CLICK_INTENT)
+
+    def _handle_gspro_key(self) -> None:
+        """EXPERIMENTAL: one named GSPro shortcut (never an arbitrary key)."""
+        cors = {"methods": "POST, OPTIONS", "headers": "Content-Type, X-Looper-Intent"}
+        if not self._input_authorized(GSPRO_KEY_INTENT):
+            self._send_companion(403, {"error": "origin_or_intent_forbidden"}, **cors)
+            return
+        base_payload = {"service": "looper-companion", "version": COMPANION_VERSION,
+                        "schemaVersion": hotkeys.SCHEMA_VERSION}
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        try:
+            if not 0 < length <= 256:
+                raise ValueError("length")
+            name = json.loads(self.rfile.read(length).decode("utf-8")).get("key")
+        except (ValueError, AttributeError, UnicodeDecodeError):
+            self._send_companion(200, {**base_payload, "status": "blocked", "reason": "invalid-request"}, **cors)
+            return
+        global LAST_GSPRO_KEY_AT
+        with GSPRO_KEY_LOCK:
+            if time.monotonic() - LAST_GSPRO_KEY_AT < hotkeys.MIN_INTERVAL_S:
+                result = {"status": "blocked", "reason": "too-soon"}
+            else:
+                try:
+                    result = hotkeys.press_hotkey(name, find_window=native.find_gspro_window)
+                except Exception as error:  # never let an input request crash the server
+                    result = {"status": "blocked", "reason": "unavailable", "detail": type(error).__name__}
+                if result.get("status") == "sent":
+                    LAST_GSPRO_KEY_AT = time.monotonic()
+        self._send_companion(200, {**base_payload, **result}, **cors)
 
     def _handle_aim_click(self) -> None:
         if not self._aim_click_authorized():
@@ -256,7 +303,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         reply(result)
 
     def do_OPTIONS(self) -> None:
-        if urlsplit(self.path).path == COMPANION_AIM_CLICK_PATH:
+        if urlsplit(self.path).path in (COMPANION_AIM_CLICK_PATH, COMPANION_GSPRO_KEY_PATH):
             if not (self._is_loopback_host() and self.headers.get("Origin")
                     and is_allowed_origin(self.headers.get("Origin"))):
                 self._send_companion(403, {"error": "origin_or_host_forbidden"})
@@ -304,6 +351,8 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     "aimPreview": True,
                     "courseLibrary": True,
                     "gsproFiles": True,
+                    # GSPro 4's Player.log: settings, altitude and lie penalty per shot.
+                    "playerLog": True,
                     "roundRecorder": ROUND_RECORDER is not None,
                     "roundPars": ROUND_RECORDER is not None,
                     "nativeCapture": False,
@@ -311,8 +360,25 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                     # is one minimap click per explicit Arm (aim-click).
                     "autoAim": False,
                     "aimClick": True,
+                    "voice": voice.available(),
+                    "gsproKeys": sorted(hotkeys.HOTKEYS),
                 },
             })
+            return
+        if urlsplit(self.path).path == COMPANION_VOICE_PATH:
+            if not self._companion_authorized():
+                self._send_companion(403, {"error": "origin_or_host_forbidden"})
+                return
+            query = parse_qs(urlsplit(self.path).query)
+            clubs_raw = (query.get("clubs") or [None])[0]
+            payload = voice.LISTENER.poll(
+                _query_int(query, "since"),
+                listen=(query.get("listen") or ["1"])[0] != "0",
+                clubs=None if clubs_raw is None else frozenset(
+                    club for club in clubs_raw.split(",") if club and len(club) <= 12),
+            )
+            payload["version"] = COMPANION_VERSION
+            self._send_companion(200, payload)
             return
         if urlsplit(self.path).path == COMPANION_CAPTURE_PATH:
             if not self._companion_authorized():
@@ -425,8 +491,10 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 )
                 self._send_companion(200, {**base_payload, **result})
             except Exception as error:
+                # `seenPng`: what Looper looked at, so a wrong crop is visible on the page.
                 self._send_companion(200, {**base_payload, "status": "unavailable",
-                                           "reason": str(error)[:160]})
+                                           "reason": str(error)[:240],
+                                           "seenPng": getattr(error, "seen", None)})
             return
         if urlsplit(self.path).path == COMPANION_COURSE_LAYOUTS_PATH:
             if not self._companion_authorized():
@@ -483,6 +551,9 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
         if urlsplit(self.path).path == COMPANION_AIM_CLICK_PATH:
             self._handle_aim_click()
             return
+        if urlsplit(self.path).path == COMPANION_GSPRO_KEY_PATH:
+            self._handle_gspro_key()
+            return
         if urlsplit(self.path).path.startswith("/companion/"):
             self._send_companion(405, {"error": "actuation_not_implemented"})
             return
@@ -511,6 +582,10 @@ def start_round_recorder() -> "threading.Event":
 
 
 if __name__ == "__main__":
+    import sys
+
+    if voice.run_selftest_cli(sys.argv):
+        sys.exit(0)
     start_round_recorder()
     # Force loopback even if OPEN_GOLF_COACH_HOST is overridden.
     server = base.ThreadingHTTPServer(("127.0.0.1", base.PORT), LooperCompanionHandler)
