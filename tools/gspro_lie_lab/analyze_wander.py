@@ -109,12 +109,37 @@ def pin_from_spot_yd(row: dict[str, Any]) -> float | None:
     return None
 
 
+TYPE_NAMES = {0: "Bentgrass", 1: "Bermuda", 2: "Links"}  # GSPro's Course Type: soft, medium, firm
+FIRM_NAMES = {0: "soft", 1: "medium", 2: "firm"}
+TEXT_LEVEL = {"soft": 0, "medium": 1, "firm": 2}
+LOG_ALTITUDE_RE = re.compile(r"\|\s*elevation\s+(-?\d+)")
+
+
+def altitude_ft(csv_path: Path) -> float | None:
+    """The course's altitude: GSPro writes it on every impact line of its log ("| elevation 545")."""
+    log = csv_path.with_name(csv_path.stem + "_log.txt")
+    if not log.exists():
+        return None
+    found = Counter(int(m) for m in LOG_ALTITUDE_RE.findall(log.read_text(encoding="utf-8", errors="replace")))
+    return float(found.most_common(1)[0][0]) if found else None
+
+
+def setting(row: dict[str, Any], log_key: str, text_key: str | None) -> int | None:
+    value = num(row.get(log_key))
+    if value is not None:
+        return int(value)
+    if text_key:
+        return TEXT_LEVEL.get(str(row.get(text_key) or "").strip().lower())
+    return None
+
+
 def load(paths: Iterable[Path]) -> list[dict[str, Any]]:
     """Every Wander and lie test row from the CSVs, once each (a shot can be in two exports)."""
     rows, seen = [], set()
     for path in paths:
         files = sorted(path.glob("looper_lab_*.csv")) if path.is_dir() else [path]
         for file in files:
+            altitude = altitude_ft(file)
             with open(file, newline="", encoding="utf-8-sig") as handle:
                 for raw in csv.DictReader(handle):
                     if raw.get("test") not in ("wander", "lie"):
@@ -123,7 +148,7 @@ def load(paths: Iterable[Path]) -> list[dict[str, Any]]:
                     if key in seen:
                         continue
                     seen.add(key)
-                    rows.append(derive({**raw, "source_file": file.name}))
+                    rows.append(derive({**raw, "source_file": file.name, "altitude_ft": altitude}))
     return rows
 
 
@@ -136,7 +161,15 @@ def derive(row: dict[str, Any]) -> dict[str, Any]:
     distance = pin_from_spot_yd(row)
     sent = num(row.get("sent_speed_mph"))
     club = club_of(name)
+    course_type = setting(row, "log_course_type", "course_type")
+    fairway = setting(row, "log_fairway_firmness", "fairway_firmness")
+    green = setting(row, "log_green_firmness", "green_firmness")
     return {**row,
+            "course_type": TYPE_NAMES.get(course_type) if course_type is not None else None,
+            "fairway_setting": f"{TYPE_NAMES[course_type]} {FIRM_NAMES[fairway]}"
+            if course_type in TYPE_NAMES and fairway in FIRM_NAMES else None,
+            "green_setting": f"{TYPE_NAMES[course_type]} {FIRM_NAMES[green]}"
+            if course_type in TYPE_NAMES and green in FIRM_NAMES else None,
             "shot": name, "club_group": club, "aim": aim_of(row), "lie": start_lie(row),
             "landed_on": MATERIALS.get(str(row.get("landing_material") or ""), surface(row.get("landing_surface")) or "unknown"),
             "finished_on": surface(row.get("finish_surface")) or "unknown",
@@ -304,6 +337,97 @@ def elevation(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"fit": fit, "bands": bands, "n": len(clean)}
 
 
+# ---- Coverage: is the data set complete? -----------------------------------------------------
+
+SETTINGS = [f"{t} {f}" for t in TYPE_NAMES.values() for f in FIRM_NAMES.values()]
+LAUNCH_BANDS = ["under 10°", "10–15°", "15–20°", "20–25°", "25°+"]
+SPEED_CLASSES = ["Woods and hybrids", "Long and mid irons", "Short irons", "Wedges"]
+DROP_BANDS = ["60 ft+ below", "20–60 ft below", "5–20 ft below", "Level (±5 ft)", "5–20 ft above", "20–60 ft above", "60 ft+ above"]
+STANCE_BANDS = ["4°+ down", "2–4° down", "Level (±2°)", "2–4° up", "4°+ up"]
+SIDE_BANDS = ["4°+ left", "2–4° left", "Level (±2°)", "2–4° right", "4°+ right"]
+ALTITUDE_BANDS = ["Under 250 ft", "250–1,000 ft", "1,000–2,500 ft", "2,500–4,000 ft", "4,000 ft+"]
+ROLL_SLOPE_BANDS = ["Down 2 ft+", "Down 6–24 in", "Level (±6 in)", "Up 6–24 in", "Up 2 ft+"]
+CLEAN_LIES = ("fairway", "tee")
+
+
+def pick(value: float | None, edges: list[float], names: list[str]) -> str | None:
+    """`edges` are the inner boundaries between len(names) bands, low to high."""
+    if value is None:
+        return None
+    for edge, name in zip(edges, names):
+        if value < edge:
+            return name
+    return names[-1]
+
+
+def speed_class(row: dict[str, Any]) -> str | None:
+    """Ball speed sorts every shot, the lie test's own ones too, into a club family."""
+    return pick(num(row.get("sent_speed_mph")), [90, 110, 130], SPEED_CLASSES[::-1])
+
+
+def coverage(kept: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Every cell of every grid we want filled, with how many shots it has and how many it needs."""
+    cells: list[dict[str, Any]] = []
+
+    def grid(group: str, rows_: list[str], cols: list[str], target: Any, key, note: str = "") -> None:
+        counts: Counter = Counter()
+        for row in kept:
+            found = key(row)
+            if found and found[0] in rows_ and found[1] in cols:
+                counts[found] += 1
+        for i, r in enumerate(rows_):
+            for j, c in enumerate(cols):
+                need = target(r) if callable(target) else target
+                cells.append({"group": group, "row": r, "row_order": i, "col": c, "col_order": j,
+                              "n": counts[(r, c)], "target": need, "note": note})
+
+    penalty_lies = ["semi-rough", "rough", "deep rough", "sand", "pine straw", "path"]
+    grid("Lie penalty by launch", ["fairway"] + penalty_lies, LAUNCH_BANDS, 4,
+         lambda r: (r["lie"], pick(r["launch"], [10, 15, 20, 25], LAUNCH_BANDS))
+         if r["lie"] == "fairway" or r["speed_kept"] is not None else None)
+    grid("Lie penalty by course type", penalty_lies[:4], list(TYPE_NAMES.values()), 5,
+         lambda r: (r["lie"], r["course_type"]) if r["speed_kept"] is not None else None)
+    grid("Roll by setting", ["fairway", "green", "semi-rough", "rough", "deep rough", "sand"], SETTINGS,
+         lambda landed: 20 if landed in ("fairway", "green") else 6,
+         lambda r: (r["landed_on"], r["green_setting"] if r["landed_on"] == "green" else r["fairway_setting"])
+         if r["roll"] is not None else None, "Green rows use the green firmness, the rest the fairway firmness.")
+    grid("Tee shots by setting", ["Driver", "3W", "3H"], SETTINGS, 3,
+         lambda r: (r["club_group"], r["fairway_setting"]) if r["aim"] == "tee" or r["lie"] == "tee" else None)
+    grid("Elevation change", SPEED_CLASSES, DROP_BANDS, 5,
+         lambda r: (speed_class(r), pick(r["drop_ft"], [-60, -20, -5, 5, 20, 60], DROP_BANDS))
+         if r["lie"] in CLEAN_LIES and r["speed_kept"] is None else None,
+         "Fairway and tee only, so the lie doesn't mix in.")
+    grid("Stance slope", STANCE_BANDS, SIDE_BANDS, 5,
+         lambda r: (pick(num(r.get("slope_up_deg")), [-4, -2, 2, 4], STANCE_BANDS),
+                    pick(num(r.get("slope_right_deg")), [-4, -2, 2, 4], SIDE_BANDS))
+         if r.get("slope_read") == "companion" else None, "From the companion's slope read at each spot.")
+    grid("Course altitude", ALTITUDE_BANDS, SPEED_CLASSES, 8,
+         lambda r: (pick(r.get("altitude_ft"), [250, 1000, 2500, 4000], ALTITUDE_BANDS), speed_class(r))
+         if r["lie"] in CLEAN_LIES and r["speed_kept"] is None else None,
+         "Altitude from GSPro's log, so send the log with each CSV.")
+    grid("Landing slope", ["fairway", "green"], ROLL_SLOPE_BANDS, 6,
+         lambda r: (r["landed_on"], pick(num(r.get("roll_height_change_in")), [-24, -6, 6, 24], ROLL_SLOPE_BANDS))
+         if r["roll"] is not None else None, "Height the ball gained or lost while rolling.")
+    return cells
+
+
+def inventory(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One line per CSV: where, which settings, how many shots kept."""
+    by_file: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_file[row["source_file"]].append(row)
+    out = []
+    for name, group in sorted(by_file.items()):
+        stamp = re.search(r"(\d{8})_(\d{6})", name)
+        out.append({"file": name, "run": f"{stamp[1][:4]}-{stamp[1][4:6]}-{stamp[1][6:]} {stamp[2][:2]}:{stamp[2][2:4]}" if stamp else name,
+                    "test": Counter(r.get("test") for r in group).most_common(1)[0][0],
+                    "course": Counter(r.get("course_key") or "unknown" for r in group).most_common(1)[0][0],
+                    "settings": ", ".join(sorted({r["fairway_setting"] for r in group if r["fairway_setting"]})) or "unknown",
+                    "altitude_ft": group[0].get("altitude_ft"),
+                    "shots": len(group), "kept": sum(1 for r in group if not r["left_out"])})
+    return out
+
+
 def analyse(rows: list[dict[str, Any]]) -> dict[str, Any]:
     reasons = Counter()
     kept = []
@@ -323,6 +447,7 @@ def analyse(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "lies": dict(Counter(r["lie"] for r in kept).most_common()),
         "lie_penalty": lie_penalty(kept), "roll": roll_tables(kept), "green": green_table(kept),
         "elevation": elevation(kept),
+        "coverage": coverage(kept), "inventory": inventory(rows),
     }, kept
 
 
@@ -429,7 +554,10 @@ def write(out_dir: Path, rows: list[dict[str, Any]], result: dict[str, Any]) -> 
         for row in rows:
             writer.writerow({k: (round(v, 4) if isinstance(v, float) else v) for k, v in row.items() if k in OUT_FIELDS})
     model.write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
-    return [md, shots, model]
+    cover, files = out_dir / "wander_coverage.json", out_dir / "wander_runs.json"
+    cover.write_text(json.dumps(result["coverage"], ensure_ascii=False), encoding="utf-8")
+    files.write_text(json.dumps(result["inventory"], ensure_ascii=False), encoding="utf-8")
+    return [md, shots, model, cover, files]
 
 
 def main(argv: list[str] | None = None) -> int:
