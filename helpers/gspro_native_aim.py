@@ -160,9 +160,14 @@ def find_ball_dot(roi: np.ndarray, pin: Pixel, hue: int | None = None) -> Pixel:
         if m["m00"] == 0:
             continue
         cx, cy = m["m10"] / m["m00"], m["m01"] / m["m00"]
-        # A dot is solid: its middle is the dot's colour and it fills its box as a disc does
-        # (0.79). The letter "o" in on-screen text is a ring and fails both.
-        if not mask[int(round(cy)), int(round(cx))]:
+        # A dot is solid: it fills its own outline and its box as a disc does (0.79).
+        # The letter "o" in on-screen text is a ring and fails both. A small shine
+        # can sit right in the middle of the dot (Payne's Valley, 19 Nov), so the
+        # test is how much of the outline is filled, not the one middle pixel.
+        outline = np.zeros((ch, cw), np.uint8)
+        cv2.drawContours(outline, [contour], -1, 255, -1, offset=(-x, -y))
+        inside = cv2.countNonZero(outline)
+        if not inside or cv2.countNonZero(cv2.bitwise_and(outline, mask[y:y + ch, x:x + cw])) < 0.85 * inside:
             continue
         if cv2.countNonZero(mask[y:y + ch, x:x + cw]) < 0.62 * cw * ch:
             continue

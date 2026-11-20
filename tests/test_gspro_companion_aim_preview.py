@@ -138,6 +138,18 @@ class AimMathTests(unittest.TestCase):
             self.assertAlmostEqual(pin.y * scale, 175, delta=4, msg=f"{width}x{height}")
             self.assertAlmostEqual(ball.y * scale, 860, delta=4, msg=f"{width}x{height}")
 
+    def test_a_ball_with_a_shine_in_its_middle_is_still_the_ball(self):
+        # Payne's Valley, 19 Nov: the orange dot has a small light spot right at its centre.
+        frame = np.full((2160, 3840, 3), (40, 110, 50), np.uint8)
+        x0, y0 = int(3840 * aim.LEFT_MINIMAP_ROI[0]), int(2160 * aim.LEFT_MINIMAP_ROI[1])
+        cv2.circle(frame, (x0 + 245, y0 + 860), 9, (20, 140, 250), -1, cv2.LINE_AA)   # orange
+        cv2.rectangle(frame, (x0 + 244, y0 + 859), (x0 + 246, y0 + 860), (230, 240, 250), -1)
+        cv2.circle(frame, (x0 + 242, y0 + 185), 9, (255, 255, 255), -1, cv2.LINE_AA)
+        _crop, _origin, ball, _pin, side, _roi = aim.locate_minimap(frame)
+        self.assertEqual(side, "left")
+        self.assertAlmostEqual(ball.x, 245, delta=2)
+        self.assertAlmostEqual(ball.y, 860, delta=2)
+
     def test_no_minimap_says_so_and_shows_what_it_saw(self):
         img = np.full((H, W, 3), (30, 40, 30), np.uint8)
         x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
