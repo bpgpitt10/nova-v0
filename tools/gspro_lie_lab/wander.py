@@ -43,10 +43,18 @@ from typing import Any, Callable
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from roll_replay import (  # noqa: E402
-    LAB_FIELDS, M_TO_YD, _xyz, gspro_db, gspro_log, gspro_round_file, hit_spot, lie_shots_for_spot,
-    newest_round_record,
-)
+# The shot tool's own recording. When the shot tool itself started this (its menu's
+# Wander), use that copy: a browser saves a second download as "roll_replay (2).py",
+# and importing "roll_replay" by name would find an older roll_replay.py instead.
+import __main__  # noqa: E402
+
+if hasattr(__main__, "hit_spot") and hasattr(__main__, "gspro_log"):
+    _tool = __main__
+else:
+    import roll_replay as _tool  # noqa: E402
+LAB_FIELDS, M_TO_YD, _xyz = _tool.LAB_FIELDS, _tool.M_TO_YD, _tool._xyz
+gspro_db, gspro_log, gspro_round_file = _tool.gspro_db, _tool.gspro_log, _tool.gspro_round_file
+hit_spot, lie_shots_for_spot, newest_round_record = _tool.hit_spot, _tool.lie_shots_for_spot, _tool.newest_round_record
 
 #: Where GSPro draws the minimap, as shares of its window (the same boxes Auto Aim uses).
 MINIMAP_BOX = {"right": (0.848, 0.520, 0.995, 0.960), "left": (0.005, 0.520, 0.152, 0.960)}
