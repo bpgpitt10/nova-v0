@@ -172,17 +172,19 @@ def map_rect(window: tuple[int, int, int, int], side: str) -> tuple[float, float
 def pick_spot(rect: tuple[float, float, float, float], pin_yd: float | None, rng: random.Random) -> tuple[int, int, str]:
     """A point on the map to move the ball to, and why.
 
-    GSPro draws the map from the ball (bottom) to the pin (top). Far from the
-    pin: anywhere from a little ahead of the ball to short of the green, across
-    the whole width (rough, trees and sand as well as fairway). Near the pin:
-    near the bottom, which walks the ball back down the hole.
+    GSPro draws the map with the ball at the bottom and the pin straight above
+    it, both on the middle line, so the hole runs up the middle of the map.
+    Clicks stay near that line (a spread either side reaches the rough, trees
+    and bunkers beside the hole, not the next fairway over), and move the ball
+    15 to 45% of the way to the pin. Near the pin: near the bottom, which walks
+    the ball back down the hole.
     """
     left, top, right, bottom = rect
-    across = rng.uniform(0.0, 1.0)
+    across = min(0.8, max(0.2, rng.gauss(0.5, 0.12)))
     if pin_yd is not None and pin_yd < WALK_BACK_INSIDE_YD:
-        down, why = rng.uniform(0.85, 1.0), "walk back"
+        down, why = rng.uniform(0.90, 1.0), "walk back"
     else:
-        down, why = rng.uniform(0.25, 0.85), "ahead"
+        down, why = rng.uniform(0.55, 0.85), "ahead"
     return round(left + across * (right - left)), round(top + down * (bottom - top)), why
 
 
@@ -237,14 +239,20 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             say("\nGSPro's window is not open (or is minimised): stopping.")
             break
         hwnd, window = found
-        x, y, why = pick_spot(map_rect(window, side), pin_yd, rng)
-        left, top, right, bottom = window
-        button = (round(left + BALL_BUTTON[0] * (right - left)), round(top + BALL_BUTTON[1] * (bottom - top)))
-        desktop.move_ball(hwnd, button, x, y)
-        left_at = (x, y)
-        sleep(settle)
+        if spot == first_spot:
+            # The first spot is wherever the player left the ball: no click.
+            x, y, why = None, None, "start"
+            left_at = desktop.mouse()
+        else:
+            x, y, why = pick_spot(map_rect(window, side), pin_yd, rng)
+            left, top, right, bottom = window
+            button = (round(left + BALL_BUTTON[0] * (right - left)), round(top + BALL_BUTTON[1] * (bottom - top)))
+            desktop.move_ball(hwnd, button, x, y)
+            left_at = (x, y)
+            sleep(settle)
         slope = read_lie()
-        typed = f"wander {why} click {x},{y}" + (f" slope {slope_note(slope)}" if slope_note(slope) else "")
+        typed = (f"wander {why}" + (f" click {x},{y}" if x is not None else "")
+                 + (f" slope {slope_note(slope)}" if slope_note(slope) else ""))
         spot_labels = {**labels, "click_x": x, "click_y": y, **slope}
         shots = lie_shots_for_spot(spot)[:shots_per_spot]
         say(f"\nSpot {spot} ({why}){'; slope ' + slope_note(slope) if slope_note(slope) else ''}")

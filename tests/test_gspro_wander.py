@@ -21,7 +21,7 @@ class FakeDesktop:
         return 1, WINDOW
 
     def mouse(self):
-        x, y = self.clicks[-1]
+        x, y = self.clicks[-1] if self.clicks else (10, 10)
         if self.move_mouse_after is not None and len(self.clicks) >= self.move_mouse_after:
             return x + 200, y  # the player picked up the mouse
         return x, y
@@ -66,9 +66,11 @@ class WanderTests(unittest.TestCase):
         starts = [(i * 20.0, 0.0, i * 30.0) for i in range(6)]
         rows, _ = self.run_walk(desktop, 6, starts, [300, 260, 220, 180, 140, 100])
         left, top, right, bottom = wander.map_rect(WINDOW, "right")
-        self.assertEqual(len(desktop.clicks), 6)
+        self.assertEqual(len(desktop.clicks), 5)  # the first spot is where the ball already was
         for x, y in desktop.clicks:
             self.assertTrue(left <= x <= right and top <= y <= bottom, (x, y))
+            # Near the hole's line up the middle of the map, never out at the edges.
+            self.assertTrue(left + 0.19 * (right - left) <= x <= left + 0.81 * (right - left), (x, y))
         self.assertEqual(len(rows), 18)  # three shots a spot
         # The move-ball button: top left of GSPro's window.
         self.assertTrue(all(bx < 0.1 * WINDOW[2] and by < 0.1 * WINDOW[3] for bx, by in desktop.buttons))
@@ -80,20 +82,20 @@ class WanderTests(unittest.TestCase):
         starts = [(i * 20.0, 0.0, i * 30.0) for i in range(3)]
         self.run_walk(desktop, 3, starts, [40, 30, 20])
         left, top, right, bottom = wander.map_rect(WINDOW, "right")
-        for _, y in desktop.clicks[1:]:  # after the first spot the pin is known to be close
-            self.assertGreater(y, top + 0.84 * (bottom - top))
+        for _, y in desktop.clicks:  # the pin is known to be close from the first spot
+            self.assertGreater(y, top + 0.89 * (bottom - top))
 
     def test_moving_the_mouse_stops_it(self):
-        desktop = FakeDesktop(move_mouse_after=2)
+        desktop = FakeDesktop(move_mouse_after=1)
         starts = [(i * 20.0, 0.0, i * 30.0) for i in range(10)]
         rows, said = self.run_walk(desktop, 10, starts, [300] * 10)
-        self.assertEqual(len(desktop.clicks), 2)
+        self.assertEqual(len(desktop.clicks), 1)
         self.assertTrue(any("mouse moved" in line for line in said))
 
     def test_three_clicks_that_do_not_move_the_ball_stop_it(self):
         desktop = FakeDesktop()
         rows, said = self.run_walk(desktop, 10, [(5.0, 0.0, 5.0)] * 10, [300] * 10)
-        self.assertEqual(len(desktop.clicks), 4)  # the first spot, then three that went nowhere
+        self.assertEqual(len(desktop.clicks), 3)  # three clicks after the starting spot, none moved it
         self.assertTrue(any("did not move the ball" in line for line in said))
 
 
