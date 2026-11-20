@@ -47,6 +47,8 @@ export type LooperCompanionStatus = {
     autoAim: boolean
     /** One minimap click per explicit Arm (companion aim-click.1+). */
     aimClick?: boolean
+    /** EXPERIMENTAL: this build can listen for voice commands. */
+    voice?: boolean
   }
 }
 
