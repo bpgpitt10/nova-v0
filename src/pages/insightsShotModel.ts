@@ -107,23 +107,39 @@ export const finishOf = (conditions: InsightConditions, pinYds: number, swing: I
 // ---- Where a misread leaves you --------------------------------------------
 
 /**
- * The hole every example is played on, measured from the pin (yards past it,
- * yards right of it). The pin is back right, so the middle of the green is a
- * little short and left, and there is sand long-right and short-left.
+ * The hole every example is played on, measured from the pin in yards (long:
+ * past the pin; right: right of it). The picture on the page is drawn from
+ * exactly these shapes, so a ball drawn in the sand is in the sand.
+ *
+ * The pin is back right. In front of the green is fairway; sand sits short-left,
+ * right of the green and long-right; water runs down the left; trees line the
+ * right; out of bounds a little way over the back. Everything else is rough.
  */
+export type InsightArea = Readonly<{ longYds: number; rightYds: number; halfDepthYds: number; halfWidthYds: number }>
+
 export const INSIGHT_HOLE = {
+  /** What the picture shows; a ball outside it is off the hole. */
+  frame: { shortYds: -40, longYds: 32, halfWidthYds: 22 },
   green: { longYds: -5, rightYds: -3, halfDepthYds: 11, halfWidthYds: 9 },
+  /** The approach: a strip of fairway in front of the green. */
+  fairway: { fromYds: -40, toYds: -13, leftYds: -10, rightYds: 8 },
   bunkers: [
     { longYds: 10, rightYds: 6, halfDepthYds: 6, halfWidthYds: 5 },
     { longYds: -19, rightYds: -8, halfDepthYds: 5, halfWidthYds: 5 },
+    { longYds: -4, rightYds: 12, halfDepthYds: 6, halfWidthYds: 3.5 },
   ],
+  water: { longYds: -10, rightYds: -19, halfDepthYds: 22, halfWidthYds: 5.5 },
+  /** Trees from this far right of the pin to the edge. */
+  treesRightYds: 17,
+  /** White stakes this far past the pin. */
+  outOfBoundsLongYds: 26,
 } as const
 
-const inside = (area: { longYds: number; rightYds: number; halfDepthYds: number; halfWidthYds: number }, longYds: number, rightYds: number) =>
-  ((longYds - area.longYds) / area.halfDepthYds) ** 2 + ((rightYds - area.rightYds) / area.halfWidthYds) ** 2 <= 1
+export const insideArea = (area: InsightArea, longYds: number, rightYds: number, grow = 1) =>
+  ((longYds - area.longYds) / (area.halfDepthYds * grow)) ** 2 + ((rightYds - area.rightYds) / (area.halfWidthYds * grow)) ** 2 <= 1
 
 export type InsightLeave = Readonly<{
-  kind: 'close' | 'look' | 'green' | 'long-putt' | 'fringe' | 'sand' | 'short' | 'long' | 'wide' | 'gone'
+  kind: 'close' | 'look' | 'green' | 'long-putt' | 'fringe' | 'sand' | 'water' | 'trees' | 'ob' | 'fairway' | 'short' | 'long' | 'wide' | 'gone'
   /** The short verdict, in plain golf. */
   headline: string
   detail: string
@@ -133,28 +149,45 @@ export type InsightLeave = Readonly<{
 export const describeLeave = (longYds: number, rightYds: number): InsightLeave => {
   const yards = Math.hypot(longYds, rightYds)
   const feet = Math.round(yards * 3)
-  const { green, bunkers } = INSIGHT_HOLE
-  if (yards > 32) return { kind: 'gone', headline: 'That is a different hole.', detail: `${Math.round(yards)} yards from the pin. Reload.` }
-  if (bunkers.some((bunker) => inside(bunker, longYds, rightYds))) {
-    return { kind: 'sand', headline: 'Bunker. Have fun at the beach.', detail: `${Math.round(yards)} yards from the pin, in the sand.` }
+  const away = `${Math.round(yards)} yards from the pin`
+  const { frame, green, fairway, bunkers, water, treesRightYds, outOfBoundsLongYds } = INSIGHT_HOLE
+  if (longYds < frame.shortYds || longYds > frame.longYds || Math.abs(rightYds) > frame.halfWidthYds) {
+    return { kind: 'gone', headline: 'That is a different hole.', detail: `${Math.round(yards)} yards from the pin. Reload and take your medicine.` }
   }
-  if (inside(green, longYds, rightYds)) {
+  if (longYds >= outOfBoundsLongYds) {
+    return { kind: 'ob', headline: 'Out of bounds.', detail: 'Over the back and past the white stakes. Stroke and distance: hit it again from where you were.' }
+  }
+  if (insideArea(water, longYds, rightYds)) {
+    return { kind: 'water', headline: 'Splash.', detail: `In the water left. Drop, add a stroke, and you are chipping for bogey.` }
+  }
+  if (bunkers.some((bunker) => insideArea(bunker, longYds, rightYds))) {
+    return { kind: 'sand', headline: 'Bunker. Have fun at the beach.', detail: `${away}, in the sand. Splash it close or it costs a shot.` }
+  }
+  if (insideArea(green, longYds, rightYds)) {
     if (feet <= 6) return { kind: 'close', headline: 'Kick-in range.', detail: `${Math.max(1, feet)} feet. That read was a birdie.` }
     if (feet <= 18) return { kind: 'look', headline: 'A real birdie look.', detail: `${feet} feet from the pin.` }
     if (feet <= 45) return { kind: 'green', headline: 'On the green, not at the pin.', detail: `${feet} feet away. Two putt instead of chasing a birdie.` }
     return { kind: 'long-putt', headline: 'On the green. Barely.', detail: `${feet} feet away. That is three-putt range.` }
   }
-  // The pin is near the back right edge, so a small miss that way is only just off.
-  if (yards <= 5) return { kind: 'fringe', headline: 'Just off the edge.', detail: `${feet} feet from the pin, on the fringe. Putt it or chip it close.` }
-  const pastGreen = longYds - green.longYds
-  if (Math.abs(rightYds - green.rightYds) <= green.halfWidthYds) {
-    return pastGreen < 0
-      ? { kind: 'short', headline: 'Short of the green.', detail: `${Math.round(yards)} yards from the pin. A chip and a putt to save par.` }
-      : { kind: 'long', headline: 'Over the back.', detail: `${Math.round(yards)} yards from the pin, with a touchy chip coming back.` }
+  if (rightYds >= treesRightYds) {
+    return { kind: 'trees', headline: 'In the trees right.', detail: `${away}. Punch out sideways and bogey is a good score.` }
+  }
+  // Just off the green's edge: a putter or a simple chip.
+  if (insideArea(green, longYds, rightYds, 1.25)) {
+    return { kind: 'fringe', headline: 'Just off the edge.', detail: `${away}, on the fringe. Putt it or chip it close.` }
+  }
+  if (longYds >= fairway.fromYds && longYds <= fairway.toYds && rightYds >= fairway.leftYds && rightYds <= fairway.rightYds) {
+    return { kind: 'fairway', headline: 'Short, on the fairway.', detail: `${away}. The best miss on this hole: a simple chip and a putt for par.` }
+  }
+  if (longYds < green.longYds - green.halfDepthYds) {
+    return { kind: 'short', headline: 'Short, in the rough.', detail: `${away}. A fluffy lie and a chip you can't spin. Par is work.` }
+  }
+  if (longYds > green.longYds + green.halfDepthYds) {
+    return { kind: 'long', headline: 'Over the back.', detail: `${away}, chipping back to a green running away from you. Bogey is in play.` }
   }
   return {
     kind: 'wide',
     headline: `Missed the green ${rightYds > green.rightYds ? 'right' : 'left'}.`,
-    detail: `${Math.round(yards)} yards from the pin. Up and down for par.`,
+    detail: `${away}, in the rough. Up and down for par.`,
   }
 }

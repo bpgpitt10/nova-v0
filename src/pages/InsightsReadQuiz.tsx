@@ -15,6 +15,7 @@ import {
   INSIGHT_HOLE,
   describeLeave,
   finishOf,
+  type InsightArea,
   type InsightConditions,
   type InsightLie,
   type InsightSwing,
@@ -159,20 +160,39 @@ const signed = (value: number) => (Math.round(value) === 0 ? '±0' : `${value > 
 const sideWords = (value: number) => (Math.abs(value) < 0.5 ? '' : `${Math.round(Math.abs(value))} ${value > 0 ? 'right' : 'left'}`)
 
 /** The hole from above with the pin, the sand, and where a read would leave the ball. */
+/**
+ * The hole from above as GSPro's minimap shows it: you hit up the page, so long
+ * is up and left is left. Drawn from the same shapes that decide the verdict:
+ * where the ball sits here is what it got.
+ */
 function Leave({ longYds, rightYds }: { longYds: number; rightYds: number }) {
-  const scale = 4.4
-  const at = (long: number, right: number) => ({ cx: 150 + long * scale, cy: 70 + right * scale })
-  const { green, bunkers } = INSIGHT_HOLE
-  const ball = at(Math.max(-32, Math.min(32, longYds)), Math.max(-14, Math.min(14, rightYds)))
+  const { frame, green, fairway, bunkers, water, treesRightYds, outOfBoundsLongYds } = INSIGHT_HOLE
+  const height = 230
+  const k = height / (frame.longYds - frame.shortYds)
+  const width = frame.halfWidthYds * 2 * k
+  const x = (right: number) => (right + frame.halfWidthYds) * k
+  const y = (long: number) => (frame.longYds - long) * k
+  const ellipse = (area: InsightArea) => ({ cx: x(area.rightYds), cy: y(area.longYds), rx: area.halfWidthYds * k, ry: area.halfDepthYds * k })
+  const ball = { cx: Math.max(6, Math.min(width - 6, x(rightYds))), cy: Math.max(6, Math.min(height - 6, y(longYds))) }
+  const trees = Array.from({ length: 13 }, (_, i) => ({ cx: x(treesRightYds) + 6 + (i % 2) * 7, cy: 4 + i * 19, r: 7 + (i % 3) * 1.5 }))
   return (
-    <svg aria-hidden="true" className="insights-quiz__hole" viewBox="0 0 300 140">
-      <rect fill="#12281a" height="140" rx="10" width="300" />
-      <ellipse {...at(green.longYds, green.rightYds)} fill="#1c3d28" rx={green.halfDepthYds * scale} ry={green.halfWidthYds * scale} stroke="rgba(242,226,184,.3)" />
-      {bunkers.map((bunker) => (
-        <ellipse {...at(bunker.longYds, bunker.rightYds)} fill="rgba(214,196,150,.5)" key={`${bunker.longYds}`} rx={bunker.halfDepthYds * scale} ry={bunker.halfWidthYds * scale} />
-      ))}
-      <path d="M150 70 V44 l14 5 l-14 5" fill="#eab308" stroke="#fff" strokeWidth="1.6" />
-      <circle {...ball} fill="#fff" r="6" stroke="#07100a" strokeWidth="2.5" />
+    <svg aria-hidden="true" className="insights-quiz__hole" viewBox={`0 0 ${width} ${height}`}>
+      <defs>
+        <clipPath id="insights-hole-frame"><rect height={height} rx="10" width={width} /></clipPath>
+      </defs>
+      <g clipPath="url(#insights-hole-frame)">
+        <rect fill="#1f3a22" height={height} width={width} />
+        <rect fill="#2e5a33" height={(fairway.toYds - fairway.fromYds) * k + 14} rx="12" width={(fairway.rightYds - fairway.leftYds) * k} x={x(fairway.leftYds)} y={y(fairway.toYds)} />
+        <rect fill="#132016" height={y(outOfBoundsLongYds)} width={width} />
+        <line stroke="#f4f1e6" strokeDasharray="2 7" strokeLinecap="round" strokeWidth="3" x1="0" x2={width} y1={y(outOfBoundsLongYds)} y2={y(outOfBoundsLongYds)} />
+        <rect fill="#0f2414" height={height} width={width - x(treesRightYds)} x={x(treesRightYds)} />
+        {trees.map((tree) => <circle {...tree} fill="#173a1d" key={`${tree.cy}`} stroke="#0b1d0e" />)}
+        <ellipse {...ellipse(water)} fill="#1d4f73" stroke="#7fb2d6" strokeOpacity=".5" />
+        <ellipse {...ellipse(green)} fill="#3f8a4a" stroke="rgba(242,226,184,.35)" />
+        {bunkers.map((bunker) => <ellipse {...ellipse(bunker)} fill="#d6c496" fillOpacity=".8" key={`${bunker.longYds}`} />)}
+        <path d={`M${x(0)} ${y(0)} V${y(0) - 20} l11 4 l-11 4`} fill="#eab308" stroke="#fff" strokeWidth="1.4" />
+        <circle {...ball} fill="#fff" r="5" stroke="#07100a" strokeWidth="2.2" />
+      </g>
     </svg>
   )
 }
