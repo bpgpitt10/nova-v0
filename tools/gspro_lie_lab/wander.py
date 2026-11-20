@@ -215,6 +215,8 @@ STEP_LEAVES = 0.80
 #: Moving on to the next hole: closer to the pin than this, or a par 3 (tee closer than PAR3_UNDER_YD).
 NEXT_HOLE_INSIDE_YD = 50.0
 PAR3_UNDER_YD = 250.0
+#: Off a par 4 or 5 tee (the shot tool's bag has no 3 wood yet).
+TEE_CLUBS = ("Driver", "3H", "5i")
 
 
 def move_point(rect: tuple[float, float, float, float], kind: str, rng: random.Random) -> tuple[int, int]:
@@ -453,7 +455,14 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             distance = pin_from_spot_yd(spot_rows[0])
             plays = plays_here(spot_rows[0])
             extra = {"pin_from_spot_yd": round(distance, 1)} if distance is not None else {}
-            if distance is not None and distance < GREEN_RANGE_YD[0]:
+            if why == "tee" and distance is not None and distance >= PAR3_UNDER_YD:
+                # A par 4 or 5 tee: what players hit there, for real tee-shot roll.
+                tee = [(f"{club} off the tee", {"speed": BAG[club]["speed"], "vla": BAG[club]["vla"], "hla": 0.0,
+                                                "spin": BAG[club]["spin"], "axis": 0.0})
+                       for club in TEE_CLUBS if club in BAG and BAG[club]["carry"] <= distance + PAST_PIN_OK_YD]
+                say(f"  tee, {distance:.0f} yd: {', '.join(name.split()[0] for name, _ in tee)}")
+                more, connected = fire(tee[:shots_per_spot], "tee", extra) if tee else ([], True)
+            elif distance is not None and distance < GREEN_RANGE_YD[0]:
                 say(f"  {distance:.0f} yd from the pin: chip range, moving on")
                 more = []
             elif distance is not None and distance <= GREEN_RANGE_YD[1]:

@@ -112,6 +112,12 @@ class WalkTests(unittest.TestCase):
         self.assertEqual(desktop.plain[3], wander.hole_point(WINDOW, 6))
         self.assertEqual(desktop.moves, [])  # never stepped down the par 3
 
+    def test_a_par_4_tee_hits_driver_hybrid_and_iron(self):
+        desktop = FakeDesktop()
+        self.run_walk(desktop, [45, 380])
+        tee = [shots for spot, aim, shots in self.fired if spot == 2 and aim == "tee"]
+        self.assertEqual([name for name, _ in tee[0]], ["Driver off the tee", "3H off the tee", "5i off the tee"])
+
     def test_after_hole_18_comes_hole_1(self):
         self.assertEqual(wander.hole_point(WINDOW, 19), wander.hole_point(WINDOW, 1))
         x10, _ = wander.hole_point(WINDOW, 10)
