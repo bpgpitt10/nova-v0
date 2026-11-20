@@ -37,7 +37,7 @@ const PARTS: readonly Part[] = [
     number: '01',
     name: 'Greens',
     colour: '#eab308',
-    question: 'You’re adjusting the wrong setting',
+    question: 'Read the grass before the firmness',
     card: {
       src: greensCard,
       alt: 'Release in yards for a wedge, 9 iron, 7 iron and 5 iron on Bentgrass, Bermuda and Links greens at soft, medium and firm, each compared with Bermuda soft, at stimp 11.',
@@ -46,9 +46,9 @@ const PARTS: readonly Part[] = [
     article: (
       <>
         <p className="insights-lead">
-          Ask a GSPro player how the greens are playing and they&rsquo;ll tell you the firmness. I tested all nine
-          green settings, and firmness is the less important half. The grass type moves the ball two to three times
-          as far.
+          On a GSPro green, the grass type moves your ball more than the firmness does. I tested all nine green
+          settings, three grasses at three firmnesses, and changing the grass moved the release two to three times as
+          far as changing the firmness.
         </p>
         <h3>How I think about it now</h3>
         <ul>
