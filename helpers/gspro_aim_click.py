@@ -98,7 +98,8 @@ def aim_click(
         preview = native_aim.aim_preview(
             frame, ball_world=ball_world, pin_world=pin_world, target_world=target_world)
     except Exception as error:
-        return blocked("minimap-not-read", detail=str(error)[:160])
+        # `seenPng`: the crop Looper looked at, so the page can show why it missed.
+        return blocked("minimap-not-read", detail=str(error)[:300], seenPng=getattr(error, "seen", None))
     if preview.get("status") != "ready":
         return blocked(preview.get("status") or "minimap-not-read")
     if not preview["checks"]["alignedLikeGspro"]:

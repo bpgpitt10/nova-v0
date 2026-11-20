@@ -101,6 +101,10 @@ class AimClickTests(unittest.TestCase):
         result, clicks = run([blank])
         self.assertEqual(result["reason"], "minimap-not-read")
         self.assertEqual(clicks, [])
+        # Both sides' reasons reach the page (Payne's, 19 Nov: the left one was cut off),
+        # with the crop Looper looked at.
+        self.assertRegex(result["detail"], r"right: \w.*; left: \w")
+        self.assertTrue(result.get("seenPng"))
 
     def test_click_failure_is_reported(self):
         def failing(plan, *, latest_window, allow_native_input):

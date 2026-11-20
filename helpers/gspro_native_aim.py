@@ -243,15 +243,17 @@ def locate_minimap(frame_bgr: np.ndarray, roi=None):
             return crop, origin, ball, pin, side, candidate
         except Exception as error:  # the pin detector raises its own types
             looked.append(crop)
-            reasons.append(f"{side}: {str(error)[:70]}")
-    where = "where it was told to look" if roi is not None else "in the bottom right or bottom left of GSPro's window"
+            # Always name the error: some (MemoryError, a bare assert) have no message.
+            reasons.append(f"{side}: {str(error)[:70] or type(error).__name__}")
+    where = "where told" if roi is not None else "bottom right or bottom left"
     seen = None
     try:
         height = min(c.shape[0] for c in looked)
         seen = _png_base64(np.hstack([c[:height] for c in looked]), max_width=420)
     except Exception:
         seen = None
-    raise AimReadError(f"Could not find GSPro's minimap (a ball dot under the pin) {where}. " + "; ".join(reasons), seen)
+    # Reasons first, so a shortened message still says why each side failed.
+    raise AimReadError("; ".join(reasons) + f" (no minimap found {where})", seen)
 
 
 def _complex_world(x: float, z: float) -> complex:
