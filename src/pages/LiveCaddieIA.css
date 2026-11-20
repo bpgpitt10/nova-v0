@@ -380,7 +380,11 @@
       'aim conditions'
       'reason conditions'
       'shot conditions'
-      'arm conditions';
+      'arm conditions'
+      'note conditions';
+    /* The note row is always there, so arming (which swaps the safe-pick line
+       for a status note) never moves the rest of the card. */
+    grid-template-rows: repeat(6, auto) minmax(72px, auto);
     column-gap: 14px;
     align-items: start;
     padding: 16px !important;
@@ -391,6 +395,8 @@
   .live-decision-card > .live-aim-hero { grid-area: aim; }
   .live-decision-card > .live-decision-reason { grid-area: reason; }
   .live-decision-card > .live-arm-recommendation { grid-area: arm; }
+  .live-decision-card > .live-arm-note,
+  .live-decision-card > .live-safe-pick { grid-area: note; align-self: start; }
 
   .live-decision-card .live-club-hero {
     font-size: clamp(58px, 4.5vw, 76px) !important;

@@ -513,12 +513,16 @@
   letter-spacing: 0;
 }
 
+/* The aim line stays in its own column and wraps there. It used to spill
+   across into the adjustments column, and a long line (an "ARMED ON 3.0 YD
+   RIGHT" tag after aiming) ran over the Carry adjustment box. */
 @media (min-width: 1260px) {
   .live-decision-card > .live-aim-hero {
     position: relative;
     z-index: 2;
-    width: max-content;
-    max-width: calc(220% + 14px);
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
   }
 }
 
@@ -562,4 +566,23 @@
 
 @keyframes live-condition-refresh-spin {
   to { transform: rotate(360deg); }
+}
+
+/* Expected rollout: its own small box below the carry table, with a clear gap,
+   in a muted green: part of the total, not one of the carry factors. */
+.live-condition-after-landing {
+  order: 4;
+  margin-top: 14px;
+  border: 1px solid rgba(118, 160, 128, 0.28);
+  border-radius: 10px;
+  background: rgba(70, 110, 80, 0.12);
+}
+
+.live-condition-after-landing .live-condition-factor,
+.live-condition-after-landing .live-condition-distance {
+  color: #9fc4a8 !important;
+}
+
+.live-condition-after-landing small {
+  color: #7f9785 !important;
 }
