@@ -106,7 +106,7 @@
 /* ---- Opening ---- */
 
 .insights-hero {
-  padding: clamp(28px, 5vh, 56px) 0 clamp(24px, 4vh, 40px);
+  padding: clamp(4px, 1.5vh, 16px) 0 clamp(20px, 3vh, 32px);
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
 }
 
@@ -125,7 +125,7 @@
 
 .insights-hero h1 {
   max-width: 880px;
-  margin: 14px 0 0;
+  margin: 0;
   font-family: Fraunces, Georgia, 'Times New Roman', serif;
   font-size: clamp(40px, 6.4vw, 68px);
   font-weight: 600;

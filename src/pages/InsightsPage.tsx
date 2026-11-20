@@ -268,7 +268,6 @@ export default function InsightsPage() {
 
       <section className="insights-hero">
         <div className="insights-wrap">
-          <p className="insights-eyebrow">Insights from The Looper</p>
           <h1>
             GSPro physics, <em>measured</em>
           </h1>
