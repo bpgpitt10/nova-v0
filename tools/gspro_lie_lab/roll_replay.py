@@ -1435,7 +1435,28 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
-        return guided()  # double-clicked, or run with nothing after the name: ask questions
+        # Double-clicked: a crash would close the window before anyone could read it, so the
+        # error is printed, saved next to this file, and the window waits for Enter.
+        try:
+            return guided()  # ask questions
+        except KeyboardInterrupt:
+            return 130
+        except Exception:  # noqa: BLE001
+            import traceback
+            text = traceback.format_exc()
+            print("\nThe shot tool hit an error and stopped:\n")
+            print(text)
+            crash = HERE / f"looper_crash_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+            try:
+                crash.write_text(text, encoding="utf-8")
+                print(f"Saved as {crash.name}. Send it to Claude.")
+            except OSError:
+                pass
+            try:
+                input("Press Enter to close. ")
+            except EOFError:
+                pass
+            return 1
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--type", default="medium", help="Course Type set in GSPro: soft, medium or firm")
     p.add_argument("--fairway", default="medium", help="Fairway Firmness set in GSPro: soft, medium or firm")
