@@ -373,7 +373,7 @@ export default function InsightsPage() {
               <div className="insights-entry">
                 <figure className="insights-entry__card">
                   <a href={part.card.src} rel="noreferrer" target="_blank">
-                    <img alt={part.card.alt} loading="lazy" src={part.card.src} />
+                    <img alt={part.card.alt} loading="lazy" src={part.card.src} width={1600} height={1723} />
                   </a>
                   <figcaption>Open the card full size to save or share it.</figcaption>
                 </figure>

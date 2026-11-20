@@ -409,13 +409,16 @@ export default function InsightsReadQuiz() {
               <div className="insights-quiz__result" role="status">
                 <Leave longYds={longMiss} rightYds={rightMiss} />
                 <div>
-                  <p className="insights-quiz__verdict">{leave.headline}</p>
-                  <p>{leave.detail}</p>
-                  <p>
-                    It goes <strong>{answer.finish.totalYds.toFixed(1)} yards</strong>
-                    {Math.abs(answer.finish.sideYds) < 0.05 ? ', on line' : <> and finishes <strong>{Math.abs(answer.finish.sideYds).toFixed(1)} {answer.finish.sideYds > 0 ? 'right' : 'left'}</strong></>}.
-                    {' '}You said {distance.toFixed(1)}{side === 0 ? ', on line' : `, ${Math.abs(side).toFixed(1)} ${side > 0 ? 'right' : 'left'}`}:
-                    {' '}<strong>{missYds.toFixed(1)} yards</strong> from where it finished.
+                  <p className="insights-quiz__verdict">
+                    {missYds < 0.05 ? 'Spot on.' : <>Your read was {missYds.toFixed(1)} yards off.</>}
+                  </p>
+                  <p className="insights-quiz__compare">
+                    The ball went <strong>{answer.finish.totalYds.toFixed(1)}</strong>
+                    {Math.abs(answer.finish.sideYds) < 0.05 ? ' on line' : <>, <strong>{Math.abs(answer.finish.sideYds).toFixed(1)} {answer.finish.sideYds > 0 ? 'right' : 'left'}</strong></>}.
+                    {' '}You said <strong>{distance.toFixed(1)}</strong>{side === 0 ? ' on line' : <>, <strong>{Math.abs(side).toFixed(1)} {side > 0 ? 'right' : 'left'}</strong></>}.
+                  </p>
+                  <p className="insights-quiz__leave">
+                    Played to your read: <strong>{leave.headline}</strong> {leave.detail}
                   </p>
                   {stats && stats.reads >= STATS_FROM_READS ? (
                     <p className="insights-quiz__stats">
@@ -428,12 +431,14 @@ export default function InsightsReadQuiz() {
               </div>
 
               <aside className="insights-quiz__looper">
+                <div>
                 <p className="insights-eyebrow">The Looper does this every shot</p>
                 <p>
                   That sum was seven numbers. Looper does it before every shot you hit in GSPro, and then keeps going:
                   it adds <strong>your own shot shape and how your mishits fly</strong>, then plays the odds against
                   <strong> this hole&rsquo;s hazards</strong> to pick the club and the line that save you the most strokes.
                 </p>
+                </div>
                 <a className="insights-button" href="/?signup=1">Create a free account</a>
               </aside>
             </>
