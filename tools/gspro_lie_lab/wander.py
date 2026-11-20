@@ -342,8 +342,12 @@ def pin_from_spot_yd(row: dict[str, Any]) -> float | None:
     if all(isinstance(v, (int, float)) for v in (sx, sz, px, pz)):
         return (((px - sx) ** 2 + (pz - sz) ** 2) ** 0.5) * M_TO_YD
     found = NEXT_FROM_RE.search(str(row.get("status") or ""))
-    if found:
+    if found and float(found[1]) >= 1.0:
         return float(found[1]) * M_TO_YD
+    if found and isinstance(row.get("total_yd"), (int, float)):
+        # "from 0.0 yd": the shot finished on the green by the pin (Farmlinks 1, 20 Nov), and GSPro
+        # answers for the putt. The shot's own length is then the distance, near enough.
+        return float(row["total_yd"])
     return None
 
 

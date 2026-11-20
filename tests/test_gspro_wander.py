@@ -214,6 +214,11 @@ class PinDistanceTests(unittest.TestCase):
         row = {"status": "GSPro took it, ball at rest after 7.4 s; next: LW from 65.4 yd", "total_yd": 82.48, "db_pin_yd": 9.98}
         self.assertAlmostEqual(wander.pin_from_spot_yd(row), 71.5, delta=0.1)
 
+    def test_a_shot_that_finishes_by_the_pin_is_not_zero_yards_out(self):
+        # Farmlinks 1, 20 Nov: soft 50 finished by the pin; GSPro's reply said "from 0.0 yd".
+        row = {"status": "GSPro took it, ball at rest after 6.2 s; next: LW from 0.0 yd", "total_yd": 47.9}
+        self.assertAlmostEqual(wander.pin_from_spot_yd(row), 47.9)
+
 
 if __name__ == "__main__":
     unittest.main()
