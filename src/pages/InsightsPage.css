@@ -145,12 +145,6 @@
   font-size: clamp(18px, 2.2vw, 21px);
 }
 
-.insights-hero__free {
-  margin: 12px 0 0;
-  color: #cfd8cd;
-  font-size: 16px;
-}
-
 .insights-hero__cta {
   display: flex;
   flex-wrap: wrap;
@@ -278,6 +272,10 @@
   border-top-style: solid;
   border-top-color: #5b5330;
   color: #eab308;
+}
+
+.insights-quiz__wind-text {
+  font-style: normal;
 }
 
 .insights-quiz__wind {
@@ -673,7 +671,7 @@
 /* ---- One part ---- */
 
 .insights-part {
-  padding: clamp(36px, 6vh, 60px) 0;
+  padding: clamp(24px, 4vh, 40px) 0;
   border-bottom: 1px solid rgba(49, 66, 51, 0.7);
   background: linear-gradient(180deg, rgba(7, 16, 10, 0.9) 0%, rgba(7, 16, 10, 0.94) 100%);
   scroll-margin-top: 76px;
@@ -717,14 +715,18 @@
    height (it is a little taller than wide); the writing starts on the left and
    runs the full width once it is below the card. */
 .insights-entry {
+  margin-top: 18px;
+}
+
+/* The part's box holds its floated card. */
+.insights-part .insights-wrap {
   display: flow-root;
-  margin-top: 24px;
 }
 
 .insights-entry__card {
   float: right;
-  width: min(46%, 62vh, 640px);
-  margin: 0 0 24px 40px;
+  width: min(46%, 64vh, 640px);
+  margin: 4px 0 24px 40px;
 }
 
 .insights-entry__card img {
@@ -798,57 +800,6 @@
 
 .insights-entry__text strong {
   color: #ffffff;
-}
-
-.insights-table-scroll {
-  max-width: 820px;
-  overflow-x: auto;
-  border: 1px solid #314233;
-  border-radius: 12px;
-  background: rgba(16, 32, 22, 0.82);
-}
-
-.insights-entry__text table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
-}
-
-.insights-entry__text caption {
-  padding: 12px 14px 4px;
-  color: #a9b8a8;
-  font-size: 14px;
-  text-align: left;
-}
-
-.insights-entry__text th,
-.insights-entry__text td {
-  padding: 10px 14px;
-  border-top: 1px solid #26352a;
-  text-align: right;
-}
-
-.insights-entry__text thead th {
-  border-top: 0;
-  color: #cfd8cd;
-  font-size: 13px;
-  font-weight: 600;
-  vertical-align: bottom;
-}
-
-.insights-entry__text th:first-child {
-  text-align: left;
-}
-
-.insights-entry__text tbody th {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.insights-entry__text tbody td:last-child {
-  color: var(--insight-colour);
-  font-weight: 700;
 }
 
 .insights-entry__text .insights-limits {

@@ -69,25 +69,6 @@ const PARTS: readonly Part[] = [
             nine settings. A 5 iron ran under a yard on soft Bentgrass and nearly 20 on firm Links.
           </li>
         </ul>
-        <h3>The numbers</h3>
-        <div className="insights-table-scroll">
-          <table>
-            <caption>Average change in release, in yards</caption>
-            <thead>
-              <tr>
-                <th scope="col">Club</th>
-                <th scope="col">Soft to firm, same grass</th>
-                <th scope="col">Bentgrass to Links, same firmness</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><th scope="row">Wedge</th><td>0.5</td><td>1.7</td></tr>
-              <tr><th scope="row">9 iron</th><td>1.4</td><td>3.6</td></tr>
-              <tr><th scope="row">7 iron</th><td>3.3</td><td>7.3</td></tr>
-              <tr><th scope="row">5 iron</th><td>6.3</td><td>12.6</td></tr>
-            </tbody>
-          </table>
-        </div>
         <h3>What I do with it</h3>
         <p>
           On Bentgrass I fly it to the number. On Bermuda I take a few yards off mid irons and more off long irons. On
@@ -140,26 +121,6 @@ const PARTS: readonly Part[] = [
             each other.
           </li>
         </ul>
-        <h3>The numbers</h3>
-        <div className="insights-table-scroll">
-          <table>
-            <caption>Extra yards of roll on the range compared with the green, medium firmness</caption>
-            <thead>
-              <tr>
-                <th scope="col">Club</th>
-                <th scope="col">Bentgrass</th>
-                <th scope="col">Bermuda</th>
-                <th scope="col">Links</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><th scope="row">Wedge</th><td>+1.3</td><td>+3.9</td><td>+5.4</td></tr>
-              <tr><th scope="row">9 iron</th><td>+1.8</td><td>+4.5</td><td>+5.9</td></tr>
-              <tr><th scope="row">7 iron</th><td>+2.1</td><td>+4.6</td><td>+5.4</td></tr>
-              <tr><th scope="row">5 iron</th><td>+0.8</td><td>+2.9</td><td>+2.8</td></tr>
-            </tbody>
-          </table>
-        </div>
         <h3>What I do with it</h3>
         <p>
           I build my yardages from carry. Into a green I add the green&rsquo;s release, not the range&rsquo;s. Laying
@@ -312,10 +273,7 @@ export default function InsightsPage() {
           </h1>
           <p className="insights-hero__lead">
             A lot of GSPro misses aren&rsquo;t swing misses. They&rsquo;re bad reads. I test GSPro&rsquo;s physics one
-            setting at a time and measure what the ball actually does, so you know what moves your number and by how much.
-          </p>
-          <p className="insights-hero__free">
-            The Looper is free, always. Its live caddie does this math for you on every shot.
+            setting at a time and measure what the ball actually does.
           </p>
         </div>
       </section>
@@ -364,18 +322,21 @@ export default function InsightsPage() {
           style={colourVar(part.colour)}
         >
           <div className="insights-wrap">
+            {part.article && part.card ? (
+              /* The card floats right from the very top, beside the heading too. */
+              <figure className="insights-entry__card">
+                <a href={part.card.src} rel="noreferrer" target="_blank">
+                  <img alt={part.card.alt} loading="lazy" src={part.card.src} width={1600} height={1723} />
+                </a>
+                <figcaption>Open the card full size to save or share it.</figcaption>
+              </figure>
+            ) : null}
             <p className="insights-eyebrow">
               {part.number} · {part.name}
             </p>
             <h2>{part.question}</h2>
             {part.article && part.card ? (
               <div className="insights-entry">
-                <figure className="insights-entry__card">
-                  <a href={part.card.src} rel="noreferrer" target="_blank">
-                    <img alt={part.card.alt} loading="lazy" src={part.card.src} width={1600} height={1723} />
-                  </a>
-                  <figcaption>Open the card full size to save or share it.</figcaption>
-                </figure>
                 <article className="insights-entry__text">
                   {part.article}
                   <aside className="insights-caddie">

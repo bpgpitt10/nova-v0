@@ -141,19 +141,21 @@ const makeScenario = (): Scenario => {
   }
 }
 
-const slopeText = (upDeg: number, rightDeg: number) => {
+/** Up or down on one line, across on the next. */
+const slopeText = (upDeg: number, rightDeg: number): ReactNode => {
   const up = Math.abs(upDeg) < 0.05 ? 'Level' : `${Math.abs(upDeg).toFixed(1)}° ${upDeg > 0 ? 'up' : 'down'}`
-  const across = Math.abs(rightDeg) < 0.05 ? '' : `, ${Math.abs(rightDeg).toFixed(1)}° ${rightDeg > 0 ? 'right' : 'left'}`
-  return `${up}${across}`
+  const across = Math.abs(rightDeg) < 0.05 ? 'no side slope' : `${Math.abs(rightDeg).toFixed(1)}° ${rightDeg > 0 ? 'right' : 'left'}`
+  return <>{up}<br />{across}</>
 }
 
-const windWords = (mph: number, fromDeg: number) => {
+/** The speed on one line, the direction on the next. */
+const windWords = (mph: number, fromDeg: number): ReactNode => {
   if (mph === 0) return 'Calm'
   const into = Math.cos((fromDeg * Math.PI) / 180)
   const fromRight = Math.sin((fromDeg * Math.PI) / 180)
   const along = into > 0.38 ? 'into' : into < -0.38 ? 'behind' : ''
   const across = fromRight > 0.38 ? 'from right' : fromRight < -0.38 ? 'from left' : ''
-  return `${mph} mph ${[along, across].filter(Boolean).join(', ')}`
+  return <em className="insights-quiz__wind-text">{mph} mph<br />{[along, across].filter(Boolean).join(', ')}</em>
 }
 
 const signed = (value: number) => (Math.round(value) === 0 ? '±0' : `${value > 0 ? '+' : '−'}${Math.abs(Math.round(value))}`)
@@ -350,12 +352,15 @@ export default function InsightsReadQuiz() {
                   <li key={known.key}>
                     <span>{known.name}</span>
                     <strong>{known.value}</strong>
+                    {/* Always two lines, distance then line, so every tile's rule sits at the same height. */}
                     <b className={checked ? 'is-shown' : ''}>
                       {checked
                         ? known.key === 'stimp'
                           ? 'as normal'
-                          : `${signed(worth.yards)} yd${sideWords(worth.side) ? `, ${sideWords(worth.side)}` : ''}`
+                          : `${signed(worth.yards)} yd`
                         : '?'}
+                      <br />
+                      {(checked && known.key !== 'stimp' && sideWords(worth.side)) || '\u00a0'}
                     </b>
                   </li>
                 )
