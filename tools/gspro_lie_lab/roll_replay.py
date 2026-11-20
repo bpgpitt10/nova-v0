@@ -19,6 +19,8 @@ remember: press Enter to take the suggested answer. Four tests:
                      the ball released or spun back, and how flat the green was)
   Putt roll          putts at set speeds on a green: how far each rolls on this
                      course type, green firmness and stimp, flat, uphill or down
+  Wander             the same, but the tool moves the ball itself by clicking
+                     GSPro's minimap, spot after spot, until you move the mouse
   Shots from a lie   On Course practice: drop the ball anywhere (rough, sand,
                      fringe, a slope), press Enter, and it hits three shots, one
                      soft, one medium, one hard. Move the ball and repeat. Records
@@ -310,6 +312,8 @@ LAB_FIELDS = [
     "gspro_hla_deg", "gspro_axis_deg", "landing_speed", "course_key", "hole", "land_x", "land_y", "land_z", "end_x", "end_y", "end_z",
     "peak_height_ft", "flown_vla_deg", "start_line_deg", "curve_yd", "offline_from_aim_yd", "aim_heading_deg",
     "db_offline_yd", "db_peak_height", "db_descent_deg", "db_vla_deg", "db_hla_deg", "db_backspin_rpm", "db_sidespin_rpm", "db_id",
+    # Wander (wander.py): where it clicked the minimap, and the slope the companion read there.
+    "click_x", "click_y", "slope_up_deg", "slope_right_deg", "slope_read",
 ]
 M_TO_FT = 3.280839895
 #: Putt speeds rolled by default, mph off the face.
@@ -599,6 +603,82 @@ def lie_summary(rows: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def hit_spot(path: Any, writer: Any, flush, *, labels: dict[str, Any], spot: int, typed: str,
+             spot_shots: list[tuple[str, dict[str, float]]], round_file: Path, log_file: Path, db_path: Path,
+             notes_file: Path, gap: float, record_wait: float, sleep=time.sleep) -> tuple[list[dict[str, Any]], bool]:
+    """Hit `spot_shots` from where the ball is now and record each one. (rows, still connected)."""
+    rows: list[dict[str, Any]] = []
+    origin: tuple[float, float, float] | None = None
+    plays = None  # carry here as a share of the same shot's flat, sea-level carry (hill, altitude, lie)
+    for index, (name, shot) in enumerate(spot_shots, start=1):
+        if "_target" in shot:
+            shot = green_speed(shot, plays)
+        before_record = record_fingerprint(newest_round_record(round_file))
+        before_log = log_size(log_file)
+        before_row = latest_row_safely(db_path)
+        sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+        try:
+            status = path.fire(shot)
+        except (ConnectionError, OSError) as exc:
+            print(f"  could not send: {exc}")
+            return rows, False
+        if "at rest" not in status:
+            print(f"  (no ball-at-rest from GSPro; waiting {NO_STOP_SIGNAL_WAIT_S:g} s for the shot to finish)")
+            sleep(NO_STOP_SIGNAL_WAIT_S)
+        record = wait_for_new_record(round_file, before_record, record_wait, sleep=sleep)
+        log_text = read_log_since(log_file, before_log)
+        lie = lie_from_log(log_text)
+        found = wait_for_new_row(db_path, before_row[0] if before_row else None, 3.0, sleep=sleep)
+        data = found[1] if found else {}
+        table = {"db_carry_yd": _num(data.get("Carry")), "db_total_yd": _num(data.get("TotalDistance")),
+                 "db_raw_carry_game_yd": _num(data.get("rawCarryGame")), "db_raw_carry_lm_yd": _num(data.get("rawCarryLM")),
+                 "db_pin_yd": _num(data.get("DistanceToPin")),
+                 # What GSPro flew after the lie: a slope shows up here as offline, height and launch.
+                 "db_offline_yd": _num(data.get("Offline")), "db_peak_height": _num(data.get("PeakHeight")),
+                 "db_descent_deg": _num(data.get("Decent")), "db_vla_deg": _num(data.get("VLA")), "db_hla_deg": _num(data.get("HLA")),
+                 "db_backspin_rpm": _num(data.get("BackSpin")), "db_sidespin_rpm": _num(data.get("SideSpin")),
+                 "db_id": found[0]} if found else {}
+        start = _xyz((record or {}).get("StartingPOS"))
+        origin = origin or start
+        moved = round((((start[0] - origin[0]) ** 2 + (start[2] - origin[2]) ** 2) ** 0.5) * M_TO_YD, 1) if start and origin else None
+        row = {"test": "lie", **labels, "spot": spot, "note": typed, "club": name, "n": index, "status": status,
+               "sent_speed_mph": shot["speed"], "sent_vla_deg": shot["vla"], "sent_spin_rpm": shot["spin"], "sent_at": sent_at,
+               **measure_landing(record), **lie, **table,
+               "start_surface": (record or {}).get("StartingSurface"), "moved_from_spot_yd": moved,
+               **({"start_x": round(start[0], 2), "start_y": round(start[1], 2), "start_z": round(start[2], 2)} if start else {})}
+        writer.writerow(row)
+        flush()
+        rows.append(row)
+        flown_yd = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
+        if flown_yd and (row.get("db_raw_carry_game_yd") or 0) > 5:
+            plays = flown_yd / row["db_raw_carry_game_yd"]
+        try:
+            kept = [line.strip()[:300] for line in log_text.splitlines() if LOG_KEEP_RE.search(line)][:40]
+            with notes_file.open("a", encoding="utf-8") as notes:
+                notes.write(f"--- spot {spot} shot {index} ({name}) {sent_at} note: {typed}\n" + "\n".join(kept) + "\n")
+        except OSError:
+            pass
+        if lie.get("lie_speed_pct") is not None:
+            took = f"{lie['lie_surface']}: speed kept {lie['lie_speed_pct']:.0f}%, spin {lie['lie_spin_pct']:.0f}%, launch {lie['lie_vla_pct']:.0f}%"
+        else:
+            took = f"no penalty line in GSPro's log (start surface {row.get('start_surface', 'not recorded')})"
+        flown = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
+        carry = f"carried {flown:.1f} yd" if flown is not None else "carry not recorded"
+        if row.get("flown_vla_deg") is not None:
+            carry += f"; launched {row['flown_vla_deg']:.1f} deg (sent {shot['vla']:g})"
+        if row.get("start_line_deg") is not None:
+            off, turn = row["offline_from_aim_yd"], row["start_line_deg"]
+            carry += f", started {abs(turn):.1f} deg {'right' if turn > 0 else 'left'}, landed {abs(off):.1f} yd {'right' if off > 0 else 'left'}"
+        if row.get("peak_height_ft") is not None:
+            carry += f", peak {row['peak_height_ft']:.0f} ft"
+        if row.get("landing_surface") == GREEN_SURFACE and row.get("roll_yd") is not None:
+            carry += f"; LANDED ON THE GREEN, {'spun back' if row['roll_yd'] < 0 else 'released'} {abs(row['roll_yd']):.1f} yd"
+        elsewhere = f"  [hit from {moved:g} yd away from the first shot's spot]" if moved and moved > 2 else ""
+        print(f"  {name:<16} {took}; {carry}{elsewhere}")
+        sleep(gap)
+    return rows, True
+
+
 def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, Any], round_file: Path, log_file: Path, db_path: Path,
                 notes_file: Path, gap: float, record_wait: float, first_spot: int = 1, sleep=time.sleep) -> list[dict[str, Any]]:
     """Spot after spot: the player drops the ball and presses Enter, three shots are hit and recorded."""
@@ -614,7 +694,6 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             break
         if typed.lower() in ("q", "quit"):
             break
-        origin: tuple[float, float, float] | None = None
         spot_shots = lie_shots_for_spot(spot)
         if typed.lower() == "all" or typed.lower().startswith("all "):
             # One lie, every combination of speed, launch and spin: shows what the penalty depends on.
@@ -640,73 +719,12 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
                                                        "_flat_carry": BAG[club]["carry"] * SPIN_CARRY.get(factor, 1.0), "_target": distance})
                            for club in nearest for factor, tag in sorted(spins, key=lambda pair: pair[0] != 1.0)]
             spot_shots = green_shots if only_green else spot_shots + green_shots
-        plays = None  # carry here as a share of the same shot's flat, sea-level carry (hill, altitude, lie)
-        for index, (name, shot) in enumerate(spot_shots, start=1):
-            if "_target" in shot:
-                shot = green_speed(shot, plays)
-            before_record = record_fingerprint(newest_round_record(round_file))
-            before_log = log_size(log_file)
-            before_row = latest_row_safely(db_path)
-            sent_at = time.strftime("%Y-%m-%dT%H:%M:%S")
-            try:
-                status = path.fire(shot)
-            except (ConnectionError, OSError) as exc:
-                print(f"  could not send: {exc}")
-                return rows
-            if "at rest" not in status:
-                print(f"  (no ball-at-rest from GSPro; waiting {NO_STOP_SIGNAL_WAIT_S:g} s for the shot to finish)")
-                sleep(NO_STOP_SIGNAL_WAIT_S)
-            record = wait_for_new_record(round_file, before_record, record_wait, sleep=sleep)
-            log_text = read_log_since(log_file, before_log)
-            lie = lie_from_log(log_text)
-            found = wait_for_new_row(db_path, before_row[0] if before_row else None, 3.0, sleep=sleep)
-            data = found[1] if found else {}
-            table = {"db_carry_yd": _num(data.get("Carry")), "db_total_yd": _num(data.get("TotalDistance")),
-                     "db_raw_carry_game_yd": _num(data.get("rawCarryGame")), "db_raw_carry_lm_yd": _num(data.get("rawCarryLM")),
-                     "db_pin_yd": _num(data.get("DistanceToPin")),
-                     # What GSPro flew after the lie: a slope shows up here as offline, height and launch.
-                     "db_offline_yd": _num(data.get("Offline")), "db_peak_height": _num(data.get("PeakHeight")),
-                     "db_descent_deg": _num(data.get("Decent")), "db_vla_deg": _num(data.get("VLA")), "db_hla_deg": _num(data.get("HLA")),
-                     "db_backspin_rpm": _num(data.get("BackSpin")), "db_sidespin_rpm": _num(data.get("SideSpin")),
-                     "db_id": found[0]} if found else {}
-            start = _xyz((record or {}).get("StartingPOS"))
-            origin = origin or start
-            moved = round((((start[0] - origin[0]) ** 2 + (start[2] - origin[2]) ** 2) ** 0.5) * M_TO_YD, 1) if start and origin else None
-            row = {"test": "lie", **labels, "spot": spot, "note": typed, "club": name, "n": index, "status": status,
-                   "sent_speed_mph": shot["speed"], "sent_vla_deg": shot["vla"], "sent_spin_rpm": shot["spin"], "sent_at": sent_at,
-                   **measure_landing(record), **lie, **table,
-                   "start_surface": (record or {}).get("StartingSurface"), "moved_from_spot_yd": moved,
-                   **({"start_x": round(start[0], 2), "start_y": round(start[1], 2), "start_z": round(start[2], 2)} if start else {})}
-            writer.writerow(row)
-            flush()
-            rows.append(row)
-            flown_yd = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
-            if flown_yd and (row.get("db_raw_carry_game_yd") or 0) > 5:
-                plays = flown_yd / row["db_raw_carry_game_yd"]
-            try:
-                kept = [line.strip()[:300] for line in log_text.splitlines() if LOG_KEEP_RE.search(line)][:40]
-                with notes_file.open("a", encoding="utf-8") as notes:
-                    notes.write(f"--- spot {spot} shot {index} ({name}) {sent_at} note: {typed}\n" + "\n".join(kept) + "\n")
-            except OSError:
-                pass
-            if lie.get("lie_speed_pct") is not None:
-                took = f"{lie['lie_surface']}: speed kept {lie['lie_speed_pct']:.0f}%, spin {lie['lie_spin_pct']:.0f}%, launch {lie['lie_vla_pct']:.0f}%"
-            else:
-                took = f"no penalty line in GSPro's log (start surface {row.get('start_surface', 'not recorded')})"
-            flown = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
-            carry = f"carried {flown:.1f} yd" if flown is not None else "carry not recorded"
-            if row.get("flown_vla_deg") is not None:
-                carry += f"; launched {row['flown_vla_deg']:.1f} deg (sent {shot['vla']:g})"
-            if row.get("start_line_deg") is not None:
-                off, turn = row["offline_from_aim_yd"], row["start_line_deg"]
-                carry += f", started {abs(turn):.1f} deg {'right' if turn > 0 else 'left'}, landed {abs(off):.1f} yd {'right' if off > 0 else 'left'}"
-            if row.get("peak_height_ft") is not None:
-                carry += f", peak {row['peak_height_ft']:.0f} ft"
-            if row.get("landing_surface") == GREEN_SURFACE and row.get("roll_yd") is not None:
-                carry += f"; LANDED ON THE GREEN, {'spun back' if row['roll_yd'] < 0 else 'released'} {abs(row['roll_yd']):.1f} yd"
-            elsewhere = f"  [hit from {moved:g} yd away from the first shot's spot]" if moved and moved > 2 else ""
-            print(f"  {name:<16} {took}; {carry}{elsewhere}")
-            sleep(gap)
+        spot_rows, connected = hit_spot(path, writer, flush, labels=labels, spot=spot, typed=typed, spot_shots=spot_shots,
+                                        round_file=round_file, log_file=log_file, db_path=db_path, notes_file=notes_file,
+                                        gap=gap, record_wait=record_wait, sleep=sleep)
+        rows.extend(spot_rows)
+        if not connected:
+            return rows
         spot += 1
     return rows
 
@@ -1184,6 +1202,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     ("green", "Landing on a green: irons and wedges in On Course practice"),
                     ("putt", "Putt roll: sets of putts on a green, flat, uphill or downhill, at each stimp"),
                     ("lie", "Shots from a lie: drop the ball anywhere in On Course practice, 3 shots per spot"),
+                    ("wander", "Wander: the tool moves the ball round the hole itself and hits 3 shots per spot (On Course practice)"),
                     ("check", "Check what GSPro records: one shot, then a report of every file GSPro wrote"),
                     ("quit", "Finished"),
                 ], answers["test"])  # Enter repeats the last test, so nine settings are nine quick passes
@@ -1225,6 +1244,36 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                                         db_path=db_path, notes_file=notes_file, gap=1.0, record_wait=8.0, first_set=putt_sets + 1, sleep=sleep)
                     total += len(rows)
                     putt_sets = max([putt_sets] + [int(row["spot"]) for row in rows])
+                    print(f"\nSaved so far: {total} shots in {out.name} (GSPro's log lines in {notes_file.name}).\n")
+                    continue
+                if test == "wander":
+                    import wander as wander_tool
+                    print("\nGSPro in On Course practice, any hole, minimap showing. The Looper Companion running (it reads")
+                    print("the slope under the ball). It clicks the minimap to move the ball, hits 3 shots, and moves on.")
+                    print("To stop: move the mouse. About 45 seconds a spot.")
+                    side = choose(read_line, "Which side is GSPro's minimap on?", [("right", "Right"), ("left", "Left")],
+                                  answers.get("side", "right"))
+                    answers["side"] = side
+                    typed = read_line("How many spots? Enter for 3 (a quick check that the clicks move the ball); "
+                                      "150 is about 2 hours. ").strip()
+                    spots = int(typed) if typed.isdigit() and int(typed) > 0 else 3
+                    try:
+                        desktop = wander_tool.Desktop()
+                    except OSError as exc:
+                        print(exc)
+                        continue
+                    print("Starting in 5 seconds. Hands off the mouse.")
+                    sleep(5)
+                    notes_file = out.with_name(out.stem + "_log.txt")
+                    rows = wander_tool.wander(path, writer, handle.flush, desktop=desktop, spots=spots, shots_per_spot=3,
+                                              side=side, labels={**labels, "test": "wander"}, round_file=round_file,
+                                              log_file=log_file, db_path=db_path, notes_file=notes_file,
+                                              first_spot=lie_spots + 1, sleep=sleep)
+                    total += len(rows)
+                    lie_spots = max([lie_spots] + [int(row["spot"]) for row in rows])
+                    print()
+                    for line in lie_summary(rows):
+                        print(line)
                     print(f"\nSaved so far: {total} shots in {out.name} (GSPro's log lines in {notes_file.name}).\n")
                     continue
                 if test == "lie":
