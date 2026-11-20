@@ -45,8 +45,23 @@ try {
   // Leaks and strengths are strokes per round vs your typical shot, early reads under 30 shots.
   for (const s of [...game.leaks, ...game.strengths]) {
     assert.equal(s.early, s.shots < FIRM_SHOTS)
-    assert.ok(Math.abs(s.perRound - (s.sgPerShot - game.typical) * s.shots) < 1e-9, '18 holes: per round = per shot gap × shots')
+    if (!s.id.startsWith('putt-')) assert.ok(Math.abs(s.perRound - s.sgPerShot * s.shots) < 1e-9, '18 holes: per round = per shot vs tour × shots')
   }
+  // One scale, vs the tour: the four categories on top, and tee shots and putting compete for the leak slots.
+  assert.deepEqual(game.categories.map((c) => c.id), ['off-the-tee', 'approach', 'around-green', 'putting'])
+  for (const id of ['off-the-tee', 'approach', 'around-green']) {
+    const row = game.categories.find((c) => c.id === id)
+    assert.ok(Math.abs(row.perRound - old.sg.categories[id].sg) < 1e-9, `${id} matches the round page on an 18-hole round`)
+  }
+  const tee = game.categories[0]
+  assert.equal(game.leaks[0].id, 'tee', 'the biggest loss in the Old Game is off the tee')
+  assert.ok(Math.abs(game.leaks[0].perRound - tee.perRound) < 1e-9)
+  // Putting is real putts only (no gimme credit), split so Read + Line + Pace add up to it.
+  const puttingRow = game.categories[3]
+  assert.ok(puttingRow.perRound < old.sg.categories.putting.sg, 'gimmes flatter the round-page number')
+  assert.equal(puttingRow.href, '/game/putting')
+  const all = buildYourGame(rounds)
+  assert.equal(all.categories[3].shots, 14)
   assert.ok(game.leaks.every((s) => s.perRound < 0) && game.strengths.every((s) => s.perRound > 0))
   // Putting: 30 putts, 16 gimmes -> 14 real putts across the buckets.
   assert.deepEqual(game.putting.map((b) => b.label), ['5–10 ft', '10–15 ft', '15–25 ft', '25–35 ft', '35–50 ft', '50 ft +'])

@@ -440,7 +440,7 @@ export default function LooperLandingPage({
                 <a className="looper-landing-mode-action" href="/rounds">
                   Rounds <span aria-hidden="true">→</span>
                 </a>
-                <a className="looper-landing-mode-action" href="/rounds/game">
+                <a className="looper-landing-mode-action" href="/game">
                   Your game <span aria-hidden="true">→</span>
                 </a>
               </span>

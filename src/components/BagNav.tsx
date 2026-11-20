@@ -3,7 +3,7 @@ import type { Club } from '../lib/bagConfig'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import '../pages/BagYardageBook.css'
 
-export type BagNavTarget = 'bag' | 'lastSession' | 'club' | 'rounds' | 'game'
+export type BagNavTarget = 'bag' | 'lastSession' | 'club' | 'rounds' | 'game' | 'putting'
 
 type BagTopBarProps = {
   active: BagNavTarget
@@ -13,6 +13,8 @@ type BagTopBarProps = {
   editBagHref: string
   /** Shown inside the bar on Club Detail, so the page itself starts with the club. */
   clubSwitcher?: ReactNode
+  /** On Your game and its pages: show the pages under it (Putting) beside the tab. */
+  showGamePages?: boolean
 }
 
 /** Slim top bar that replaces the dashboard rail when the yardage book is on. */
@@ -22,6 +24,7 @@ export function BagTopBar({
   onLastSession,
   editBagHref,
   clubSwitcher,
+  showGamePages = false,
 }: BagTopBarProps) {
   return (
     <header className="bagbook-topbar">
@@ -57,10 +60,20 @@ export function BagTopBar({
         <a
           aria-current={active === 'game' ? 'page' : undefined}
           className={active === 'game' ? 'is-active' : undefined}
-          href="/rounds/game"
+          href="/game"
         >
           Your game
         </a>
+        {showGamePages ? (
+          // Pages inside Your game sit beside its tab, in a softer green, only while you are in that section.
+          <a
+            aria-current={active === 'putting' ? 'page' : undefined}
+            className={`is-sub${active === 'putting' ? ' is-active' : ''}`}
+            href="/game/putting"
+          >
+            Putting
+          </a>
+        ) : null}
       </nav>
       {clubSwitcher}
       <div className="bagbook-topbar-actions">

@@ -2071,3 +2071,42 @@ button.rounds-count-chip:focus-visible {
 .rounds-score-inline {
   align-items: last baseline;
 }
+
+/* Which rounds a stats page looks at: Last 6 months / Last 5 / Last 15 / All. */
+.round-window-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.round-window-pills button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.round-window-pills button.active { border-color: var(--rounds-text); background: var(--rounds-text); color: var(--rounds-bg); }
+.round-window-all {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--rounds-text);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+/* In the top ribbon: right of the tabs, a touch smaller, beside Edit Bag. */
+.bagbook-topbar .round-window-pills { margin-left: auto; gap: 6px; }
+.bagbook-topbar .round-window-pills button { min-height: 34px; padding: 0 13px; }
+.bagbook-topbar .round-window-pills + .bagbook-topbar-actions { margin-left: 0; }
+
+/* Your game: the four categories per round, above the leaks. */
+.yourgame-catstrip { padding: 8px 0 0; }
+.yourgame-catcell { padding-left: 0; text-decoration: none; }
+.yourgame-catcell.is-static { cursor: default; }
+.yourgame-catcell.is-static:hover { background: transparent; }
+.yourgame-leak-link { color: inherit; text-decoration: none; }
+.yourgame-leak-link:hover { text-decoration: underline; text-underline-offset: 3px; }

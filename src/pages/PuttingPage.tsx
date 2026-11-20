@@ -15,7 +15,10 @@ import {
   type PuttSkill,
   type PuttSlope,
   type SkillSummary,
+  LINE_ON_AIM_DEG,
+  profilePutts,
 } from '../lib/puttingProfile'
+import { describeRoundWindow, EARLY_READ_ROUNDS, roundsInWindow, type RoundWindow } from '../lib/roundWindow'
 import './PuttingPage.css'
 
 const MINUS = '−'
@@ -47,7 +50,8 @@ const SKILL_COLOR: Record<PuttSkill, string> = {
 }
 
 const leanShort = (skill: SkillSummary) => {
-  if (skill.lean) return `${skill.lean.side} ${skill.lean.count} of ${skill.lean.of}`
+  // Out of every putt on the strip, so the count matches the bars you can see.
+  if (skill.lean) return `${skill.lean.side} ${skill.lean.count} of ${skill.putts}`
   if (skill.split && skill.split.aCount + skill.split.bCount >= 4) return 'no lean'
   return 'too few to say'
 }
@@ -125,7 +129,6 @@ function SkillStrip({ values, zone, color, low, high, centre, label, steps, form
   )
 }
 
-type RoundWindow = 'last' | 'five' | 'all'
 
 const GOOD_ENOUGH_MEANS: Record<PuttSkill, string> = {
   read: 'Your aim was on a line that goes in.',
@@ -211,8 +214,16 @@ function TrendChart({ points }: { points: ReadonlyArray<{ rolling: number; cours
   )
 }
 
-export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
-  const [roundWindow, setRoundWindow] = useState<RoundWindow>('all')
+/** Rounds with real putting, so "Last 5" is the last five rounds this page can say something about. */
+const hasPutts = (round: RoundSummary) => profilePutts(round).length > 0
+
+export function PuttingPage({ rounds, roundWindow, onRoundWindow }: {
+  rounds: readonly RoundSummary[]
+  /** Chosen in the top ribbon, shared with Your game. */
+  roundWindow: RoundWindow
+  onRoundWindow: (next: RoundWindow) => void
+}) {
+  const now = useMemo(() => new Date(), [])
   const [slope, setSlope] = useState<PuttSlope | 'all'>('all')
   const [length, setLength] = useState<string>('all')
   // Tapping Read, Line or Pace shows only the misses that skill caused.
@@ -224,9 +235,9 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
   const everything = useMemo(() => buildPuttingProfile(rounds), [rounds])
   const profile = useMemo(() => {
     if (roundWindow === 'all') return everything
-    const recent = [...everything.trend].reverse().slice(0, roundWindow === 'last' ? 1 : 5).map((point) => point.roundId)
-    return buildPuttingProfile(rounds.filter((round) => recent.includes(round.roundId)))
-  }, [everything, roundWindow, rounds])
+    return buildPuttingProfile(roundsInWindow(rounds, roundWindow, now, hasPutts))
+  }, [everything, roundWindow, rounds, now])
+  const thinWindow = roundWindow === 'recent' && profile.rounds < EARLY_READ_ROUNDS && everything.rounds > profile.rounds
 
   const shown = profile.putts.filter((putt) =>
     (slope === 'all' || putt.slope === slope) && (length === 'all' || putt.lengthBucket === length))
@@ -280,7 +291,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
     return (
       <main className="rounds-main putting">
         <header className="putting-header">
-          <a className="putting-back" href="/rounds/game">Your game</a>
+          <a className="putting-back" href="/game">Your game</a>
           <span className="rounds-eyebrow">Putting</span>
           <h1 className="rounds-display-title">No real putts yet</h1>
           <p className="rounds-muted">
@@ -292,10 +303,27 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
     )
   }
 
+  if (profile.putts.length === 0) {
+    // Real putting exists, just not in the rounds picked in the ribbon.
+    return (
+      <main className="rounds-main putting">
+        <header className="putting-header">
+          <a className="putting-back" href="/game">Your game</a>
+          <span className="rounds-eyebrow">Putting</span>
+          <h1 className="rounds-display-title">No real putts in these rounds</h1>
+          <p className="rounds-muted">
+            Nothing to show from {describeRoundWindow(roundWindow, profile.rounds)}. Your real putting is in older
+            rounds. <button className="round-window-all" onClick={() => onRoundWindow('all')} type="button">See all</button>
+          </p>
+        </header>
+      </main>
+    )
+  }
+
   return (
     <main className="rounds-main putting">
       <header className="putting-header">
-        <a className="putting-back" href="/rounds/game">Your game</a>
+        <a className="putting-back" href="/game">Your game</a>
         <div className="putting-title-row">
           <div className="putting-title">
             <h1 className="rounds-display-title">Putting</h1>
@@ -303,23 +331,19 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
               <summary aria-label="How this page works"><span aria-hidden="true">i</span></summary>
               <div>
                 <p><b>What counts.</b> Putts of {MIN_PUTT_FT} ft and longer that you stroked yourself. Gimmes and auto-putt rounds are left out.</p>
-                <p><b>Read</b> is where you placed your aim. <b>Line</b> is whether the ball started there. <b>Pace</b> is distance: right pace would finish about {IDEAL_PAST_FT} ft past the hole.</p>
+                <p><b>Read</b> is where you placed your aim. <b>Line</b> is whether the ball started there. <b>Pace</b> is distance: right pace would finish about {IDEAL_PAST_FT} ft past the hole. Read is judged at that pace: a putt hit too hard breaks less and one left short breaks more, and that part of the miss counts as Pace.</p>
                 <p><b>The split.</b> Each miss is replayed with the read, the pace or the start line put right, and each skill is credited with what that would have saved. The three add up to your strokes gained putting against the tour benchmark.</p>
                 <p><b>Early days.</b> Read is worked out from where the ball finished until {READ_PUTTS_NEEDED} putts carry your aim and roll ({everything.readPutts} so far). Break size arrives with it.</p>
               </div>
             </details>
           </div>
-          <div aria-label="Rounds included" className="putting-pills" role="group">
-            {([['all', `All rounds (${everything.rounds})`], ['five', 'Last 5 rounds'], ['last', 'Last round']] as const).map(([id, label]) => (
-              <button key={id} aria-pressed={roundWindow === id} className={roundWindow === id ? 'active' : ''} onClick={() => setRoundWindow(id)} type="button">
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
         <p className="rounds-muted">
-          {profile.putts.length} real putts across {profile.rounds} {profile.rounds === 1 ? 'round' : 'rounds'}, against
+          {profile.putts.length} real putts across {describeRoundWindow(roundWindow, profile.rounds)}, against
           the tour benchmark. Gimmes and auto putts are not counted.
+          {thinWindow ? (
+            <> An early read: {everything.rounds} rounds in all. <button className="round-window-all" onClick={() => onRoundWindow('all')} type="button">See all</button></>
+          ) : null}
         </p>
       </header>
 
@@ -372,7 +396,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                   low="left"
                   steps={DEGREE_STEPS}
                   values={profile.putts.flatMap((putt) => (putt.startDirectionDeg != null ? [putt.startDirectionDeg] : []))}
-                  zone={[-0.5, 0.5]}
+                  zone={[-LINE_ON_AIM_DEG, LINE_ON_AIM_DEG]}
                 />
               )}
               <span>{sizeText(id, skills[id])} · {leanShort(skills[id])}</span>
@@ -444,7 +468,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
             </ul>
             {cause === 'all' && judgedTotal >= 4 ? (
               <div className="putting-good">
-                <h4>Was each part good enough?</h4>
+                <h4>Good enough to go in?</h4>
                 <p className="rounds-muted">
                   A putt needs all three to drop. Taken one at a time, this is how often each was good enough to go in
                   if the other two had been perfect.
@@ -562,7 +586,7 @@ export function PuttingPage({ rounds }: { rounds: readonly RoundSummary[] }) {
                     <td className="is-num">{Math.round(putt.lengthFt)} ft</td>
                     <td>{putt.slope && putt.riseIn != null ? `${SLOPE_LABEL[putt.slope]}${putt.slope === 'flat' ? '' : `, ${feet(putt.riseIn / 12)}`}` : '–'}</td>
                     <td>{putt.startDirectionDeg == null ? '–'
-                      : Math.abs(putt.startDirectionDeg) < 0.25 ? 'On line'
+                      : Math.abs(putt.startDirectionDeg) <= LINE_ON_AIM_DEG ? 'On line'
                         : `${Math.abs(putt.startDirectionDeg).toFixed(1)}° ${putt.startDirectionDeg < 0 ? 'left' : 'right'}`}</td>
                     <td>{putt.holed ? 'Holed'
                       : putt.alongFt == null || putt.lateralFt == null ? `${feet(putt.leaveFt)} left`

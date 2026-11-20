@@ -79,6 +79,51 @@ try {
   assert.equal(surface.getSurfaceResponse('deep-rough').factors.speed, 0.82, 'implausible values ignored')
   surface.setLearnedSurfaceFactors(null)
 
+  // 5b. Sand: the speed penalty follows how hard the ball is hit (players' rounds, 18 Nov).
+  // A greenside blast keeps 76%, a full shot from a fairway bunker 93%.
+  assert.equal(surface.getSurfaceResponse('sand').factors.speed, 0.77, 'no shot speed: the greenside figure')
+  assert.equal(surface.getSurfaceResponse('bunker', 30).factors.speed, 0.757)
+  assert.ok(Math.abs(surface.getSurfaceResponse('bunker', 55).factors.speed - 0.8435) < 1e-9)
+  assert.equal(surface.getSurfaceResponse('bunker', 113).factors.speed, 0.93)
+  assert.equal(surface.getSurfaceResponse('bunker', 113).label, 'Sand / fairway bunker')
+  assert.equal(surface.getSurfaceResponse('bunker', 113).factors.spin, 1, 'a full shot keeps its spin')
+  // A player's own median (mostly greenside) no longer drags full shots down, in speed or spin.
+  surface.setLearnedSurfaceFactors({ sand: { speed: 0.76, spin: 0.7, vla: 1, samples: 9 } })
+  assert.equal(surface.getSurfaceResponse('sand', 113).factors.speed, 0.93)
+  assert.equal(surface.getSurfaceResponse('sand', 113).factors.spin, 1)
+  assert.equal(surface.getSurfaceResponse('sand').factors.spin, 0.7, 'no shot speed: their own figure')
+  assert.equal(surface.getSurfaceResponse('rough', 113).factors.speed, 0.96, 'other lies are untouched')
+
+  // 7. Rough and deep rough follow the shot (GSPro's own penalty line, 18 Nov 2026: ball speed mph, launch deg, speed kept).
+  const deepMeasured = [[134.2, 8.7, 0.6437], [143.8, 11.1, 0.6624], [123.5, 12, 0.7063], [95, 14, 0.7362], [145, 14, 0.6934], [121.5, 14.4, 0.7384],
+    [113.1, 16.4, 0.7554], [105.7, 17.7, 0.7621], [105, 19, 0.7688], [94.4, 22.4, 0.7823], [60, 24, 0.7878], [100, 24, 0.7878], [88.7, 24.9, 0.7909],
+    [50, 28, 0.7964], [40, 30, 0.8091], [70, 30, 0.7998]]
+  let worstDeep = 0
+  for (const [ballSpeedMph, vlaDeg, kept] of deepMeasured) {
+    worstDeep = Math.max(worstDeep, Math.abs(surface.getSurfaceResponse('deep-rough', { ballSpeedMph, vlaDeg }).factors.speed - kept))
+  }
+  assert.ok(worstDeep < 0.03, `deep rough speed within 3 points of GSPro: ${worstDeep}`)
+  const roughMeasured = [[134.2, 8.7, 0.9139, 0.808], [123.5, 12, 0.9287, 0.808], [113.1, 16.4, 0.94, 0.8], [94.4, 22.4, 0.94, 0.765], [78.6, 26.6, 0.95, 0.765], [40, 30, 0.97, 0.657]]
+  for (const [ballSpeedMph, vlaDeg, kept, spinKept] of roughMeasured) {
+    const factors = surface.getSurfaceResponse('rough', { ballSpeedMph, vlaDeg }).factors
+    assert.ok(Math.abs(factors.speed - kept) < 0.012 && Math.abs(factors.spin - spinKept) < 0.04, `rough ${ballSpeedMph}/${vlaDeg}: ${factors.speed} ${factors.spin}`)
+  }
+  // A hybrid from deep rough loses far more than a wedge; the shot beats the player's own median.
+  surface.setLearnedSurfaceFactors({ 'deep-rough': { speed: 0.8, spin: 0.53, vla: 0.98, samples: 9 } })
+  const hybrid = surface.getSurfaceResponse('deep-rough', { ballSpeedMph: 134.2, vlaDeg: 8.7 })
+  const wedge = surface.getSurfaceResponse('deep-rough', { ballSpeedMph: 78.6, vlaDeg: 26.6 })
+  assert.ok(hybrid.factors.speed < 0.66 && wedge.factors.speed > 0.78 && hybrid.kind === 'deep-rough')
+  assert.match(hybrid.evidence, /Lower launches lose more/)
+  assert.equal(surface.getSurfaceResponse('deep-rough').factors.speed, 0.8, 'no launch: the learned figure')
+  surface.setLearnedSurfaceFactors(null)
+  // Semi-rough is its own, light penalty; sand keeps its spin on full shots.
+  assert.deepEqual(surface.getSurfaceResponse('semi-rough', { ballSpeedMph: 113, vlaDeg: 16 }).factors, { speed: 0.985, spin: 0.95, vla: 1 })
+  assert.equal(surface.getSurfaceResponse('semirough').label, 'Semi-rough')
+  assert.equal(surface.getSurfaceResponse('sand', { ballSpeedMph: 113, vlaDeg: 16 }).factors.spin, 1)
+  assert.ok(Math.abs(surface.getSurfaceResponse('sand', 50).factors.spin - 0.9) < 1e-9)
+  assert.equal(surface.getSurfaceResponse('sand', 35).factors.spin, 0.765)
+  surface.setLearnedSurfaceFactors(null)
+
   // 6. A contradicted code is not learned.
   const conflicting = log.parseGsproPenaltyEvents(shot('sp 50, el 25, az 0, ts 5000, sa 0, cy 40, id 31',
     'Penalty Surface TVGrough, Spin60%, Speed 97%, VLA 100%', 3))

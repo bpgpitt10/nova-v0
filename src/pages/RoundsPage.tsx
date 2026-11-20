@@ -37,6 +37,8 @@ import './RoundsPage.css'
 import { LooperTagline } from '../components/LooperTagline'
 import { YourGame } from './YourGame'
 import { PuttingPage } from './PuttingPage'
+import { defaultRoundWindow, ROUND_WINDOWS, type RoundWindow } from '../lib/roundWindow'
+import { RoundWindowPills } from '../components/RoundWindowPills'
 
 const FULL_ROUNDS_FOR_TRENDS = 5
 /** A shot that lost at least half a stroke is carnage; anything milder just got away. */
@@ -205,8 +207,20 @@ function useRoundData() {
   return state
 }
 
+const ROUND_WINDOW_KEY = 'looper.roundWindow'
+/** The window picked earlier this visit, so it carries between Your game and Putting. */
+const storedRoundWindow = (): RoundWindow | null => {
+  try {
+    const value = window.sessionStorage.getItem(ROUND_WINDOW_KEY)
+    return ROUND_WINDOWS.some(([id]) => id === value) ? value as RoundWindow : null
+  } catch {
+    return null
+  }
+}
+
 export default function RoundsPage({ pathname }: { pathname: string }) {
   const data = useRoundData()
+  const [pickedWindow, setPickedWindow] = useState<RoundWindow | null>(() => storedRoundWindow())
   const [flags, setFlags] = useState<Record<number, RoundFlags>>(() => loadRoundFlags())
   // Count choices and deletes live on the account; changes made on this visit apply at once.
   const [countChoices, setCountChoices] = useState<Record<number, RoundCountChoice | null>>({})
@@ -222,8 +236,14 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     })
     return buildRounds(records, toCourseInfoMap(data.courses), merged)
   }, [data, flags, countChoices, deletedIds])
-  const isPutting = pathname === '/rounds/putting'
-  const isGame = pathname === '/rounds/game' || isPutting
+  // Your game and Putting share one choice of rounds; it opens on the last six months (or All, with nothing that recent).
+  const roundWindow = useMemo(() => pickedWindow ?? defaultRoundWindow(rounds), [pickedWindow, rounds])
+  const chooseRoundWindow = useCallback((next: RoundWindow) => {
+    setPickedWindow(next)
+    try { window.sessionStorage.setItem(ROUND_WINDOW_KEY, next) } catch { /* private window: the choice lasts for this page */ }
+  }, [])
+  const isPutting = pathname === '/game/putting' || pathname === '/rounds/putting'
+  const isGame = pathname === '/game' || pathname.startsWith('/game/') || pathname === '/rounds/game' || isPutting
   const roundIdParam = !isGame && pathname.startsWith('/rounds/') ? Number(pathname.slice('/rounds/'.length)) : null
   const selected = roundIdParam != null ? rounds.find((round) => round.roundId === roundIdParam) ?? null : null
 
@@ -276,7 +296,9 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
     <div className={`rounds-page is-scene-${scene.backdrop}`}>
       <div className="rounds-shell">
         <BagTopBar
-          active={isGame ? 'game' : 'rounds'}
+          active={isPutting ? 'putting' : isGame ? 'game' : 'rounds'}
+          showGamePages={isGame}
+          clubSwitcher={isGame && data.status === 'ready' ? <RoundWindowPills onChange={chooseRoundWindow} value={roundWindow} /> : undefined}
           editBagHref={`/bag-setup?returnTo=${encodeURIComponent('/rounds')}`}
           onBag={() => navigate('/bag')}
         />
@@ -303,8 +325,8 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
             round={selected}
           />
         ) : null}
-        {data.status === 'ready' && isPutting ? <PuttingPage rounds={rounds} /> : null}
-        {data.status === 'ready' && isGame && !isPutting ? <YourGame rounds={rounds} /> : null}
+        {data.status === 'ready' && isPutting ? <PuttingPage onRoundWindow={chooseRoundWindow} roundWindow={roundWindow} rounds={rounds} /> : null}
+        {data.status === 'ready' && isGame && !isPutting ? <YourGame onRoundWindow={chooseRoundWindow} roundWindow={roundWindow} rounds={rounds} /> : null}
         {data.status === 'ready' && roundIdParam == null && !isGame ? (
           <RoundsList
             manageError={manageError}
@@ -722,6 +744,7 @@ function RoundDetail({
     `${round.putts} putts`,
     round.fir.of > 0 ? `${round.fir.hit}/${round.fir.of} fairways` : null,
     round.gir.of > 0 ? `${round.gir.hit}/${round.gir.of} greens` : null,
+    round.mulligans > 0 ? `${round.mulligans} ${round.mulligans === 1 ? 'mulligan' : 'mulligans'} not counted` : null,
   ].filter(Boolean).join(' · ')
 
   return (

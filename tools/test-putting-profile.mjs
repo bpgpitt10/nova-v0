@@ -109,6 +109,47 @@ try {
     // A pull that rescued a bad read: fixing the line alone makes it worse, so line can come out negative, and it still adds up.
     const cancelling = attributeMiss(20, 0.5, 1, -2).costs
     assert.ok(near(total(cancelling), benchmark(Math.hypot(0.5, 1))))
+    // With the roll path: read and line are judged where the ball passed the hole, not where it stopped.
+    // Passed 6 in right, then broke on to finish 18 in right and 3 ft past; started on the aim.
+    const drifted = attributeMiss(20, 1.5, 3, 0, 0.5)
+    assert.ok(near(drifted.readLateralFt, 0.5), 'read is the miss at the hole')
+    assert.ok(near(total(drifted.costs), benchmark(Math.hypot(1.5, 3))), 'still adds up to what the miss cost')
+    assert.ok(drifted.costs.read > 0 && drifted.costs.pace > 0)
+    // Passed over the middle of the hole but ran 6 ft by: read and line are clean.
+    const overTheTop = attributeMiss(20, 1.5, 6, 0, 0)
+    assert.ok(near(overTheTop.readLateralFt, 0) && near(overTheTop.costs.read, 0) && near(overTheTop.costs.line, 0))
+    assert.ok(near(overTheTop.costs.pace, benchmark(Math.hypot(1.5, 6))), 'through the hole too fast is all pace')
+    // Read is judged at the right pace. A perfect read of a foot of break, hammered 6 ft by: it broke less,
+    // missed on the high side, and that is all pace.
+    {
+      const { idealBreakScale } = profileLib
+      const scale = idealBreakScale(20, 6, true)
+      assert.ok(scale > 1.4 && scale < 1.6, 'six feet by takes about two thirds of the break')
+      assert.ok(near(idealBreakScale(20, 1, true), 1), 'ideal pace: no change')
+      const aimDeg = (Math.atan(1 / 20) * 180) / Math.PI // aimed a foot right
+      const passedAt = 1 - 1 / scale // broke only 1/scale ft back left by the hole
+      const firm = attributeMiss(20, 0.2, 6, 0, passedAt, aimDeg)
+      assert.ok(near(firm.readLateralFt, 0), 'the read was right')
+      assert.ok(near(firm.costs.read, 0) && near(firm.costs.line, 0) && near(firm.costs.pace, benchmark(Math.hypot(0.2, 6))))
+      // Left 2 ft short and a foot low with a straight aim: about a fifth of that break was the lack of pace.
+      const soft = attributeMiss(20, -1, -2, 0, null, 0)
+      const softScale = idealBreakScale(20, -2, false)
+      assert.ok(softScale > 0.75 && softScale < 0.82)
+      assert.ok(near(soft.readLateralFt, -softScale))
+      assert.ok(near(total(soft.costs), benchmark(Math.hypot(1, 2))), 'still adds up')
+      // The scale is capped, and without an aim nothing changes.
+      assert.equal(idealBreakScale(6, 30, true), 2)
+      assert.deepEqual(attributeMiss(20, 0.2, 6, 0, passedAt, null), attributeMiss(20, 0.2, 6, 0, passedAt))
+      // In a round: aimed straight at a cup due north, left short and low.
+      const aimed = buildPuttingProfile([round([putt(3, { end: { x: -0.3, y: 0, z: 9.4 }, startDirectionDeg: 0, aimDirectionDeg: 0, endYds: 0.7 })])])
+      assert.ok(Math.abs(aimed.putts[0].readLateralFt - -0.3 * 3.280839895 * idealBreakScale(10 * 3.280839895, -0.6 * 3.280839895, false)) < 1e-3)
+    }
+    // No pass point: unchanged from before.
+    assert.deepEqual(attributeMiss(30, 1.5, -3, 1, null), attributeMiss(30, 1.5, -3, 1))
+    {
+      const passed = buildPuttingProfile([round([putt(3, { end: { x: 0.5, y: 0, z: 11 }, passHole: { x: 0.1, y: 0, z: 10 }, startDirectionDeg: 0, endYds: 0.6 })])])
+      assert.ok(near(passed.putts[0].readLateralFt, 0.1 * 3.280839895), 'the profile uses the pass point when the shot has one')
+    }
     // In a round: the miss gets a cause, and with putting losing strokes the three strokes add up to the total.
     const built = buildPuttingProfile([round([putt(3, { end: { x: 0.05, y: 0, z: 9 }, startDirectionDeg: 0.2 })])])
     assert.equal(built.putts[0].cause, 'pace')

@@ -223,7 +223,9 @@ export const buildCaddieModelContract = (
   })
 
   const surface = context.surface?.trim() || null
-  const surfaceResponse = getSurfaceResponse(surface)
+  const surfaceResponse = getSurfaceResponse(surface, {
+    ballSpeedMph: baseline.launchBallSpeedMph, vlaDeg: baseline.launchVlaDeg, totalSpinRpm: baseline.launchSpinRpm,
+  })
   const surfaceFactors = surfaceResponse.factors
   factors.push({
     id: 'surface',
@@ -260,6 +262,7 @@ export const buildCaddieModelContract = (
     club: baseline.club,
     lieLeftRightDeg: context.lieLeftRightDeg,
     carryYds: baseline.stockCarryYds,
+    launchVlaDeg: baseline.launchVlaDeg,
   })
   const sidehillReady = sidehillReference.status === 'ready'
   const upDownReady = finite(context.lieUpDownDeg) && hasLaunchPacket && finite(baseline.stockCarryYds)

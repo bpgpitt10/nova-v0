@@ -1,5 +1,7 @@
 import { buildYourGame, FIRM_SHOTS, GIMME_CIRCLE_FT, SHOTS_PER_DOT, type LadderRung, type Segment } from '../lib/yourGame'
+import { useMemo } from 'react'
 import type { RoundSummary } from '../lib/roundHistory'
+import { describeRoundWindow, EARLY_READ_ROUNDS, roundsInWindow, type RoundWindow } from '../lib/roundWindow'
 
 /** Full rounds (90 holes) before most calls here are firm. */
 const FIRM_HOLES = 90
@@ -53,7 +55,9 @@ function SegmentCell({ segment }: { segment: Segment }) {
   return (
     <div className="yourgame-leak">
       <strong className={tone(segment.perRound)}>{signed(segment.perRound, 1)}</strong>
-      <span className="yourgame-leak-label">{segment.label}</span>
+      <span className="yourgame-leak-label">
+        {segment.href ? <a className="yourgame-leak-link" href={segment.href}>{segment.label}</a> : segment.label}
+      </span>
       <span className="rounds-muted">{segment.detail}</span>
       <span className={`yourgame-tag${segment.early ? ' is-early' : ''}`}>
         {segment.early ? `Early read · ${segment.shots} shots` : `${segment.shots} shots`}
@@ -74,8 +78,18 @@ const rungRow = (rung: LadderRung, typical: number | null) => (
   </tr>
 )
 
-export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
-  const game = buildYourGame(rounds)
+export function YourGame({ rounds, roundWindow, onRoundWindow }: {
+  rounds: readonly RoundSummary[]
+  /** Chosen in the top ribbon, shared with Putting. */
+  roundWindow: RoundWindow
+  onRoundWindow: (next: RoundWindow) => void
+}) {
+  // Old golf fades out: the page opens on the last six months, with the rest a tap away.
+  const now = useMemo(() => new Date(), [])
+  const inWindow = useMemo(() => roundsInWindow(rounds, roundWindow, now), [rounds, roundWindow, now])
+  const allCount = useMemo(() => roundsInWindow(rounds, 'all', now).length, [rounds, now])
+  const thinWindow = roundWindow === 'recent' && inWindow.length < EARLY_READ_ROUNDS && allCount > inWindow.length
+  const game = useMemo(() => buildYourGame(inWindow), [inWindow])
   const progress = Math.min(100, (game.holes / FIRM_HOLES) * 100)
 
   return (
@@ -85,8 +99,8 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
           <span className="rounds-eyebrow">Your game</span>
           <h1 className="rounds-display-title">Where you lose strokes</h1>
           <p className="rounds-muted">
-            Every shot is compared with your typical shot, then weighted by how often that shot comes up. The result is
-            strokes per round, so a small leak you face five times a round outranks a big one you face once a month.
+            Strokes gained against the tour benchmark, per round. Each part of your game is weighted by how often it
+            comes up, so a small leak you face five times a round outranks a big one you face once a month.
           </p>
         </div>
         <div className="yourgame-data">
@@ -95,6 +109,12 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
           <div className="rounds-progress" aria-hidden="true"><div style={{ width: `${progress}%` }} /></div>
           <span className="rounds-muted">
             {game.courses.length ? `${game.courses.join(', ')}. ` : ''}Test sessions left out. Firm calls start around 5 rounds.
+          </span>
+          <span className="rounds-muted">
+            From {describeRoundWindow(roundWindow, inWindow.length)}.
+            {thinWindow ? (
+              <> An early read: {allCount} rounds in all. <button className="round-window-all" onClick={() => onRoundWindow('all')} type="button">See all</button></>
+            ) : null}
           </span>
         </div>
       </header>
@@ -105,15 +125,46 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
         </section>
       ) : (
         <>
+          <section className="rounds-catstrip yourgame-catstrip">
+            <div className="rounds-catstrip-row" role="group" aria-label="Strokes gained per round by category">
+              {game.categories.map((category) => {
+                const width = category.perRound == null ? 0 : (Math.min(Math.abs(category.perRound), 3) / 3) * 100
+                const inner = (
+                  <>
+                    <span className="rounds-catcell-top">
+                      <span>{category.label}</span>
+                      <strong className={tone(category.perRound)}>{category.perRound == null ? '–' : signed(category.perRound)}</strong>
+                    </span>
+                    <span className="rounds-diverge" aria-hidden="true">
+                      <span className="rounds-diverge-half is-left">
+                        {category.perRound != null && category.perRound < 0 ? <span className="is-loss-bar" style={{ width: `${width}%` }} /> : null}
+                      </span>
+                      <span className="rounds-diverge-axis" />
+                      <span className="rounds-diverge-half">
+                        {category.perRound != null && category.perRound > 0 ? <span className="is-gain-bar" style={{ width: `${width}%` }} /> : null}
+                      </span>
+                    </span>
+                  </>
+                )
+                return category.href
+                  ? <a className="rounds-catcell yourgame-catcell" href={category.href} key={category.id}>{inner}</a>
+                  : <div className="rounds-catcell yourgame-catcell is-static" key={category.id}>{inner}</div>
+              })}
+            </div>
+            <p className="rounds-catstrip-foot rounds-muted">
+              Strokes gained per round against the tour. Putting counts the putts you stroked yourself; gimmes are left out.
+            </p>
+          </section>
+
           <section className="rounds-section">
             <div className="rounds-section-head">
               <h2>Your biggest leaks</h2>
-              <span className="rounds-muted">Strokes per round against your typical shot</span>
+              <span className="rounds-muted">Strokes per round against the tour</span>
             </div>
             {game.leaks.length ? (
               <div className="yourgame-leaks">{game.leaks.map((s) => <SegmentCell key={s.id} segment={s} />)}</div>
             ) : (
-              <p className="rounds-muted">Nothing costs you a tenth of a stroke a round yet, against your own typical shot.</p>
+              <p className="rounds-muted">Nothing costs you a tenth of a stroke a round against the tour yet.</p>
             )}
             {game.strengths.length ? (
               <div className="rounds-keyline yourgame-strengths">
@@ -198,7 +249,7 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
             <section className="rounds-section">
               <div className="rounds-section-head">
                 <h2>Putting by length</h2>
-                <a className="yourgame-putting-link" href="/rounds/putting">Putting deep dive →</a>
+                <a className="yourgame-putting-link" href="/game/putting">Putting deep dive →</a>
                 <span className="rounds-muted">
                   Inside the {GIMME_CIRCLE_FT}–6 ft gimme circle there&apos;s nothing to read
                   {game.gimmes ? ` (${game.gimmes} gimmes)` : ''}; rounds with auto putt on are left out.
@@ -259,10 +310,10 @@ export function YourGame({ rounds }: { rounds: readonly RoundSummary[] }) {
           </div>
 
           <section className="yourgame-how rounds-muted">
-            <strong>How this is worked out.</strong> Strokes gained per shot uses the PGA Tour baseline. Your typical shot is
-            your average approach or short-game shot (no tee shots, no putts){game.typical != null ? `: ${signed(game.typical)} vs tour` : ''}.
-            A leak is how far a shot type sits below that, times how often it comes up in 18 holes. As rounds build up, each
-            shot type will be compared with your own history for that same shot instead.
+            <strong>How this is worked out.</strong> Every number is strokes gained against the PGA Tour baseline. A leak is
+            what a shot type loses per shot, times how often it comes up in 18 holes. Tee shots, each approach and
+            short-game distance, rough, sand and putting's read, start line and pace all compete for the three places.
+            Your typical shot (the gold line) is your average approach or short-game shot{game.typical != null ? `: ${signed(game.typical)} vs tour` : ''}.
           </section>
         </>
       )}

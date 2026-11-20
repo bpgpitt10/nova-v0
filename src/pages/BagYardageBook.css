@@ -797,3 +797,8 @@
 .bagbook-starting-link:hover {
   text-decoration: underline;
 }
+
+/* A page inside the current tab (Putting, under Your game): softer green, beside its tab. */
+.bagbook-topbar nav a.is-sub { color: #86efac; }
+.bagbook-topbar nav a.is-sub:hover { color: #bbf7d0; }
+.bagbook-topbar nav a.is-sub.is-active { color: #bbf7d0; }

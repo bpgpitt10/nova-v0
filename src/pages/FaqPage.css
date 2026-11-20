@@ -6,7 +6,8 @@
 .faq-shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 820px;
+  /* Wide enough that answers don't wrap every few words on a sim TV or laptop. */
+  max-width: 1120px;
   margin: 0 auto;
   padding: 28px clamp(16px, 3vw, 32px) 48px;
 }
@@ -87,3 +88,43 @@
 }
 .looper-footer a { color: #9fb09f; text-decoration: none; }
 .looper-footer a:hover { color: #f4d15d; text-decoration: underline; }
+
+/* "How to get going": open at the top, never collapsed. */
+.faq-start {
+  margin-top: 24px;
+  padding: 20px clamp(16px, 2.4vw, 28px) 8px;
+  border: 1px solid rgba(234, 179, 8, 0.34);
+  border-radius: 14px;
+  background: rgba(23, 36, 25, 0.5);
+}
+.faq-start h2 { margin: 0; color: #f4d15d; font-size: 20px; font-weight: 600; }
+.faq-start-lead { margin: 4px 0 16px; color: #9fb09f; font-size: 14px; }
+.faq-start ol { list-style: none; margin: 0; padding: 0; }
+.faq-start li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(49, 66, 51, 0.78);
+}
+.faq-start-number {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(118, 211, 155, 0.14);
+  color: #76d39b;
+  font-size: 15px;
+  font-weight: 700;
+}
+.faq-start h3 { margin: 4px 0 6px; font-size: 16px; font-weight: 600; }
+.faq-start-when {
+  margin-left: 8px;
+  color: #9fb09f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.faq-start p { margin: 0 0 8px; color: #cfd8cd; font-size: 14px; line-height: 1.55; }

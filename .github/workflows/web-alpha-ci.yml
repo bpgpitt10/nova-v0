@@ -128,6 +128,10 @@ jobs:
         run: node tools/test-your-game.mjs
       - name: Putting profile (real putts, pace and line)
         run: node tools/test-putting-profile.mjs
+      - name: Round window (last 6 months, last 5, last 15, all)
+        run: node tools/test-round-window.mjs
+      - name: Round settings (GSPro course conditions at Start a Round)
+        run: node tools/test-round-settings.mjs
 
       - name: Courses loaded at run time join the catalog
         run: node tools/test-runtime-courses.mjs
@@ -226,6 +230,16 @@ jobs:
 
       - name: Roll by surface and slope at touchdown
         run: node tools/test-roll-model.mjs
+      - name: Altitude and carry (GSPro's measured effect)
+        run: node tools/test-altitude-carry.mjs
+      - name: Fairway roll by course conditions (measured model)
+        run: node tools/test-fairway-roll.mjs
+      - name: Green release by course type and green firmness (measured model)
+        run: node tools/test-green-release.mjs
+      - name: Slope of the lie (GSPro's measured launch and start line)
+        run: node tools/test-lie-slope.mjs
+      - name: GSPro's carry for a launch (measured model)
+        run: node tools/test-gspro-carry.mjs
 
       - name: Descent meets the terrain (hill faces)
         run: node tools/test-descent-touchdown.mjs
