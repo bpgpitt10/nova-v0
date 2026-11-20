@@ -135,9 +135,11 @@ function afterLanding(evaluation: ClubAimEvaluation | null): { yards: number; de
         + (fairway.applied ? '' : notApplied),
     }
   }
+  // No course settings yet (GSPro reports them after the first shot): the roll is the range's.
+  const fromRange = ' Your range rollout until GSPro reports the course settings after your first shot.'
   const words: Record<string, string> = {
-    green: 'Mostly finishes on the green.',
-    fairway: 'Mostly finishes on the fairway.',
+    green: `Mostly finishes on the green.${green ? '' : fromRange}`,
+    fairway: `Mostly finishes on the fairway.${fairway ? '' : fromRange}`,
     rough: 'Mostly finishes in the rough: it stops quickly.',
     'deep-rough': 'Mostly finishes in deep rough or trees: it stops where it lands.',
     bunker: 'Mostly finishes in sand: it stops where it lands.',
@@ -408,9 +410,12 @@ export default function ConditionsMathPanel({
           <div className="live-condition-after-landing">
             <div className="live-condition-row">
               <span className="live-condition-factor">After it lands</span>
-              <strong className="live-condition-distance">{signedYards(landing.yards)}</strong>
+              {/* The roll itself, not a change: carry plus this is the Total above. */}
+              <strong className="live-condition-distance">
+                {landing.yards < -0.05 ? `back ${Math.abs(landing.yards).toFixed(1)} yd` : `${Math.max(0, landing.yards).toFixed(1)} yd`}
+              </strong>
               <strong className="live-condition-lateral">—</strong>
-              <small>{landing.detail} Added to the carry for the total.</small>
+              <small>{landing.detail} Carry plus this is the Total.</small>
             </div>
           </div>
         ) : null}
