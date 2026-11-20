@@ -158,6 +158,7 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
           head: ['Say', 'Also works'],
           rows: [
             ['Looper, flyover', 'overview · hole overview'],
+            ['Looper, end flyover', 'cancel · stop · kill · escape · skip flyover'],
             ['Looper, scorecard', 'card · score'],
             ['Looper, green grid', 'grid'],
             ['Looper, heat map', ''],

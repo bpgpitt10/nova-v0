@@ -61,6 +61,14 @@ class GsproFileBridgeTests(unittest.TestCase):
         self.assertEqual(bridge.read_gspro_file(self.root, "output_log.txt", 2, 5)[1], b"234")
         self.assertEqual(bridge.read_gspro_file(self.root, "output_log.txt", 50)[1], b"")
 
+    def test_gspro_4_player_log_is_served(self):
+        (self.root / "Player.log").write_bytes(b"Physics Settings: Green Firmness 1")
+        self.assertEqual(bridge.stat_gspro_file(self.root, "Player.log")["status"], "ok")
+        self.assertEqual(bridge.read_gspro_file(self.root, "Player.log", 8, 16)[1], b"Settings")
+        # The log GSPro kept from its previous run is not on the list.
+        (self.root / "Player-prev.log").write_bytes(b"old")
+        self.assertEqual(bridge.stat_gspro_file(self.root, "Player-prev.log")["status"], "forbidden")
+
     def test_missing_file_and_missing_folder(self):
         self.assertEqual(bridge.stat_gspro_file(self.root, "GSPro.db")["status"], "not-found")
         self.assertEqual(bridge.stat_gspro_file(None, "GSPro.db")["status"], "gspro-folder-not-found")

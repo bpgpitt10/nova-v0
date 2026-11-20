@@ -124,6 +124,15 @@ GSPRO_VIEWS = {
     "fly over": "flyover",
     "overview": "flyover",
     "hole overview": "flyover",
+    # GSPro's flyover key starts and stops it; players say "end flyover" to stop.
+    # It is the same key press, so said with no flyover running it starts one.
+    "end flyover": "flyover",
+    "cancel flyover": "flyover",
+    "stop flyover": "flyover",
+    "kill flyover": "flyover",
+    "escape flyover": "flyover",
+    "exit flyover": "flyover",
+    "skip flyover": "flyover",
     "scorecard": "scorecard",
     "score card": "scorecard",
     "card": "scorecard",
