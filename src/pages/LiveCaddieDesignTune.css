@@ -513,12 +513,16 @@
   letter-spacing: 0;
 }
 
+/* The aim line stays in its own column and wraps there. It used to spill
+   across into the adjustments column, and a long line (an "ARMED ON 3.0 YD
+   RIGHT" tag after aiming) ran over the Carry adjustment box. */
 @media (min-width: 1260px) {
   .live-decision-card > .live-aim-hero {
     position: relative;
     z-index: 2;
-    width: max-content;
-    max-width: calc(220% + 14px);
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
   }
 }
 
