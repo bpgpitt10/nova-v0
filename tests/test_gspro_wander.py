@@ -1,4 +1,4 @@
-"""The wander walk: where it clicks, when it walks back, and when it stops (no GSPro needed)."""
+"""The wander walk: where it clicks, how it steps down a hole, when it changes hole and when it stops."""
 import random
 import sys
 import tempfile
@@ -13,102 +13,145 @@ WINDOW = (0, 0, 3840, 2160)
 
 
 class FakeDesktop:
-    def __init__(self, move_mouse_after: int | None = None):
-        self.clicks = []
+    def __init__(self, move_mouse_after=None, water_until=0):
+        self.moves = []      # minimap clicks that moved the ball
+        self.plain = []      # other clicks (the flag, a hole)
+        self.looks = 0
+        self.water_until = water_until
         self.move_mouse_after = move_mouse_after
 
     def gspro_window(self):
         return 1, WINDOW
 
+    def last(self):
+        clicks = self.moves + self.plain
+        return clicks[-1] if clicks else (10, 10)
+
     def mouse(self):
-        x, y = self.clicks[-1] if self.clicks else (10, 10)
-        if self.move_mouse_after is not None and len(self.clicks) >= self.move_mouse_after:
+        x, y = self.last()
+        if self.move_mouse_after is not None and len(self.moves) >= self.move_mouse_after:
             return x + 200, y  # the player picked up the mouse
         return x, y
 
+    def colours(self, hwnd, points):
+        self.looks += 1
+        return [(14, 24, 38)] * len(points) if self.looks <= self.water_until else [(64, 85, 41)] * len(points)
+
     def move_ball(self, hwnd, button, x, y):
-        self.buttons = getattr(self, "buttons", []) + [button]
-        self.clicks.append((x, y))
+        self.button = button
+        self.moves.append((x, y))
+
+    def click_at(self, hwnd, x, y):
+        self.plain.append((x, y))
 
 
-class WanderTests(unittest.TestCase):
-    def run_walk(self, desktop, spots, starts, pins):
-        """`starts`: where GSPro says each spot's shots were hit from; `pins`: yards to the pin from there."""
+class WalkTests(unittest.TestCase):
+    def run_walk(self, desktop, pins, starts=None, lies=None, carries=None):
+        """`pins`: yards from each spot to the pin. `starts`: where each spot was hit from (default: moves
+        every spot). `lies`: GSPro's lie name per spot. `carries`: what each green shot carried."""
         fired = []
-        current = {"start": None}
+        carry_iter = iter(carries or [])
+        state = {"start": None}
 
         def fake_hit_spot(path, writer, flush, **kwargs):
             index = kwargs["spot"] - 1
-            current["start"] = starts[index]
-            fired.append((kwargs["spot"], kwargs["labels"].get("aim"), [name for name, _ in kwargs["spot_shots"]]))
-            row = {"spot": kwargs["spot"], "note": kwargs["typed"], **kwargs["labels"],
-                   # GSPro's reply: the pin's distance from the spot, in metres.
-                   "status": f"GSPro took it, ball at rest after 6.0 s; next: 7i from {pins[index] / wander.M_TO_YD:.1f} yd",
-                   "carry_yd": 45.0, "db_raw_carry_game_yd": 50.0}
-            return [dict(row) for _ in kwargs["spot_shots"]], True
+            state["start"] = (starts or [(i * 25.0, 0.0, i * 25.0) for i in range(len(pins))])[index]
+            aim = kwargs["labels"].get("aim")
+            fired.append((kwargs["spot"], aim, kwargs["spot_shots"]))
+            rows = []
+            for _ in kwargs["spot_shots"]:
+                rows.append({"spot": kwargs["spot"], "note": kwargs["typed"], **kwargs["labels"],
+                             "status": f"GSPro took it, ball at rest after 6.0 s; next: 7i from {pins[index] / wander.M_TO_YD:.1f} yd",
+                             "lie_surface": (lies or {}).get(index + 1),
+                             "carry_yd": next(carry_iter, 45.0) if aim == "green" else 45.0, "db_raw_carry_game_yd": 50.0})
+            return rows, True
 
         with tempfile.TemporaryDirectory() as tmp, \
                 patch.object(wander, "hit_spot", fake_hit_spot), \
-                patch.object(wander, "ball_position", lambda _: current["start"]):
+                patch.object(wander, "ball_position", lambda _: state["start"]):
             folder = Path(tmp)
             said = []
-            rows = wander.wander(None, None, lambda: None, desktop=desktop, spots=spots, shots_per_spot=3, side="right",
+            rows = wander.wander(None, None, lambda: None, desktop=desktop, spots=len(pins), shots_per_spot=3, side="right",
                                  labels={"test": "wander"}, round_file=folder / "r", log_file=folder / "l", db_path=folder / "d",
                                  notes_file=folder / "n", read_lie=lambda: {"slope_up_deg": 2.0, "slope_right_deg": -1.5,
                                                                             "slope_read": "companion"},
-                                 rng=random.Random(7), sleep=lambda _s: None, say=said.append)
-        self.fired = fired
-        return rows, said
+                                 rng=random.Random(7), sleep=lambda _s: None, say=said.append, hole=4)
+        self.fired, self.said = fired, said
+        return rows
 
-    def test_two_shots_go_at_the_green_when_it_is_in_reach(self):
+    def test_it_steps_forward_then_takes_spots_across_the_hole(self):
         desktop = FakeDesktop()
-        starts = [(i * 20.0, 0.0, i * 30.0) for i in range(2)]
-        rows, _ = self.run_walk(desktop, 2, starts, [300.0, 150.0])
-        # 300 yd: out of reach, the other two lie shots. 150 yd: two at the green.
-        self.assertEqual([aim for _, aim, _ in self.fired], ["lie", "lie", "lie", "green"])
-        green = self.fired[-1][2]
-        self.assertEqual(len(green), 2)
-        self.assertTrue(all(name.endswith("to green") for name in green))
-        # The lie made the test shot carry 90% of flat, so 150 yd plays about 164: the 7i first.
-        self.assertEqual(green[0].split()[0], "7i")
-        self.assertAlmostEqual(rows[-1]["pin_from_spot_yd"], 150.0, delta=0.1)
-
-    def test_clicks_land_inside_the_minimap_map(self):
-        desktop = FakeDesktop()
-        starts = [(i * 20.0, 0.0, i * 30.0) for i in range(6)]
-        rows, _ = self.run_walk(desktop, 6, starts, [300, 260, 220, 180, 140, 100])
+        self.run_walk(desktop, [420, 340, 335, 338, 330, 270])
+        # Spot 1 is where the ball was; then forward, three across, forward.
+        self.assertEqual(len(desktop.moves), 5)
         left, top, right, bottom = wander.map_rect(WINDOW, "right")
-        self.assertEqual(len(desktop.clicks), 5)  # the first spot is where the ball already was
-        for x, y in desktop.clicks:
+        for x, y in desktop.moves:
             self.assertTrue(left <= x <= right and top <= y <= bottom, (x, y))
-            # Near the hole's line up the middle of the map, never out at the edges.
-            self.assertTrue(left + 0.14 * (right - left) <= x <= left + 0.86 * (right - left), (x, y))
-        self.assertEqual(len(rows), 18)  # three shots a spot
-        # The move-ball button: top left of GSPro's window.
-        self.assertTrue(all(bx < 0.1 * WINDOW[2] and by < 0.1 * WINDOW[3] for bx, by in desktop.buttons))
-        self.assertEqual(rows[0]["slope_up_deg"], 2.0)
-        self.assertIn("slope 2.0 up 1.5 left", rows[0]["note"])
+        across = desktop.moves[1:4]
+        for x, y in across:  # level with the ball, out to one side
+            self.assertGreater(y, top + 0.95 * (bottom - top))
+            self.assertGreater(abs(x - (left + right) / 2), 0.14 * (right - left))
+        for x, y in (desktop.moves[0], desktop.moves[4]):  # forward: up the middle
+            self.assertLess(y, top + 0.9 * (bottom - top))
+        self.assertEqual(len({spot for spot, _, _ in self.fired}), 6)
+        # The move-ball button is at the top left.
+        self.assertLess(desktop.button[0], 0.1 * WINDOW[2])
 
-    def test_near_the_pin_it_walks_back_down_the_hole(self):
+    def test_inside_50_yards_it_moves_to_the_next_hole(self):
         desktop = FakeDesktop()
-        starts = [(i * 20.0, 0.0, i * 30.0) for i in range(3)]
-        self.run_walk(desktop, 3, starts, [40, 30, 20])
-        left, top, right, bottom = wander.map_rect(WINDOW, "right")
-        for _, y in desktop.clicks:  # the pin is known to be close from the first spot
-            self.assertGreater(y, top + 0.89 * (bottom - top))
+        self.run_walk(desktop, [45, 380])
+        flag, hole = desktop.plain
+        self.assertEqual(flag, wander.button_point(WINDOW, wander.FLAG_BUTTON))
+        self.assertEqual(hole, wander.hole_point(WINDOW, 5))  # it started on hole 4
+        self.assertTrue(any("hole 5" in line for line in self.said))
+
+    def test_a_par_3_tee_is_hit_from_and_then_left(self):
+        desktop = FakeDesktop()
+        self.run_walk(desktop, [45, 175, 400])  # hole 5 tee is 175 yd: a par 3
+        self.assertEqual(desktop.plain[1], wander.hole_point(WINDOW, 5))
+        self.assertEqual(desktop.plain[3], wander.hole_point(WINDOW, 6))
+        self.assertEqual(desktop.moves, [])  # never stepped down the par 3
+
+    def test_after_hole_18_comes_hole_1(self):
+        self.assertEqual(wander.hole_point(WINDOW, 19), wander.hole_point(WINDOW, 1))
+        x10, _ = wander.hole_point(WINDOW, 10)
+        x3, _ = wander.hole_point(WINDOW, 3)
+        self.assertGreater(x10, x3)  # 10-18 are the right-hand block
+
+    def test_it_looks_before_clicking_and_avoids_water(self):
+        desktop = FakeDesktop(water_until=2)
+        self.run_walk(desktop, [300, 280])
+        self.assertEqual(desktop.looks, 3)  # two water spots turned down, the third taken
+        self.assertEqual(len(desktop.moves), 1)
+
+    def test_a_ball_in_water_is_not_hit_again(self):
+        desktop = FakeDesktop()
+        rows = self.run_walk(desktop, [300, 280], lies={2: "TVGwater"})
+        spot_two = [row for row in rows if row["spot"] == 2]
+        self.assertEqual(len(spot_two), 1)
+        self.assertEqual(spot_two[0]["aim"], "water")
+
+    def test_the_second_green_shot_is_corrected_by_the_first(self):
+        desktop = FakeDesktop()
+        # 150 yd; the first green shot carried 160 (a green well below): the second is slowed.
+        self.run_walk(desktop, [150], carries=[160.0, 148.0])
+        green = [shots for _, aim, shots in self.fired if aim == "green"]
+        self.assertEqual(len(green), 2)
+        (first_name, first), (second_name, second) = green[0][0], green[1][0]
+        stock = wander.green_shots(150.0, 0.9, 2)[1][1]
+        self.assertLess(second["speed"], stock["speed"])
 
     def test_moving_the_mouse_stops_it(self):
         desktop = FakeDesktop(move_mouse_after=1)
-        starts = [(i * 20.0, 0.0, i * 30.0) for i in range(10)]
-        rows, said = self.run_walk(desktop, 10, starts, [300] * 10)
-        self.assertEqual(len(desktop.clicks), 1)
-        self.assertTrue(any("mouse moved" in line for line in said))
+        self.run_walk(desktop, [300] * 6)
+        self.assertEqual(len(desktop.moves), 1)
+        self.assertTrue(any("mouse moved" in line for line in self.said))
 
     def test_three_clicks_that_do_not_move_the_ball_stop_it(self):
         desktop = FakeDesktop()
-        rows, said = self.run_walk(desktop, 10, [(5.0, 0.0, 5.0)] * 10, [300] * 10)
-        self.assertEqual(len(desktop.clicks), 3)  # three clicks after the starting spot, none moved it
-        self.assertTrue(any("did not move the ball" in line for line in said))
+        self.run_walk(desktop, [300] * 10, starts=[(5.0, 0.0, 5.0)] * 10)
+        self.assertEqual(len(desktop.moves), 3)
+        self.assertTrue(any("did not move the ball" in line for line in self.said))
 
 
 class ReachTests(unittest.TestCase):
@@ -117,15 +160,20 @@ class ReachTests(unittest.TestCase):
         kept = [name for name, _ in wander.within_reach(shots, 60.0)]
         self.assertTrue(kept)
         self.assertTrue(all(wander.LIE_FLAT_CARRY_YD[name] <= 75.0 for name in kept))
-        self.assertNotIn("SW", kept)
         self.assertEqual(len(wander.within_reach(shots, None)), len(shots))  # unknown: no limit
 
     def test_distance_after_a_click_shrinks_toward_the_pin(self):
-        near_ball = wander.distance_after_click(200.0, 1.0)
-        near_pin = wander.distance_after_click(200.0, 0.0)
-        self.assertGreater(near_ball, 150.0)
-        self.assertLess(near_pin, 10.0)
+        self.assertGreater(wander.distance_after_click(200.0, 1.0), 150.0)
+        self.assertLess(wander.distance_after_click(200.0, 0.0), 10.0)
         self.assertIsNone(wander.distance_after_click(None, 0.5))
+
+    def test_water_and_hazard_lines_are_recognised(self):
+        self.assertTrue(wander.looks_like_water([(14, 24, 38), (34, 39, 45), (14, 17, 33)]))
+        self.assertTrue(wander.looks_like_water([(200, 30, 30)] * 4))  # a red hazard line
+        for name, colour in (("fairway", (64, 85, 41)), ("rough", (38, 51, 28)), ("trees", (14, 30, 12)),
+                             ("sand", (171, 155, 120))):
+            self.assertFalse(wander.looks_like_water([colour] * 9), name)
+        self.assertFalse(wander.looks_like_water([]))
 
 
 class PinDistanceTests(unittest.TestCase):

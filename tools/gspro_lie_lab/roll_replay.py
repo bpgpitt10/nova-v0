@@ -1254,11 +1254,15 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                 if test == "wander":
                     import wander as wander_tool
                     print("\nGSPro in On Course practice, any hole, minimap showing. The Looper Companion running (it reads")
-                    print("the slope under the ball). It clicks the minimap to move the ball, hits 3 shots, and moves on.")
+                    print("the slope under the ball). It works down the hole: from the tee it steps forward, then takes")
+                    print("spots across the hole before each step; inside 50 yd (or after a par 3's tee shots) it picks the")
+                    print("next hole with the flag button. GSPro should be full screen: the buttons are found by position.")
                     print("To stop: move the mouse. About 45 seconds a spot.")
                     side = choose(read_line, "Which side is GSPro's minimap on?", [("right", "Right"), ("left", "Left")],
                                   answers.get("side", "right"))
                     answers["side"] = side
+                    typed = read_line("Which hole is the ball on? It moves on to the next hole by itself. (Enter for 1) ").strip()
+                    hole = int(typed) if typed.isdigit() and 1 <= int(typed) <= 18 else 1
                     typed = read_line("How many spots? Enter for 3 (a quick check that the clicks move the ball); "
                                       "150 is about 2 hours. ").strip()
                     spots = int(typed) if typed.isdigit() and int(typed) > 0 else 3
@@ -1273,7 +1277,7 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                     rows = wander_tool.wander(path, writer, handle.flush, desktop=desktop, spots=spots, shots_per_spot=3,
                                               side=side, labels={**labels, "test": "wander"}, round_file=round_file,
                                               log_file=log_file, db_path=db_path, notes_file=notes_file,
-                                              first_spot=lie_spots + 1, sleep=sleep)
+                                              first_spot=lie_spots + 1, sleep=sleep, hole=hole)
                     total += len(rows)
                     lie_spots = max([lie_spots] + [int(row["spot"]) for row in rows])
                     print()

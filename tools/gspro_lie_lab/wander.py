@@ -1,31 +1,37 @@
 #!/usr/bin/env python3
-"""Looper wander: walk the ball around a hole on its own and hit shots from every spot.
+"""Looper wander: walk the ball down the holes on its own and hit shots from every spot.
 
-In GSPro's On Course practice you move the ball by clicking the golf-ball button
-at the top left, then clicking the minimap where it should go. This does that
-for you: it moves the ball to a new spot on the minimap, reads the slope under
-the ball (from the Looper Companion), hits three shots (soft, medium, hard)
-exactly like the "Shots from a lie" test, then moves on. Left alone it keeps
-going until it has done the number of spots you asked for.
+In GSPro's On Course practice you move the ball by clicking the golf-ball button at the
+top left, then the minimap where it should go; the flag button next to it opens a grid of
+holes, and picking one puts the ball on that tee. This does both for you, hole after hole:
+
+  - From a tee: the tee shots, then a step down the hole (a par 3: the tee shots, then the
+    next hole).
+  - Down the hole: three spots across the hole (rough, bunkers, the tree line) at each
+    distance, then a step toward the pin that leaves about 80% of the distance.
+  - Inside 50 yd: on to the next hole (after 18, hole 1).
+  - Every spot: one soft lie-test shot, then two at the green when it is 40-240 yd away
+    (the second corrected by how far the first carried, which catches the hill), or the
+    medium and hard lie shots when it is further. Nothing is sent far past the pin.
+  - Before each click it checks the colour there and steers clear of water and hazard
+    lines; a ball that still ends up in water is not hit again.
 
 Run it from the shot tool's menu ("Wander"), or on its own:
 
-  python wander.py              asks how many spots, then goes
-  python wander.py --test       three spots, one shot each: checks the clicks move the ball
+  python wander.py --hole 1     asks how many spots, then goes
+  python wander.py --test       three spots, one shot each
 
 Before you start:
   1. CLOSE THE UNEEKOR LAUNCHER (the shot tool takes its place).
-  2. GSPro in On Course practice, any hole, the minimap showing (right side
-     unless you say --side left).
-  3. The Looper Companion running (for the slope under the ball). Without it
-     the shots are still hit and recorded, just without the slope.
+  2. GSPro full screen, in On Course practice, the minimap showing (right side unless
+     --side left). The buttons are found by where they sit on the screen.
+  3. The Looper Companion running (for the slope under the ball).
   4. No Looper practice session open: these shots are not swings.
+  5. Wind off.
 
-To stop: move the mouse. Before every click it checks the mouse is where it
-left it; if you have moved it, it stops and saves. Ctrl+C also stops it.
+To stop: move the mouse. Ctrl+C also stops it.
 
-Everything goes into looper_lab_<time>.csv next to this file, the same columns
-as the lie test plus where it clicked and the slope. Send that file to Claude.
+Everything goes into looper_lab_<time>.csv next to this file. Send it to Claude.
 """
 
 from __future__ import annotations
@@ -64,12 +70,19 @@ MINIMAP_BOX = {"right": (0.848, 0.520, 0.995, 0.960), "left": (0.005, 0.520, 0.1
 #: Practice mode's "move ball" button (the golf ball, second in the toolbar at the top
 #: left), as shares of GSPro's window. Moving the ball is: click this, carry the
 #: pointer over to the minimap, click where the ball should go (Brian, 20 Nov).
-BALL_BUTTON = (0.063, 0.052)  # measured on two of Brian's screenshots: (0.060, 0.049) and (0.066, 0.056)
+BALL_BUTTON = (0.0687, 0.0568)  # Brian's full-screen screenshot, 20 Nov
+#: Practice mode's hole button (the flag, third in the toolbar). It opens a grid of the
+#: course's holes; clicking one puts the ball on that hole's tee (Brian, 20 Nov).
+FLAG_BUTTON = (0.1056, 0.0568)
+#: Middle of each hole's square in that grid, shares of the window: holes 1-9 on the left
+#: (three rows of three), 10-18 on the right (Brian's full-screen screenshot, 20 Nov).
+HOLE_GRID_X = (0.1009, 0.1467, 0.1922, 0.2395, 0.2849, 0.3307)
+HOLE_GRID_Y = (0.1419, 0.2229, 0.3046)
+#: Seconds for GSPro to load a hole after it is picked.
+HOLE_LOAD_S = 8.0
 #: The part of that box that is map: under its title bar ("Tee ▾"), above the slope
 #: footer, and in from the edges.
 MAP_AREA = (0.10, 0.17, 0.90, 0.88)
-#: Closer to the pin than this, click near the bottom of the map to walk back.
-WALK_BACK_INSIDE_YD = 60.0
 #: Moving the mouse more than this (screen pixels) between clicks stops the run.
 STOP_IF_MOUSE_MOVED_PX = 25
 #: Seconds for GSPro to move the ball and redraw after a click.
@@ -135,6 +148,30 @@ class Desktop:
         self.user32.GetCursorPos(self.ctypes.byref(point))
         return point.x, point.y
 
+    def colours(self, hwnd: int, points: list[tuple[int, int]]) -> list[tuple[int, int, int]]:
+        """Screen colours at these points, GSPro brought to the front first."""
+        self.user32.SetForegroundWindow(hwnd)
+        time.sleep(0.2)
+        screen = self.user32.GetDC(0)
+        try:
+            gdi32 = self.ctypes.windll.gdi32
+            gdi32.GetPixel.restype = self.wintypes.DWORD
+            out = []
+            for x, y in points:
+                value = gdi32.GetPixel(screen, x, y)
+                if value != 0xFFFFFFFF:  # CLR_INVALID: off the screen
+                    out.append((value & 0xFF, (value >> 8) & 0xFF, (value >> 16) & 0xFF))
+            return out
+        finally:
+            self.user32.ReleaseDC(0, screen)
+
+    def click_at(self, hwnd: int, x: int, y: int) -> None:
+        self.user32.SetForegroundWindow(hwnd)
+        time.sleep(0.2)
+        self.user32.SetCursorPos(x, y)
+        time.sleep(0.15)
+        self._press()
+
     def _press(self) -> None:
         self.user32.mouse_event(0x0002, 0, 0, 0, 0)  # left down
         time.sleep(0.06)
@@ -171,23 +208,57 @@ def map_rect(window: tuple[int, int, int, int], side: str) -> tuple[float, float
     return (box[0] + ax1 * bw, box[1] + ay1 * bh, box[0] + ax2 * bw, box[1] + ay2 * bh)
 
 
-def pick_spot(rect: tuple[float, float, float, float], pin_yd: float | None, rng: random.Random) -> tuple[int, int, str]:
-    """A point on the map to move the ball to, and why.
+#: Spots taken across the hole at one distance before stepping on toward the pin.
+ACROSS_PER_BAND = 3
+#: Each step toward the pin leaves about this share of the distance.
+STEP_LEAVES = 0.80
+#: Moving on to the next hole: closer to the pin than this, or a par 3 (tee closer than PAR3_UNDER_YD).
+NEXT_HOLE_INSIDE_YD = 50.0
+PAR3_UNDER_YD = 250.0
 
-    GSPro draws the map with the ball at the bottom and the pin straight above
-    it, both on the middle line, so the hole runs up the middle of the map.
-    Clicks stay near that line (a spread either side reaches the rough, trees
-    and bunkers beside the hole, not the next fairway over), and move the ball
-    15 to 45% of the way to the pin. Near the pin: near the bottom, which walks
-    the ball back down the hole.
+
+def move_point(rect: tuple[float, float, float, float], kind: str, rng: random.Random) -> tuple[int, int]:
+    """Where to click on the map for this kind of move.
+
+    GSPro draws the map with the ball at the bottom and the pin straight above it on the middle
+    line. "across": level with the ball, out to one side (rough, bunkers, the tree line).
+    "forward": up the middle line to leave about STEP_LEAVES of the distance.
     """
     left, top, right, bottom = rect
-    across = min(0.85, max(0.15, rng.gauss(0.5, 0.16)))
-    if pin_yd is not None and pin_yd < WALK_BACK_INSIDE_YD:
-        down, why = rng.uniform(0.90, 1.0), "walk back"
+    if kind == "across":
+        side = rng.choice((-1.0, 1.0))
+        across, down = 0.5 + side * rng.uniform(0.15, 0.33), rng.uniform(0.96, 1.0)
     else:
-        down, why = rng.uniform(0.55, 0.85), "ahead"
-    return round(left + across * (right - left)), round(top + down * (bottom - top)), why
+        box_down = MAP_PIN_DOWN + STEP_LEAVES * (MAP_BALL_DOWN - MAP_PIN_DOWN)
+        aim = (box_down - MAP_AREA[1]) / (MAP_AREA[3] - MAP_AREA[1])
+        across, down = min(0.8, max(0.2, rng.gauss(0.5, 0.07))), min(1.0, max(0.0, aim + rng.uniform(-0.03, 0.03)))
+    return round(left + across * (right - left)), round(top + down * (bottom - top))
+
+
+def looks_like_water(colours: list[tuple[int, int, int]]) -> bool:
+    """Most of the patch is the minimap's water (dark blue) or a red hazard line.
+
+    Measured on Farmlinks hole 1: water (14, 24, 38), (34, 39, 45), (14, 17, 33); fairway
+    (64, 85, 41); rough and trees (38, 51, 28), (14, 30, 12); sand (171, 155, 120).
+    """
+    if not colours:
+        return False
+    bad = sum(1 for r, g, b in colours if (b > r + 10 and b >= g + 4) or (r > g + 50 and r > b + 50))
+    return bad >= 0.4 * len(colours)
+
+
+def hole_point(window: tuple[int, int, int, int], hole: int) -> tuple[int, int]:
+    """The middle of hole `hole`'s square in the hole grid."""
+    left, top, right, bottom = window
+    index = (hole - 1) % 18
+    half, cell = divmod(index, 9)
+    row, col = divmod(cell, 3)
+    return (round(left + HOLE_GRID_X[half * 3 + col] * (right - left)), round(top + HOLE_GRID_Y[row] * (bottom - top)))
+
+
+def button_point(window: tuple[int, int, int, int], share: tuple[float, float]) -> tuple[int, int]:
+    left, top, right, bottom = window
+    return round(left + share[0] * (right - left)), round(top + share[1] * (bottom - top))
 
 
 def read_slope(url: str = COMPANION_LIE_URL, timeout: float = 4.0) -> dict[str, Any]:
@@ -301,14 +372,16 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
            side: str, labels: dict[str, Any], round_file: Path, log_file: Path, db_path: Path, notes_file: Path,
            first_spot: int = 1, gap: float = 1.0, record_wait: float = 8.0, settle: float = SETTLE_S,
            read_lie: Callable[[], dict[str, Any]] = read_slope, rng: random.Random | None = None,
-           sleep=time.sleep, say: Callable[[str], None] = print) -> list[dict[str, Any]]:
-    """Click, read the slope, hit, record; `spots` times or until the mouse moves."""
+           sleep=time.sleep, say: Callable[[str], None] = print, hole: int = 1) -> list[dict[str, Any]]:
+    """Click, read the slope, hit, record; `spots` times or until the mouse moves. `hole`: the hole it starts on."""
     rng = rng or random.Random()
     rows: list[dict[str, Any]] = []
     left_at: tuple[int, int] | None = None
     pin_yd: float | None = None
     last_start: tuple[float, float, float] | None = None
     stuck = 0
+    across_done = 0
+    next_move = "start"  # start, across, forward or next-hole
     for spot in range(first_spot, first_spot + spots):
         if left_at is not None:
             now = desktop.mouse()
@@ -320,17 +393,33 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             say("\nGSPro's window is not open (or is minimised): stopping.")
             break
         hwnd, window = found
-        if spot == first_spot:
+        why = next_move
+        x = y = estimated = None
+        if why == "start":
             # The first spot is wherever the player left the ball: no click.
-            x, y, why, estimated = None, None, "start", None
             left_at = desktop.mouse()
+        elif why == "next-hole":
+            hole = hole + 1 if hole < 18 else 1
+            desktop.click_at(hwnd, *button_point(window, FLAG_BUTTON))
+            sleep(1.0)
+            point = hole_point(window, hole)
+            desktop.click_at(hwnd, *point)
+            left_at = point
+            say(f"\nOn to hole {hole}.")
+            sleep(HOLE_LOAD_S)
+            pin_yd, last_start = None, None
+            why = "tee"
         else:
             rect = map_rect(window, side)
-            x, y, why = pick_spot(rect, pin_yd, rng)
+            # Look before clicking: try a few spots, keep the first that isn't water or a hazard line.
+            for _ in range(8):
+                x, y = move_point(rect, why, rng)
+                patch = [(x + dx, y + dy) for dx in (-6, 0, 6) for dy in (-6, 0, 6)]
+                colours = desktop.colours(hwnd, patch) if hasattr(desktop, "colours") else []
+                if not looks_like_water(colours):
+                    break
             estimated = distance_after_click(pin_yd, (y - rect[1]) / max(1.0, rect[3] - rect[1]))
-            left, top, right, bottom = window
-            button = (round(left + BALL_BUTTON[0] * (right - left)), round(top + BALL_BUTTON[1] * (bottom - top)))
-            desktop.move_ball(hwnd, button, x, y)
+            desktop.move_ball(hwnd, button_point(window, BALL_BUTTON), x, y)
             left_at = (x, y)
             sleep(settle)
         slope = read_lie()
@@ -354,7 +443,13 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
                             notes_file=notes_file, gap=gap, record_wait=record_wait, sleep=sleep)
 
         spot_rows, connected = fire(first, "lie")
-        if connected and spot_rows and shots_per_spot > 1:
+        in_water = bool(spot_rows) and bool(re.search(r"water|hazard|lake|pond|creek|penalty",
+                                                       str(spot_rows[0].get("lie_surface") or ""), re.I))
+        if in_water:
+            say("  in water: not a lie we want, moving on")
+            for row in spot_rows:
+                row["aim"] = "water"
+        if connected and spot_rows and shots_per_spot > 1 and not in_water:
             distance = pin_from_spot_yd(spot_rows[0])
             plays = plays_here(spot_rows[0])
             extra = {"pin_from_spot_yd": round(distance, 1)} if distance is not None else {}
@@ -363,13 +458,34 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
                 more = []
             elif distance is not None and distance <= GREEN_RANGE_YD[1]:
                 say(f"  green {distance:.0f} yd away{f', plays {plays:.0%} of flat' if plays else ''}: two at the green")
-                more, connected = fire(green_shots(distance, plays, shots_per_spot - 1), "green", extra)
+                # The first one at the green shows how the hill plays too (a green 36 yd below
+                # carries a ball much further): the second is corrected by how far the first carried.
+                planned = green_shots(distance, plays, shots_per_spot - 1)
+                more, connected = fire(planned[:1], "green", extra)
+                if connected and len(planned) > 1:
+                    second = planned[1:]
+                    flew = more[0].get("carry_yd") if more else None
+                    wanted = distance - GREEN_SHORT_YD
+                    if isinstance(flew, (int, float)) and flew > 10:
+                        scale = min(1.2, max(0.8, (wanted / flew) ** (1.0 / 1.5)))
+                        second = [(name, {**shot, "speed": round(shot["speed"] * scale, 1)}) for name, shot in second]
+                    again, connected = fire(second, "green", extra)
+                    more += again
             else:
                 longer = within_reach([shot for shot in lie_shots if shot not in first and shot not in soft_shots], distance)
                 more, connected = fire(longer[:shots_per_spot - 1], "lie", extra) if longer else ([], True)
             spot_rows += more
-            if distance is not None:
-                pin_yd = distance
+        if spot_rows:
+            measured = pin_from_spot_yd(spot_rows[0])
+            pin_yd = measured if measured is not None else pin_yd
+        # What next: from a tee, step forward (or, on a par 3, the next hole); inside 50 yd, the
+        # next hole; otherwise a few spots across the hole, then a step toward the pin.
+        if pin_yd is not None and (pin_yd < NEXT_HOLE_INSIDE_YD or (why == "tee" and pin_yd < PAR3_UNDER_YD)):
+            next_move, across_done = "next-hole", 0
+        elif why in ("tee", "start") or across_done >= ACROSS_PER_BAND:
+            next_move, across_done = "forward", 0
+        else:
+            next_move, across_done = "across", across_done + 1
         rows.extend(spot_rows)
         if not connected:
             say("Lost the connection to GSPro: stopping.")
@@ -393,6 +509,7 @@ def main(argv: list[str] | None = None, read_line=input) -> int:
     parser.add_argument("--test", action="store_true", help="three spots, one shot each, to check the clicks")
     parser.add_argument("--spots", type=int, default=None, help="how many spots (default: asks)")
     parser.add_argument("--side", choices=sorted(MINIMAP_BOX), default="right", help="where the minimap is")
+    parser.add_argument("--hole", type=int, default=1, help="the hole the ball is on (it moves on by itself)")
     args = parser.parse_args(argv)
 
     from test_shots import OPEN_CONNECT_PORT, UNEEKOR_HOST, UNEEKOR_PORT, OpenConnectPath, pause_before_close
@@ -429,7 +546,7 @@ def main(argv: list[str] | None = None, read_line=input) -> int:
         writer.writeheader()
         rows = wander(path, writer, handle.flush, desktop=desktop, spots=spots, shots_per_spot=per_spot, side=args.side,
                       labels={"test": "wander"}, round_file=gspro_round_file(), log_file=gspro_log(), db_path=gspro_db(),
-                      notes_file=notes_file)
+                      notes_file=notes_file, hole=args.hole)
     print(f"\n{len(rows)} shots from {len({row.get('spot') for row in rows})} spots saved in {out.name}.")
     print("Send that file (and the _log.txt beside it) to Claude.")
     pause_before_close(read_line)
