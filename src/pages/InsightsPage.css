@@ -139,10 +139,16 @@
 }
 
 .insights-hero__lead {
-  max-width: 700px;
+  max-width: 920px;
   margin: 20px 0 0;
   color: #e7efe4;
   font-size: clamp(18px, 2.2vw, 21px);
+}
+
+.insights-hero__free {
+  margin: 12px 0 0;
+  color: #cfd8cd;
+  font-size: 16px;
 }
 
 .insights-hero__cta {

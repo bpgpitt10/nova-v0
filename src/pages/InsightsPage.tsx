@@ -311,13 +311,12 @@ export default function InsightsPage() {
             GSPro physics, <em>measured</em>
           </h1>
           <p className="insights-hero__lead">
-            I fire the same shots into GSPro again and again, change one setting at a time, and write down what the
-            ball does. This is what I&rsquo;ve found.
+            A lot of GSPro misses aren&rsquo;t swing misses. They&rsquo;re bad reads. I test GSPro&rsquo;s physics one
+            setting at a time and measure what the ball actually does, so you know what moves your number and by how much.
           </p>
-          <div className="insights-hero__cta">
-            <AccountButton />
-            <span>Free, always. The Looper&rsquo;s live caddie applies all of this for you on every shot.</span>
-          </div>
+          <p className="insights-hero__free">
+            The Looper is free, always. Its live caddie does this math for you on every shot.
+          </p>
         </div>
       </section>
 
@@ -351,7 +350,7 @@ export default function InsightsPage() {
             <strong>Written once every part is measured.</strong>
             <p>
               Grass type, firmness, stimp, slope, lie and spin each move the number, and they all move it at once.
-              This piece will add them up and show why it can&rsquo;t be done as mental maths.
+              This piece will add them up and show why it can&rsquo;t be done as mental math.
             </p>
           </div>
         </div>
