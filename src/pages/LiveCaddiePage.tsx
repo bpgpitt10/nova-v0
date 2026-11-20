@@ -2525,6 +2525,7 @@ export default function LiveCaddiePage() {
                     onRefreshWind={companionStatus?.gspro.status === 'connected' ? refreshWind : undefined}
                     windRefreshing={windRefreshing}
                     decisionOptions={decisionOptionsJson}
+                    altitudeSource={gsproAltitudeFt != null ? 'gspro' : airAltitudeFt != null ? 'map' : null}
                   />
 
                   <button

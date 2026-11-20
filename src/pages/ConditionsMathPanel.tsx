@@ -24,6 +24,8 @@ type ConditionsMathPanelProps = {
   unmappedInPlay?: boolean
   /** Distance from the expected finish to the pin (yd); null when unknown. */
   leavesYds?: number | null
+  /** Where the altitude came from, for its row: GSPro's own, or Looper's map before GSPro reports it. */
+  altitudeSource?: 'gspro' | 'map' | null
   /** Read GSPro's wind again now (gusty days swirl). */
   onRefreshWind?: () => void
   windRefreshing?: boolean
@@ -93,7 +95,57 @@ const leftRightLie = (value: number | null | undefined) => {
   return `${Math.abs(value).toFixed(1)}° ${value > 0 ? 'LEFT' : 'RIGHT'}`
 }
 
-const FIRMNESS_LABEL = { soft: 'Soft', medium: 'Medium', firm: 'Firm' } as const
+/** GSPro's Course Type, in the words its menu uses. */
+const GRASS_LABEL = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' } as const
+
+/**
+ * What the ball does after it lands, for where this shot mostly finishes.
+ * One row instead of a green row and a fairway row side by side: only the
+ * surface the ball actually ends up on says anything about this shot.
+ */
+function afterLanding(evaluation: ClubAimEvaluation | null): { yards: number; detail: string } | null {
+  if (!evaluation) return null
+  const total = evaluation.expectedTotalYds ?? evaluation.modeledTotalYds
+  if (!finite(total)) return null
+  const yards = total - evaluation.modeledCarryYds
+  const bySurface = evaluation.bestCandidate?.riskProfile?.bySurface ?? {}
+  let where: string | null = null
+  let best = 0
+  for (const [surface, share] of Object.entries(bySurface)) {
+    const kind = surface === 'tee' ? 'fairway' : surface
+    if (typeof share === 'number' && share > best) { best = share; where = kind }
+  }
+  const green = evaluation.greenRelease
+  const fairway = evaluation.fairwayRoll
+  const notApplied = ' Course settings not applied yet: this is your range rollout.'
+  if (where === 'green' && green) {
+    const release = green.predictedYds < -0.5
+      ? `spins back ${Math.abs(green.predictedYds).toFixed(0)} yd`
+      : `releases ${Math.max(0, green.predictedYds).toFixed(0)} yd`
+    return {
+      yards,
+      detail: `Mostly finishes on the green. ${GRASS_LABEL[green.conditions.courseType]}, ${green.conditions.greenFirmness} greens: it ${release} on a level green.`
+        + (green.applied ? '' : notApplied),
+    }
+  }
+  if (where === 'fairway' && fairway) {
+    return {
+      yards,
+      detail: `Mostly finishes on the fairway. ${GRASS_LABEL[fairway.conditions.courseType]}, ${fairway.conditions.fairwayFirmness} fairways: ${Math.round(fairway.predictedYds)} yd of roll on a level fairway.`
+        + (fairway.applied ? '' : notApplied),
+    }
+  }
+  const words: Record<string, string> = {
+    green: 'Mostly finishes on the green.',
+    fairway: 'Mostly finishes on the fairway.',
+    rough: 'Mostly finishes in the rough: it stops quickly.',
+    'deep-rough': 'Mostly finishes in deep rough or trees: it stops where it lands.',
+    bunker: 'Mostly finishes in sand: it stops where it lands.',
+    water: 'Mostly finishes in water.',
+    penalty: 'Mostly finishes in a penalty area.',
+  }
+  return { yards, detail: (where && words[where]) || 'Roll to where the ball comes to rest, slopes included.' }
+}
 
 function AdjustmentRow({
   label,
@@ -150,6 +202,7 @@ export default function ConditionsMathPanel({
   strategyEffectiveLateralYds = null,
   strategyAdjustmentScale = 1,
   decisionOptions = null,
+  altitudeSource = null,
 }: ConditionsMathPanelProps) {
   const rawCarryDelta = evaluation
     ? evaluation.modeledCarryYds - evaluation.stockCarryYds
@@ -203,8 +256,10 @@ export default function ConditionsMathPanel({
     ? `${modeledLandingElevationDeltaFt >= 0 ? '+' : ''}${modeledLandingElevationDeltaFt.toFixed(0)} ft to modeled carry landing${hasLiveWind ? ' · includes air interaction' : ''}`
     : 'No terrain elevation available'
   const altitudeDetail = evaluation?.airAltitudeFt != null
-    ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft ASL · air density`
+    ? `${Math.round(evaluation.airAltitudeFt).toLocaleString()} ft above sea level`
+      + (altitudeSource === 'gspro' ? ', from GSPro' : altitudeSource === 'map' ? ", Looper's map until GSPro reports it after your first shot" : '')
     : 'Base altitude unavailable'
+  const landing = strategyMode ? null : afterLanding(evaluation)
   const hasLie = finite(lieUpDownDeg) || finite(lieLeftRightDeg)
   const lieUpDownLabel = upDownLie(lieUpDownDeg)
   const lieLeftRightLabel = leftRightLie(lieLeftRightDeg)
@@ -340,40 +395,25 @@ export default function ConditionsMathPanel({
             detail={lieDetail}
             muted={!hasLie}
           />
-          {evaluation?.greenRelease ? (
-            // What a ball does after landing on the green in the round's Course Type and Green Firmness.
-            <AdjustmentRow
-              label="Green"
-              distance={signedYards(evaluation.greenRelease.predictedYds - evaluation.greenRelease.stockYds)}
-              lateral="—"
-              detail={`${FIRMNESS_LABEL[evaluation.greenRelease.conditions.courseType]} course, ${FIRMNESS_LABEL[evaluation.greenRelease.conditions.greenFirmness].toLowerCase()} greens: `
-                + (evaluation.greenRelease.predictedYds < -0.5
-                  ? `spins back ${Math.abs(evaluation.greenRelease.predictedYds).toFixed(0)} yd on a level green`
-                  : `${Math.max(0, evaluation.greenRelease.predictedYds).toFixed(0)} yd of release on a level green`)
-                + `, ${Math.round(evaluation.greenRelease.stockYds)} yd of rollout on the range. `
-                + (evaluation.greenRelease.applied ? 'Applied.' : 'Preview: not applied yet.')}
-              muted={!evaluation.greenRelease.applied}
-            />
-          ) : null}
-          {evaluation?.fairwayRoll ? (
-            // Roll for the round's Course Type and Fairway Firmness against the range rollout.
-            <AdjustmentRow
-              label="Roll"
-              distance={signedYards(evaluation.fairwayRoll.predictedYds - evaluation.fairwayRoll.stockYds)}
-              lateral="—"
-              detail={`${FIRMNESS_LABEL[evaluation.fairwayRoll.conditions.courseType]} course, ${FIRMNESS_LABEL[evaluation.fairwayRoll.conditions.fairwayFirmness].toLowerCase()} fairways: `
-                + `${Math.round(evaluation.fairwayRoll.predictedYds)} yd of roll on a level fairway, ${Math.round(evaluation.fairwayRoll.stockYds)} on the range. `
-                + (evaluation.fairwayRoll.applied ? 'Applied.' : 'Preview: not applied yet.')}
-              muted={!evaluation.fairwayRoll.applied}
-            />
-          ) : null}
         </div>
 
         <div className="live-condition-net">
-          <span>NET ADJUSTMENT</span>
+          <span>{strategyMode ? 'NET ADJUSTMENT' : 'CARRY ADJUSTMENT'}</span>
           <strong>{evaluation ? signedYards(carryDelta) : '—'}</strong>
           <strong>{evaluation ? lateralYards(lateralDelta) : '—'}</strong>
         </div>
+
+        {landing ? (
+          // Set apart from the carry factors: it is part of the total, not the carry.
+          <div className="live-condition-after-landing">
+            <div className="live-condition-row">
+              <span className="live-condition-factor">After it lands</span>
+              <strong className="live-condition-distance">{signedYards(landing.yards)}</strong>
+              <strong className="live-condition-lateral">—</strong>
+              <small>{landing.detail} Added to the carry for the total.</small>
+            </div>
+          </div>
+        ) : null}
       </section>
     </div>
   )

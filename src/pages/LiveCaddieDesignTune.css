@@ -563,3 +563,11 @@
 @keyframes live-condition-refresh-spin {
   to { transform: rotate(360deg); }
 }
+
+/* After it lands: below the carry factors, set apart, part of the total. */
+.live-condition-after-landing {
+  order: 4;
+  margin-top: 6px;
+  border-top: 1px dashed rgba(234, 179, 8, 0.35);
+  background: rgba(118, 211, 155, 0.05);
+}
