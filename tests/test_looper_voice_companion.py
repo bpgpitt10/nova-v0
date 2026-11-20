@@ -110,6 +110,10 @@ class ParseCommandTest(unittest.TestCase):
         # "Looper, flyover" used to be heard as five wood.
         self.assertEqual(voice.parse_command("looper flyover"), {"action": "gspro", "key": "flyover"})
         self.assertEqual(voice.parse_command("looper fly over"), {"action": "gspro", "key": "flyover"})
+        # Ending a flyover is its own wording (19 Nov), not "clear" or "cancel" on their own.
+        for wording in ("end flyover", "cancel flyover", "stop flyover", "kill flyover", "escape flyover"):
+            self.assertEqual(voice.parse_command(f"looper {wording}"), {"action": "gspro", "key": "flyover"}, wording)
+        self.assertEqual(voice.parse_command("looper cancel"), {"action": "clear"})
         self.assertEqual(voice.parse_command("caddie scorecard"), {"action": "gspro", "key": "scorecard"})
         self.assertEqual(voice.parse_command("looper heat map"), {"action": "gspro", "key": "heatmap"})
 
