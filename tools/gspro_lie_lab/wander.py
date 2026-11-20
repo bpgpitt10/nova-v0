@@ -56,6 +56,7 @@ else:
 LAB_FIELDS, M_TO_YD, _xyz = _tool.LAB_FIELDS, _tool.M_TO_YD, _tool._xyz
 gspro_db, gspro_log, gspro_round_file = _tool.gspro_db, _tool.gspro_log, _tool.gspro_round_file
 hit_spot, lie_shots_for_spot, newest_round_record = _tool.hit_spot, _tool.lie_shots_for_spot, _tool.newest_round_record
+BAG = _tool.BAG
 
 #: Where GSPro draws the minimap, as shares of its window (the same boxes Auto Aim uses).
 MINIMAP_BOX = {"right": (0.848, 0.520, 0.995, 0.960), "left": (0.005, 0.520, 0.152, 0.960)}
@@ -208,6 +209,50 @@ def slope_note(slope: dict[str, Any]) -> str:
     return f"{abs(up):.1f} {'up' if up >= 0 else 'down'} {abs(right):.1f} {'right' if right >= 0 else 'left'}"
 
 
+#: From this far to this far from the pin (yards), two of a spot's three shots go at the green.
+GREEN_RANGE_YD = (40.0, 240.0)
+#: Aim to land this much short of the pin, so the release finishes near it.
+GREEN_SHORT_YD = 2.0
+
+
+def pin_from_spot_yd(row: dict[str, Any]) -> float | None:
+    """How far the pin was from where this shot was hit, in yards.
+
+    From the pin GSPro writes to its log; failing that, the shot's own distance
+    plus GSPro's distance to the pin from where it stopped (GSPro aims at the
+    pin after a move, so the two lie on one line; GSPro gives that distance in metres).
+    """
+    sx, sz, px, pz = (row.get(key) for key in ("start_x", "start_z", "pin_x", "pin_z"))
+    if all(isinstance(v, (int, float)) for v in (sx, sz, px, pz)):
+        return (((px - sx) ** 2 + (pz - sz) ** 2) ** 0.5) * M_TO_YD
+    total, left_m = row.get("total_yd"), row.get("db_pin_yd")
+    if isinstance(total, (int, float)) and isinstance(left_m, (int, float)):
+        return total + left_m * M_TO_YD
+    return None
+
+
+def plays_here(row: dict[str, Any]) -> float | None:
+    """What a shot from this spot carried, as a share of the same launch on flat ground: lie, slope and altitude together."""
+    carry, flat = row.get("carry_yd"), row.get("db_raw_carry_game_yd")
+    if isinstance(carry, (int, float)) and isinstance(flat, (int, float)) and flat > 5 and 0.3 < carry / flat < 1.6:
+        return carry / flat
+    return None
+
+
+def green_shots(distance_yd: float, plays: float | None, count: int = 2) -> list[tuple[str, dict[str, float]]]:
+    """Shots meant to land on the green from here: the stock clubs nearest the distance the lie
+    makes it play, each sped up or slowed down a little to carry the number."""
+    needed = max(10.0, distance_yd - GREEN_SHORT_YD) / (plays or 1.0)
+    clubs = sorted((club for club in BAG if BAG[club].get("carry")), key=lambda club: abs(BAG[club]["carry"] - needed))[:count]
+    shots = []
+    for club in clubs:
+        stock = BAG[club]
+        scale = min(1.25, max(0.75, (needed / stock["carry"]) ** (1.0 / 1.5)))  # carry grows about as speed^1.5
+        shots.append((f"{club} to green", {"speed": round(stock["speed"] * scale, 1), "vla": stock["vla"], "hla": 0.0,
+                                           "spin": stock["spin"], "axis": 0.0}))
+    return shots
+
+
 def ball_position(round_file: Path) -> tuple[float, float, float] | None:
     """Where the last shot was hit from: GSPro's newest round record."""
     record = newest_round_record(round_file) or {}
@@ -254,11 +299,29 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
         typed = (f"wander {why}" + (f" click {x},{y}" if x is not None else "")
                  + (f" slope {slope_note(slope)}" if slope_note(slope) else ""))
         spot_labels = {**labels, "click_x": x, "click_y": y, **slope}
-        shots = lie_shots_for_spot(spot)[:shots_per_spot]
         say(f"\nSpot {spot} ({why}){'; slope ' + slope_note(slope) if slope_note(slope) else ''}")
-        spot_rows, connected = hit_spot(path, writer, flush, labels=spot_labels, spot=spot, typed=typed, spot_shots=shots,
-                                        round_file=round_file, log_file=log_file, db_path=db_path, notes_file=notes_file,
-                                        gap=gap, record_wait=record_wait, sleep=sleep)
+        lie_shots = lie_shots_for_spot(spot)
+        # First, one of the lie test's shots (soft, medium, hard in turn): it measures the lie and
+        # shows where the pin is. Then, if the green is in reach, two at the green allowing for how
+        # this spot plays; otherwise the other two lie shots.
+        first = [lie_shots[(spot - 1) % len(lie_shots)]]
+
+        def fire(shots, aim, extra=None):
+            return hit_spot(path, writer, flush, labels={**spot_labels, "aim": aim, **(extra or {})}, spot=spot, typed=typed,
+                            spot_shots=shots, round_file=round_file, log_file=log_file, db_path=db_path,
+                            notes_file=notes_file, gap=gap, record_wait=record_wait, sleep=sleep)
+
+        spot_rows, connected = fire(first, "lie")
+        if connected and spot_rows and shots_per_spot > 1:
+            distance = pin_from_spot_yd(spot_rows[0])
+            plays = plays_here(spot_rows[0])
+            extra = {"pin_from_spot_yd": round(distance, 1)} if distance is not None else {}
+            if distance is not None and GREEN_RANGE_YD[0] <= distance <= GREEN_RANGE_YD[1]:
+                say(f"  green {distance:.0f} yd away{f', plays {plays:.0%} of flat' if plays else ''}: two at the green")
+                more, connected = fire(green_shots(distance, plays, shots_per_spot - 1), "green", extra)
+            else:
+                more, connected = fire([shot for shot in lie_shots if shot not in first][:shots_per_spot - 1], "lie", extra)
+            spot_rows += more
         rows.extend(spot_rows)
         if not connected:
             say("Lost the connection to GSPro: stopping.")

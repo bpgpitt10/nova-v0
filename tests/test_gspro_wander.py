@@ -33,25 +33,23 @@ class FakeDesktop:
 
 class WanderTests(unittest.TestCase):
     def run_walk(self, desktop, spots, starts, pins):
-        """`starts`: where GSPro says each spot's shot was hit from; `pins`: yards to the pin."""
-        positions = iter(starts)
-        pin_iter = iter(pins)
-
-        def fake_hit_spot(path, writer, flush, **kwargs):
-            row = {"spot": kwargs["spot"], "db_pin_yd": next(pin_iter), "note": kwargs["typed"], **kwargs["labels"]}
-            return [row] * len(kwargs["spot_shots"]), True
-
+        """`starts`: where GSPro says each spot's shots were hit from; `pins`: yards to the pin from there."""
+        fired = []
         current = {"start": None}
 
-        def fake_ball_position(_):
-            return current["start"]
-
-        def advancing_hit(*args, **kwargs):
-            current["start"] = next(positions)
-            return fake_hit_spot(*args, **kwargs)
+        def fake_hit_spot(path, writer, flush, **kwargs):
+            index = kwargs["spot"] - 1
+            current["start"] = starts[index]
+            fired.append((kwargs["spot"], kwargs["labels"].get("aim"), [name for name, _ in kwargs["spot_shots"]]))
+            row = {"spot": kwargs["spot"], "note": kwargs["typed"], **kwargs["labels"],
+                   # A shot that went 50 yd straight at the pin, which is pins[index] yd from the spot.
+                   "total_yd": 50.0, "db_pin_yd": (pins[index] - 50.0) / wander.M_TO_YD,
+                   "carry_yd": 45.0, "db_raw_carry_game_yd": 50.0}
+            return [dict(row) for _ in kwargs["spot_shots"]], True
 
         with tempfile.TemporaryDirectory() as tmp, \
-                patch.object(wander, "hit_spot", advancing_hit), patch.object(wander, "ball_position", fake_ball_position):
+                patch.object(wander, "hit_spot", fake_hit_spot), \
+                patch.object(wander, "ball_position", lambda _: current["start"]):
             folder = Path(tmp)
             said = []
             rows = wander.wander(None, None, lambda: None, desktop=desktop, spots=spots, shots_per_spot=3, side="right",
@@ -59,7 +57,21 @@ class WanderTests(unittest.TestCase):
                                  notes_file=folder / "n", read_lie=lambda: {"slope_up_deg": 2.0, "slope_right_deg": -1.5,
                                                                             "slope_read": "companion"},
                                  rng=random.Random(7), sleep=lambda _s: None, say=said.append)
+        self.fired = fired
         return rows, said
+
+    def test_two_shots_go_at_the_green_when_it_is_in_reach(self):
+        desktop = FakeDesktop()
+        starts = [(i * 20.0, 0.0, i * 30.0) for i in range(2)]
+        rows, _ = self.run_walk(desktop, 2, starts, [300.0, 150.0])
+        # 300 yd: out of reach, the other two lie shots. 150 yd: two at the green.
+        self.assertEqual([aim for _, aim, _ in self.fired], ["lie", "lie", "lie", "green"])
+        green = self.fired[-1][2]
+        self.assertEqual(len(green), 2)
+        self.assertTrue(all(name.endswith("to green") for name in green))
+        # The lie made the test shot carry 90% of flat, so 150 yd plays about 164: the 7i first.
+        self.assertEqual(green[0].split()[0], "7i")
+        self.assertEqual(rows[-1]["pin_from_spot_yd"], 150.0)
 
     def test_clicks_land_inside_the_minimap_map(self):
         desktop = FakeDesktop()

@@ -314,6 +314,7 @@ LAB_FIELDS = [
     "db_offline_yd", "db_peak_height", "db_descent_deg", "db_vla_deg", "db_hla_deg", "db_backspin_rpm", "db_sidespin_rpm", "db_id",
     # Wander (wander.py): where it clicked the minimap, and the slope the companion read there.
     "click_x", "click_y", "slope_up_deg", "slope_right_deg", "slope_read",
+    "pin_x", "pin_y", "pin_z", "pin_from_spot_yd", "aim",
 ]
 M_TO_FT = 3.280839895
 #: Putt speeds rolled by default, mph off the face.
@@ -492,6 +493,8 @@ LOG_PENALTY_RE = re.compile(
 LOG_TYPE_RE = re.compile(r"corrected type\s+(-?\d+)", re.I)
 LOG_PHYSICS_RE = re.compile(r"Physics Settings:\s*Green Firmness\s*(-?\d+)\s*Fairway Firmness\s*(-?\d+)\s*Course Type\s*(-?\d+)", re.I)
 LOG_MATERIAL_RE = re.compile(r"\|\s*material\s+([A-Za-z_]+)", re.I)
+#: GSPro writes the pin each shot, in the same course coordinates as the round record (metres).
+LOG_PIN_RE = re.compile(r"pinPos:\s*\(\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)")
 LOG_KEEP_RE = re.compile(r"surface|penalty|lie|slope|launch|material|bunker|rough|fringe|sand|drop|physics|friction|shot fired", re.I)
 
 
@@ -533,6 +536,8 @@ def lie_from_log(text: str) -> dict[str, Any]:
             row.update({"log_green_firmness": int(m[1]), "log_fairway_firmness": int(m[2]), "log_course_type": int(m[3])})
         elif "landing_material" not in row and (m := LOG_MATERIAL_RE.search(line)):
             row["landing_material"] = m[1]  # the first thing the ball hit
+        if (m := LOG_PIN_RE.search(line)):
+            row.update({"pin_x": float(m[1]), "pin_y": float(m[2]), "pin_z": float(m[3])})
     return row
 
 
