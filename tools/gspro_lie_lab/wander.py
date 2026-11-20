@@ -219,8 +219,10 @@ NEXT_HOLE_INSIDE_YD = 70.0
 #: less than STEP_MIN_GAIN_YD, it moves on.
 MAX_SPOTS_PER_HOLE = 16
 STEP_MIN_GAIN_YD = 8.0
-#: GSPro's surface 19 is "TVGnone": unpainted mounds and edges, no lie penalty, slopes up to 41°.
-NO_SURFACE = 19
+#: Spots not worth more than the first shot, by GSPro's start surface: 15 is water (GSPro lets you hit
+#: from it with no penalty line: 132 shots at Kapalua, 20 Nov), 19 "TVGnone" is unpainted mounds and
+#: edges (slopes up to 41°), 4 is a cart path (always 100%, and we have 120 shots of it).
+SKIP_SURFACES = {15: "in water", 19: "no surface here (an unpainted mound or edge)", 4: "on a cart path"}
 PAR3_UNDER_YD = 250.0
 #: Off a par 4 or 5 tee (the shot tool's bag has no 3 wood yet).
 TEE_CLUBS = ("Driver", "3W", "3H")
@@ -498,11 +500,15 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
         spot_rows, connected = fire(first, "lie")
         in_water = bool(spot_rows) and bool(re.search(r"water|hazard|lake|pond|creek|penalty",
                                                        str(spot_rows[0].get("lie_surface") or ""), re.I))
-        off_course = bool(spot_rows) and str(spot_rows[0].get("start_surface") or "").split(".")[0] == str(NO_SURFACE)
+        try:
+            surface_code = int(float(spot_rows[0].get("start_surface"))) if spot_rows else None
+        except (TypeError, ValueError):
+            surface_code = None
+        off_course = surface_code in SKIP_SURFACES
         if off_course and not in_water:
-            say("  no surface here (an unpainted mound or edge): not a real lie, moving on")
+            say(f"  {SKIP_SURFACES[surface_code]}: not a lie we need, moving on")
             for row in spot_rows:
-                row["aim"] = "no surface"
+                row["aim"] = "skipped"
             in_water = True  # fire nothing more, as in water
         if in_water and not off_course:
             say("  in water: not a lie we want, moving on")

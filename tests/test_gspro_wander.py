@@ -193,6 +193,15 @@ class WalkTests(unittest.TestCase):
         self.assertEqual(len(spot_two), 1)
         self.assertTrue(any("no surface" in line for line in self.said))
 
+    def test_a_ball_in_water_with_no_penalty_line_is_not_hit_again(self):
+        # Kapalua, 20 Nov: start surface 15 is water, and GSPro writes no penalty line for it.
+        desktop = FakeDesktop()
+        self.run_walk(desktop, [300, 280, 270], surfaces={2: "15", 3: "4"})
+        for spot in (2, 3):
+            self.assertEqual(len([s for sp, _, s in self.fired if sp == spot]), 1)
+        self.assertTrue(any("in water" in line for line in self.said))
+        self.assertTrue(any("cart path" in line for line in self.said))
+
     def test_moving_the_mouse_stops_it(self):
         desktop = FakeDesktop(move_mouse_after=1)
         self.run_walk(desktop, [300] * 6)
