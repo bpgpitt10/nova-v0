@@ -132,8 +132,9 @@ const PARTS: readonly Part[] = [
           play another and the gap is bigger than anything on this card.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9: range roll from 36 launches on all nine settings, green release from 131 landings
-          at stimp 11 on level greens.
+          Measured in GSPro 4.1.9. Range roll: each club&rsquo;s stock shot fired onto the range once on each of the
+          nine settings (GSPro rolls the same shot the same distance every time, to a hundredth of a yard). Green
+          release: 131 landings at stimp 11 on level greens.
         </p>
       </>
     ),
