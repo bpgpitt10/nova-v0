@@ -216,7 +216,9 @@ STEP_LEAVES = 0.80
 NEXT_HOLE_INSIDE_YD = 50.0
 PAR3_UNDER_YD = 250.0
 #: Off a par 4 or 5 tee (the shot tool's bag has no 3 wood yet).
-TEE_CLUBS = ("Driver", "3H", "5i")
+TEE_CLUBS = ("Driver", "3W", "3H")
+#: Tee-only clubs the shot tool's bag doesn't have. 3W: Brian's stock from his bag page, 20 Nov (11 swings).
+TEE_EXTRA = {"3W": {"speed": 142.4, "vla": 15.2, "spin": 3622, "carry": 224.8, "total": 237.3}}
 #: GSPro's StartingSurface for a tee box (320 of the 360 first shots of a hole in live rounds are 18).
 TEE_SURFACE = 18
 #: Clubs only hit off a tee. Nobody hits driver at a green out of deep rough (Farmlinks 2, 20 Nov).
@@ -497,9 +499,10 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
                 why = "tee"  # the player left the ball on a tee
             if why == "tee" and distance is not None and distance >= PAR3_UNDER_YD:
                 # A par 4 or 5 tee: what players hit there, for real tee-shot roll.
-                tee = [(f"{club} off the tee", {"speed": BAG[club]["speed"], "vla": BAG[club]["vla"], "hla": 0.0,
-                                                "spin": BAG[club]["spin"], "axis": 0.0})
-                       for club in TEE_CLUBS if club in BAG and BAG[club]["carry"] <= distance + PAST_PIN_OK_YD]
+                bag = {**TEE_EXTRA, **BAG}
+                tee = [(f"{club} off the tee", {"speed": bag[club]["speed"], "vla": bag[club]["vla"], "hla": 0.0,
+                                                "spin": bag[club]["spin"], "axis": 0.0})
+                       for club in TEE_CLUBS if club in bag and bag[club]["carry"] <= distance + PAST_PIN_OK_YD]
                 say(f"  tee, {distance:.0f} yd: {', '.join(name.split()[0] for name, _ in tee)}")
                 more, connected = fire(tee[:shots_per_spot], "tee", extra) if tee else ([], True)
             elif distance is not None and distance < GREEN_RANGE_YD[0]:

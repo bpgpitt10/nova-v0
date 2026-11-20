@@ -117,7 +117,7 @@ class WalkTests(unittest.TestCase):
         desktop = FakeDesktop()
         self.run_walk(desktop, [45, 380])
         tee = [shots for spot, aim, shots in self.fired if spot == 2 and aim == "tee"]
-        self.assertEqual([name for name, _ in tee[0]], ["Driver off the tee", "3H off the tee", "5i off the tee"])
+        self.assertEqual([name for name, _ in tee[0]], ["Driver off the tee", "3W off the tee", "3H off the tee"])
 
     def test_after_hole_18_comes_hole_1(self):
         self.assertEqual(wander.hole_point(WINDOW, 19), wander.hole_point(WINDOW, 1))
@@ -153,7 +153,7 @@ class WalkTests(unittest.TestCase):
         desktop = FakeDesktop()
         self.run_walk(desktop, [300, 240], surfaces={1: "18"})
         first = [shots for spot, aim, shots in self.fired if spot == 1 and aim == "tee"]
-        self.assertEqual([name for name, _ in first[0]], ["Driver off the tee", "3H off the tee", "5i off the tee"])
+        self.assertEqual([name for name, _ in first[0]], ["Driver off the tee", "3W off the tee", "3H off the tee"])
 
     def test_no_driver_off_the_ground_and_no_200_mph_hybrid(self):
         # 235 yd out of deep rough that plays 63%: out of reach, so lie shots, and never the driver.
