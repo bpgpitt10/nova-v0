@@ -343,7 +343,6 @@ export default function InsightsPage() {
                     <p>
                       <strong>In the live caddie:</strong> {part.caddie}
                     </p>
-                    <AccountButton colour={part.colour} />
                   </aside>
                 </article>
               </div>
@@ -354,7 +353,6 @@ export default function InsightsPage() {
                   <p>
                     <strong>In the live caddie:</strong> {part.caddie}
                   </p>
-                  <AccountButton colour={part.colour} />
                 </aside>
               </article>
             ) : (

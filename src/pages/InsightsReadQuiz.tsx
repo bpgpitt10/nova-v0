@@ -464,7 +464,6 @@ export default function InsightsReadQuiz() {
                   <strong> this hole&rsquo;s hazards</strong> to pick the club and the line that save you the most strokes.
                 </p>
                 </div>
-                <a className="insights-button" href="/?signup=1">Create a free account</a>
               </aside>
             </>
           ) : (

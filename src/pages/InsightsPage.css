@@ -810,10 +810,14 @@
 
 .insights-caddie {
   margin-top: 26px;
-  padding: 18px 20px;
+  padding: 14px 18px;
   border: 1px solid color-mix(in srgb, var(--insight-colour) 40%, #314233);
   border-radius: 12px;
   background: color-mix(in srgb, var(--insight-colour) 9%, rgba(16, 32, 22, 0.9));
+}
+
+.insights-caddie p {
+  margin: 0;
 }
 
 .insights-open-slot {
