@@ -42,8 +42,8 @@ class WanderTests(unittest.TestCase):
             current["start"] = starts[index]
             fired.append((kwargs["spot"], kwargs["labels"].get("aim"), [name for name, _ in kwargs["spot_shots"]]))
             row = {"spot": kwargs["spot"], "note": kwargs["typed"], **kwargs["labels"],
-                   # A shot that went 50 yd straight at the pin, which is pins[index] yd from the spot.
-                   "total_yd": 50.0, "db_pin_yd": (pins[index] - 50.0) / wander.M_TO_YD,
+                   # GSPro's reply: the pin's distance from the spot, in metres.
+                   "status": f"GSPro took it, ball at rest after 6.0 s; next: 7i from {pins[index] / wander.M_TO_YD:.1f} yd",
                    "carry_yd": 45.0, "db_raw_carry_game_yd": 50.0}
             return [dict(row) for _ in kwargs["spot_shots"]], True
 
@@ -71,7 +71,7 @@ class WanderTests(unittest.TestCase):
         self.assertTrue(all(name.endswith("to green") for name in green))
         # The lie made the test shot carry 90% of flat, so 150 yd plays about 164: the 7i first.
         self.assertEqual(green[0].split()[0], "7i")
-        self.assertEqual(rows[-1]["pin_from_spot_yd"], 150.0)
+        self.assertAlmostEqual(rows[-1]["pin_from_spot_yd"], 150.0, delta=0.1)
 
     def test_clicks_land_inside_the_minimap_map(self):
         desktop = FakeDesktop()
@@ -82,7 +82,7 @@ class WanderTests(unittest.TestCase):
         for x, y in desktop.clicks:
             self.assertTrue(left <= x <= right and top <= y <= bottom, (x, y))
             # Near the hole's line up the middle of the map, never out at the edges.
-            self.assertTrue(left + 0.19 * (right - left) <= x <= left + 0.81 * (right - left), (x, y))
+            self.assertTrue(left + 0.14 * (right - left) <= x <= left + 0.86 * (right - left), (x, y))
         self.assertEqual(len(rows), 18)  # three shots a spot
         # The move-ball button: top left of GSPro's window.
         self.assertTrue(all(bx < 0.1 * WINDOW[2] and by < 0.1 * WINDOW[3] for bx, by in desktop.buttons))
@@ -126,6 +126,13 @@ class ReachTests(unittest.TestCase):
         self.assertGreater(near_ball, 150.0)
         self.assertLess(near_pin, 10.0)
         self.assertIsNone(wander.distance_after_click(None, 0.5))
+
+
+class PinDistanceTests(unittest.TestCase):
+    def test_a_shot_past_the_pin_does_not_add_its_overshoot(self):
+        # Farmlinks, 20 Nov: soft 70 from 71.5 yd went 82 yd, 11 past. GSPro's reply has the true distance.
+        row = {"status": "GSPro took it, ball at rest after 7.4 s; next: LW from 65.4 yd", "total_yd": 82.48, "db_pin_yd": 9.98}
+        self.assertAlmostEqual(wander.pin_from_spot_yd(row), 71.5, delta=0.1)
 
 
 if __name__ == "__main__":

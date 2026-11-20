@@ -35,6 +35,7 @@ import csv
 import json
 import os
 import random
+import re
 import sys
 import time
 import urllib.request
@@ -181,7 +182,7 @@ def pick_spot(rect: tuple[float, float, float, float], pin_yd: float | None, rng
     the ball back down the hole.
     """
     left, top, right, bottom = rect
-    across = min(0.8, max(0.2, rng.gauss(0.5, 0.12)))
+    across = min(0.85, max(0.15, rng.gauss(0.5, 0.16)))
     if pin_yd is not None and pin_yd < WALK_BACK_INSIDE_YD:
         down, why = rng.uniform(0.90, 1.0), "walk back"
     else:
@@ -244,19 +245,25 @@ GREEN_RANGE_YD = (40.0, 240.0)
 GREEN_SHORT_YD = 2.0
 
 
+#: GSPro's reply to each shot names the next club and how far the pin is from where the next
+#: shot is hit; practice puts the ball back on the spot, so that is the spot's distance. In metres
+#: (it matches the course coordinates, 20 Nov), whatever the label says.
+NEXT_FROM_RE = re.compile(r"next:\s*\S+\s+from\s+(\d+(?:\.\d+)?)")
+
+
 def pin_from_spot_yd(row: dict[str, Any]) -> float | None:
     """How far the pin was from where this shot was hit, in yards.
 
-    From the pin GSPro writes to its log; failing that, the shot's own distance
-    plus GSPro's distance to the pin from where it stopped (GSPro aims at the
-    pin after a move, so the two lie on one line; GSPro gives that distance in metres).
+    From the pin GSPro writes to its log if it did; else from GSPro's reply to
+    the shot (its distance to the pin from the spot). Not from the shot's own
+    distance plus what was left: that is wrong whenever the shot went past the pin.
     """
     sx, sz, px, pz = (row.get(key) for key in ("start_x", "start_z", "pin_x", "pin_z"))
     if all(isinstance(v, (int, float)) for v in (sx, sz, px, pz)):
         return (((px - sx) ** 2 + (pz - sz) ** 2) ** 0.5) * M_TO_YD
-    total, left_m = row.get("total_yd"), row.get("db_pin_yd")
-    if isinstance(total, (int, float)) and isinstance(left_m, (int, float)):
-        return total + left_m * M_TO_YD
+    found = NEXT_FROM_RE.search(str(row.get("status") or ""))
+    if found:
+        return float(found[1]) * M_TO_YD
     return None
 
 
