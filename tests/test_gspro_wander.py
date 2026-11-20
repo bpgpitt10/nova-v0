@@ -111,5 +111,22 @@ class WanderTests(unittest.TestCase):
         self.assertTrue(any("did not move the ball" in line for line in said))
 
 
+class ReachTests(unittest.TestCase):
+    def test_nothing_is_sent_far_past_the_pin(self):
+        shots = [(name, {}) for name in wander.LIE_FLAT_CARRY_YD]
+        kept = [name for name, _ in wander.within_reach(shots, 60.0)]
+        self.assertTrue(kept)
+        self.assertTrue(all(wander.LIE_FLAT_CARRY_YD[name] <= 75.0 for name in kept))
+        self.assertNotIn("SW", kept)
+        self.assertEqual(len(wander.within_reach(shots, None)), len(shots))  # unknown: no limit
+
+    def test_distance_after_a_click_shrinks_toward_the_pin(self):
+        near_ball = wander.distance_after_click(200.0, 1.0)
+        near_pin = wander.distance_after_click(200.0, 0.0)
+        self.assertGreater(near_ball, 150.0)
+        self.assertLess(near_pin, 10.0)
+        self.assertIsNone(wander.distance_after_click(None, 0.5))
+
+
 if __name__ == "__main__":
     unittest.main()

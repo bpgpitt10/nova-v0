@@ -209,6 +209,35 @@ def slope_note(slope: dict[str, Any]) -> str:
     return f"{abs(up):.1f} {'up' if up >= 0 else 'down'} {abs(right):.1f} {'right' if right >= 0 else 'left'}"
 
 
+#: GSPro's flat carry for each of the lie test's shots (yards; its own "raw" carry, Farmlinks, 20 Nov).
+LIE_FLAT_CARRY_YD = {
+    "soft 40": 29.9, "soft 50": 45.3, "soft 60": 60.6, "soft 70": 81.1, "SW": 93.6,
+    "PW": 121.2, "mid 95 low spin": 122.5, "mid 100 high": 128.7, "mid 105": 141.9, "7i": 157.9,
+    "hard 120": 169.2, "5i": 177.7, "3H": 196.9, "Driver": 231.2, "hard 145": 234.7,
+}
+#: No shot is meant to carry more than this past the pin: further is trees and out of play (Brian, 20 Nov).
+PAST_PIN_OK_YD = 15.0
+#: Where GSPro draws the ball and the pin on its minimap (shares of the minimap box, from Auto Aim).
+MAP_BALL_DOWN, MAP_PIN_DOWN = 0.90, 0.19
+
+
+def distance_after_click(previous_yd: float | None, down: float) -> float | None:
+    """About how far the pin is after moving the ball to `down` (share of the clickable map) on a
+    map drawn from the ball at the bottom to the pin at the top."""
+    if previous_yd is None:
+        return None
+    box_down = MAP_AREA[1] + down * (MAP_AREA[3] - MAP_AREA[1])
+    share = (box_down - MAP_PIN_DOWN) / (MAP_BALL_DOWN - MAP_PIN_DOWN)
+    return previous_yd * min(1.0, max(0.0, share))
+
+
+def within_reach(shots: list[tuple[str, dict[str, float]]], distance_yd: float | None) -> list[tuple[str, dict[str, float]]]:
+    """Only the shots that won't fly far past the pin (all of them if the distance is unknown)."""
+    if distance_yd is None:
+        return shots
+    return [shot for shot in shots if LIE_FLAT_CARRY_YD.get(shot[0], 0.0) <= distance_yd + PAST_PIN_OK_YD]
+
+
 #: From this far to this far from the pin (yards), two of a spot's three shots go at the green.
 GREEN_RANGE_YD = (40.0, 240.0)
 #: Aim to land this much short of the pin, so the release finishes near it.
@@ -286,10 +315,12 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
         hwnd, window = found
         if spot == first_spot:
             # The first spot is wherever the player left the ball: no click.
-            x, y, why = None, None, "start"
+            x, y, why, estimated = None, None, "start", None
             left_at = desktop.mouse()
         else:
-            x, y, why = pick_spot(map_rect(window, side), pin_yd, rng)
+            rect = map_rect(window, side)
+            x, y, why = pick_spot(rect, pin_yd, rng)
+            estimated = distance_after_click(pin_yd, (y - rect[1]) / max(1.0, rect[3] - rect[1]))
             left, top, right, bottom = window
             button = (round(left + BALL_BUTTON[0] * (right - left)), round(top + BALL_BUTTON[1] * (bottom - top)))
             desktop.move_ball(hwnd, button, x, y)
@@ -301,10 +332,14 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
         spot_labels = {**labels, "click_x": x, "click_y": y, **slope}
         say(f"\nSpot {spot} ({why}){'; slope ' + slope_note(slope) if slope_note(slope) else ''}")
         lie_shots = lie_shots_for_spot(spot)
-        # First, one of the lie test's shots (soft, medium, hard in turn): it measures the lie and
-        # shows where the pin is. Then, if the green is in reach, two at the green allowing for how
-        # this spot plays; otherwise the other two lie shots.
-        first = [lie_shots[(spot - 1) % len(lie_shots)]]
+        # First, the lie test's soft shot (a different one each spot): it measures the lie and shows
+        # where the pin is, and it is short enough not to fly far past the green. Then, if the green
+        # is in reach, two at the green allowing for how this spot plays; if it is out of reach, the
+        # medium and hard lie shots; inside 40 yd, nothing more (chips are their own test).
+        soft_shots = [(name, {"speed": speed, "vla": vla, "hla": 0.0, "spin": spin, "axis": 0.0})
+                      for name, speed, vla, spin in _tool.LIE_SHOTS[0]]
+        rotated = soft_shots[(spot - 1) % len(soft_shots):] + soft_shots[:(spot - 1) % len(soft_shots)]
+        first = (within_reach(rotated, estimated) or [min(soft_shots, key=lambda shot: LIE_FLAT_CARRY_YD.get(shot[0], 0.0))])[:1]
 
         def fire(shots, aim, extra=None):
             return hit_spot(path, writer, flush, labels={**spot_labels, "aim": aim, **(extra or {})}, spot=spot, typed=typed,
@@ -316,18 +351,22 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             distance = pin_from_spot_yd(spot_rows[0])
             plays = plays_here(spot_rows[0])
             extra = {"pin_from_spot_yd": round(distance, 1)} if distance is not None else {}
-            if distance is not None and GREEN_RANGE_YD[0] <= distance <= GREEN_RANGE_YD[1]:
+            if distance is not None and distance < GREEN_RANGE_YD[0]:
+                say(f"  {distance:.0f} yd from the pin: chip range, moving on")
+                more = []
+            elif distance is not None and distance <= GREEN_RANGE_YD[1]:
                 say(f"  green {distance:.0f} yd away{f', plays {plays:.0%} of flat' if plays else ''}: two at the green")
                 more, connected = fire(green_shots(distance, plays, shots_per_spot - 1), "green", extra)
             else:
-                more, connected = fire([shot for shot in lie_shots if shot not in first][:shots_per_spot - 1], "lie", extra)
+                longer = within_reach([shot for shot in lie_shots if shot not in first and shot not in soft_shots], distance)
+                more, connected = fire(longer[:shots_per_spot - 1], "lie", extra) if longer else ([], True)
             spot_rows += more
+            if distance is not None:
+                pin_yd = distance
         rows.extend(spot_rows)
         if not connected:
             say("Lost the connection to GSPro: stopping.")
             break
-        pins = [row.get("db_pin_yd") for row in spot_rows if isinstance(row.get("db_pin_yd"), (int, float))]
-        pin_yd = pins[0] if pins else pin_yd
         start = ball_position(round_file)
         if start and last_start:
             moved = (((start[0] - last_start[0]) ** 2 + (start[2] - last_start[2]) ** 2) ** 0.5) * M_TO_YD
