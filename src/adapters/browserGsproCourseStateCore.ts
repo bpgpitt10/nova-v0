@@ -21,6 +21,7 @@ import { nativeWorldToHoleLocalYds } from '../courseGeometry/nativeRegistration'
 import { gsproOnlyCourseKey } from '../courseGeometry/gsproOnlyCourse'
 import { loadActiveLiveCaddieRound } from '../liveCaddie/roundRuntime'
 import { surfaceFromGsproRaw } from './gsproSurfaceCodes'
+import { advanceLogWatch, parseGsproLogConditions, publishGsproLogConditions, type LogWatch } from './gsproLogConditions'
 import {
   learnedCodeLies,
   learnedSurfaceFactors,
@@ -138,6 +139,8 @@ const STATE_HANDLE_KEY = 'gspro-course-state-directory'
 const CURRENT_ROUND_FILE = 'currentRound.dat'
 const OUTPUT_LOG_FILE = 'output_log.txt'
 const OUTPUT_LOG_TAIL_BYTES = 160_000
+// GSPro 4 writes each shot's settings, altitude and lie penalty here instead.
+const PLAYER_LOG_FILE = 'Player.log'
 const POLL_INTERVAL_MS = 750
 const ERROR_REPORT_THRESHOLD = 5
 const METERS_TO_YARDS = 1.0936132983377078
@@ -293,6 +296,55 @@ const learnFromPenaltyLog = (logTail: string) => {
     return events.length > 0 ? events[events.length - 1] : null
   } catch {
     return null
+  }
+}
+
+// GSPro 4's Player.log, watched for the life of the page (a hole change
+// reconnects, and must not forget the round's settings).
+let playerLogWatch: LogWatch | null = null
+let playerLogReadTo = 0
+let playerLogSignature = ''
+// A line can be cut by the end of one read; start the next a little earlier.
+const PLAYER_LOG_OVERLAP_BYTES = 4_000
+const PLAYER_LOG_RETRY_MS = 60_000
+let playerLogAskAgainAt = 0
+
+/** Tests only. */
+export const __resetPlayerLogWatchForTests = () => {
+  playerLogWatch = null
+  playerLogReadTo = 0
+  playerLogSignature = ''
+}
+
+/**
+ * Read what GSPro has logged since Looper started watching: the settings and
+ * altitude of the latest shot, and any lie penalties to learn from. Only the
+ * new part of the log is read each time. Never throws: a companion that
+ * doesn't serve this file just leaves it unread.
+ */
+export const readPlayerLog = async (file: File | null) => {
+  if (!file) return
+  try {
+    const signature = `${file.size}:${file.lastModified}`
+    if (signature === playerLogSignature) return
+    // Shorter than what was already read: GSPro was reopened and started the log again.
+    const restarted = playerLogWatch != null && file.size < playerLogReadTo
+    const watch = restarted ? { fromByte: 0, conditions: null } : advanceLogWatch(playerLogWatch, file.size)
+    if (watch !== playerLogWatch) playerLogReadTo = watch.fromByte
+    const from = Math.max(watch.fromByte, playerLogReadTo - PLAYER_LOG_OVERLAP_BYTES, file.size - OUTPUT_LOG_TAIL_BYTES)
+    const text = file.size > from ? await file.slice(from).text() : ''
+    learnFromPenaltyLog(text)
+    const seen = parseGsproLogConditions(text)
+    // A read that caught the settings but not yet the landing keeps the altitude already known.
+    const conditions = seen
+      ? { ...seen, altitudeFt: seen.altitudeFt ?? watch.conditions?.altitudeFt ?? null }
+      : watch.conditions
+    playerLogWatch = { fromByte: watch.fromByte, conditions }
+    playerLogReadTo = file.size
+    playerLogSignature = signature
+    if (conditions) publishGsproLogConditions(conditions)
+  } catch {
+    // keep whatever was read before
   }
 }
 
@@ -829,6 +881,15 @@ export const connectToBrowserGsproCourseState = ({
     const roundFile = await readOptionalFile(handle, CURRENT_ROUND_FILE)
     if (!roundFile) throw new Error('currentRound.dat is unavailable in the selected GSPro state folder.')
 
+    // GSPro 4's log is written all the time, so it is read on its own and
+    // never makes the round file be read again.
+    // A companion from before it was served says no; ask again once a minute.
+    if (Date.now() >= playerLogAskAgainAt) {
+      void readOptionalFile(handle, PLAYER_LOG_FILE).then((file) => {
+        if (!file) playerLogAskAgainAt = Date.now() + PLAYER_LOG_RETRY_MS
+        return readPlayerLog(file)
+      })
+    }
     const logFile = await readOptionalFile(handle, OUTPUT_LOG_FILE)
     const roundSignature = `${roundFile.size}:${roundFile.lastModified}`
     const logSignature = logFile ? `${logFile.size}:${logFile.lastModified}` : 'missing'

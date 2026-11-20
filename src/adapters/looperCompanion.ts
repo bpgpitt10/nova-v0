@@ -40,6 +40,8 @@ export type LooperCompanionStatus = {
     aimPreview?: boolean
     courseLibrary?: boolean
     gsproFiles?: boolean
+    /** Serves GSPro 4's Player.log (settings, altitude and lie penalty per shot). */
+    playerLog?: boolean
     roundRecorder?: boolean
     nativeCapture: boolean
     autoAim: boolean

@@ -20,6 +20,10 @@ export type ActiveLiveCaddieRound = Readonly<{
   pinDay?: GsproPinDay | null
   /** GSPro's course conditions as picked at Start a Round; null fields when not told. */
   conditions?: RoundConditions | null
+  /** True once course type and firmness came from GSPro's own log for this round. */
+  conditionsFromGspro?: boolean
+  /** GSPro's altitude for this round, in feet, once a shot has landed. */
+  gsproAltitudeFt?: number | null
   startedAt: string
   phase: 'armed' | 'live'
   startHoleNumber: 1
@@ -102,6 +106,43 @@ export const loadActiveLiveCaddieRound = (): ActiveLiveCaddieRound | null => {
 }
 
 export const clearActiveLiveCaddieRound = () => writeActiveRound(null)
+
+/**
+ * Put GSPro's own settings (from its log, once a shot of this round is in it)
+ * on the active round, over whatever was picked at Start a Round. Stimp is not
+ * logged, so the picked stimp stays. Returns the round, changed or not.
+ */
+export const applyGsproConditionsToActiveRound = (seen: Readonly<{
+  courseType: NonNullable<RoundConditions['courseType']>
+  greenFirmness: NonNullable<RoundConditions['greenFirmness']>
+  fairwayFirmness: NonNullable<RoundConditions['fairwayFirmness']>
+  altitudeFt: number | null
+}>): ActiveLiveCaddieRound | null => {
+  const round = loadActiveLiveCaddieRound()
+  if (!round) return null
+  const before = round.conditions ?? null
+  const altitudeFt = seen.altitudeFt ?? round.gsproAltitudeFt ?? null
+  if (
+    round.conditionsFromGspro === true
+    && before?.courseType === seen.courseType
+    && before.greenFirmness === seen.greenFirmness
+    && before.fairwayFirmness === seen.fairwayFirmness
+    && (round.gsproAltitudeFt ?? null) === altitudeFt
+  ) return round
+  const next: ActiveLiveCaddieRound = {
+    ...round,
+    conditions: {
+      courseType: seen.courseType,
+      greenFirmness: seen.greenFirmness,
+      fairwayFirmness: seen.fairwayFirmness,
+      stimp: before?.stimp ?? null,
+    },
+    conditionsFromGspro: true,
+    gsproAltitudeFt: altitudeFt,
+  }
+  writeActiveRound(next)
+  return next
+}
 
 const newRoundId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
