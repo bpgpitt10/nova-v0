@@ -483,12 +483,11 @@
 }
 
 .insights-quiz__looper > div {
-  flex: 1 1 520px;
+  flex: 1 1 100%;
 }
 
 .insights-quiz__looper p {
   margin: 4px 0 0;
-  max-width: 900px;
 }
 
 .insights-quiz__looper strong {
