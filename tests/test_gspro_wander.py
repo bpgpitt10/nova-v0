@@ -173,6 +173,26 @@ class WalkTests(unittest.TestCase):
                     stock = wander.BAG[name.split()[0]]["speed"]
                     self.assertLessEqual(shot["speed"], stock * wander.SPEED_SCALE[1] + 0.05, name)
 
+    def test_it_moves_on_when_steps_stop_getting_closer(self):
+        # Farmlinks 3, 20 Nov: near the green the forward steps stalled between 53 and 70 yd.
+        desktop = FakeDesktop()
+        pins = [300, 240, 238, 236, 235, 180, 182, 181, 179, 175, 176, 178, 177, 172, 380]
+        self.run_walk(desktop, pins)
+        self.assertTrue(any("not getting closer" in line for line in self.said))
+        self.assertEqual(desktop.plain[1], wander.hole_point(WINDOW, 5))
+
+    def test_inside_70_yards_it_moves_on(self):
+        desktop = FakeDesktop()
+        self.run_walk(desktop, [65, 380])
+        self.assertEqual(desktop.plain[1], wander.hole_point(WINDOW, 5))
+
+    def test_a_spot_with_no_surface_is_not_hit_again(self):
+        desktop = FakeDesktop()
+        self.run_walk(desktop, [300, 280], surfaces={2: "19"})
+        spot_two = [shots for spot, _, shots in self.fired if spot == 2]
+        self.assertEqual(len(spot_two), 1)
+        self.assertTrue(any("no surface" in line for line in self.said))
+
     def test_moving_the_mouse_stops_it(self):
         desktop = FakeDesktop(move_mouse_after=1)
         self.run_walk(desktop, [300] * 6)

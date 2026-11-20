@@ -36,11 +36,11 @@ M_TO_FT = 3.2808399
 
 #: GSPro's surface numbers (StartingSurface, landing and finish), from the lab logs' material names.
 SURFACES = {1: "rough", 2: "fairway", 3: "deep rough", 4: "path", 5: "green", 10: "pin", 11: "sand",
-            12: "semi-rough", 14: "trees", 16: "pine straw", 18: "tee"}
+            12: "semi-rough", 14: "trees", 16: "pine straw", 18: "tee", 19: "no surface"}
 #: GSPro's material names in the log, by the same names.
 MATERIALS = {"TVGrough": "rough", "TVGfairway": "fairway", "TVGdeeprough": "deep rough", "TVGgreen": "green",
              "TVGsand": "sand", "TVGsemirough": "semi-rough", "TVGwood": "trees", "TVGpinestraw": "pine straw",
-             "TVGconcrete": "path", "TVGpin": "pin"}
+             "TVGconcrete": "path", "TVGpin": "pin", "TVGnone": "no surface", "TVGtimber": "trees"}
 #: Stock ball speed of the clubs the shot tool sends (its bag, plus Brian's 3W).
 STOCK_SPEED = {"Driver": 143.8, "3W": 142.4, "3H": 134.2, "5i": 123.5, "6i": 121.5, "7i": 113.1, "8i": 105.7,
                "9i": 102.9, "PW": 94.4, "GW": 88.7, "SW": 78.6, "LW": 75.6}
@@ -194,6 +194,8 @@ def why_left_out(row: dict[str, Any]) -> str | None:
         return "hit from water"
     if row["landed_on"] == "trees" or row["finished_on"] == "trees":
         return "into the trees"
+    if "no surface" in (row["lie"], row["landed_on"], row["finished_on"]):
+        return "no surface (unpainted ground)"
     if row["finished_on"] in ("unknown",) and row["landed_on"] == "unknown":
         return "no landing recorded"
     if row["club_group"] == "Driver" and row["lie"] not in ("tee",) and row["aim"] != "tee":

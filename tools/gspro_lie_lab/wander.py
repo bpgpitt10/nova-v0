@@ -213,7 +213,14 @@ ACROSS_PER_BAND = 3
 #: Each step toward the pin leaves about this share of the distance.
 STEP_LEAVES = 0.80
 #: Moving on to the next hole: closer to the pin than this, or a par 3 (tee closer than PAR3_UNDER_YD).
-NEXT_HOLE_INSIDE_YD = 50.0
+NEXT_HOLE_INSIDE_YD = 70.0
+#: The minimap stops zooming near the green, so steps there barely move the ball (Farmlinks 3, 20 Nov:
+#: 30 spots between 53 and 70 yd). After this many spots on one hole, or two forward steps that gain
+#: less than STEP_MIN_GAIN_YD, it moves on.
+MAX_SPOTS_PER_HOLE = 16
+STEP_MIN_GAIN_YD = 8.0
+#: GSPro's surface 19 is "TVGnone": unpainted mounds and edges, no lie penalty, slopes up to 41°.
+NO_SURFACE = 19
 PAR3_UNDER_YD = 250.0
 #: Off a par 4 or 5 tee (the shot tool's bag has no 3 wood yet).
 TEE_CLUBS = ("Driver", "3W", "3H")
@@ -423,6 +430,9 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
     last_start: tuple[float, float, float] | None = None
     stuck = 0
     across_done = 0
+    spots_on_hole = 0
+    band_pin: float | None = None  # pin distance at the last forward step
+    slow_steps = 0
     next_move = "start"  # start, across, forward or next-hole
     for spot in range(first_spot, first_spot + spots):
         if left_at is not None:
@@ -450,6 +460,7 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             say(f"\nOn to hole {hole}.")
             sleep(HOLE_LOAD_S)
             pin_yd, last_start = None, None
+            spots_on_hole, band_pin, slow_steps = 0, None, 0
             why = "tee"
         else:
             rect = map_rect(window, side)
@@ -487,7 +498,13 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
         spot_rows, connected = fire(first, "lie")
         in_water = bool(spot_rows) and bool(re.search(r"water|hazard|lake|pond|creek|penalty",
                                                        str(spot_rows[0].get("lie_surface") or ""), re.I))
-        if in_water:
+        off_course = bool(spot_rows) and str(spot_rows[0].get("start_surface") or "").split(".")[0] == str(NO_SURFACE)
+        if off_course and not in_water:
+            say("  no surface here (an unpainted mound or edge): not a real lie, moving on")
+            for row in spot_rows:
+                row["aim"] = "no surface"
+            in_water = True  # fire nothing more, as in water
+        if in_water and not off_course:
             say("  in water: not a lie we want, moving on")
             for row in spot_rows:
                 row["aim"] = "water"
@@ -535,7 +552,16 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             pin_yd = measured if measured is not None else pin_yd
         # What next: from a tee, step forward (or, on a par 3, the next hole); inside 50 yd, the
         # next hole; otherwise a few spots across the hole, then a step toward the pin.
-        if pin_yd is not None and (pin_yd < NEXT_HOLE_INSIDE_YD or (why == "tee" and pin_yd < PAR3_UNDER_YD)):
+        spots_on_hole = 1 if why == "tee" else spots_on_hole + 1
+        if why == "forward" and pin_yd is not None:
+            slow_steps = slow_steps + 1 if band_pin is not None and band_pin - pin_yd < STEP_MIN_GAIN_YD else 0
+            band_pin = pin_yd
+        elif why == "tee":
+            band_pin, slow_steps = pin_yd, 0
+        stuck_on_hole = spots_on_hole >= MAX_SPOTS_PER_HOLE or slow_steps >= 2
+        if stuck_on_hole:
+            say("  not getting closer to this green: on to the next hole")
+        if stuck_on_hole or (pin_yd is not None and (pin_yd < NEXT_HOLE_INSIDE_YD or (why == "tee" and pin_yd < PAR3_UNDER_YD))):
             next_move, across_done = "next-hole", 0
         elif why in ("tee", "start") or across_done >= ACROSS_PER_BAND:
             next_move, across_done = "forward", 0
