@@ -582,7 +582,7 @@ jobs:
       # need a GitHub sign-in). A prerelease in this repo, one tag per commit;
       # it is not the players' download and no one is told to update to it.
       - name: Publish the experimental voice installer
-        if: github.ref == 'refs/heads/experimental-voice-arm'
+        if: github.ref == 'refs/heads/experimental-voice-arm' || github.ref == 'refs/heads/companion-aim-minimap'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
