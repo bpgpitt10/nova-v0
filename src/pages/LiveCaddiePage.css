@@ -1278,6 +1278,20 @@
   font-weight: 700;
 }
 
+/* Punch-out mode: in the trees, first line of the card. */
+.live-punch-out {
+  display: block;
+  margin-bottom: 6px;
+  color: #f3e3c4;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.live-punch-out strong {
+  color: #f0b45e;
+  font-weight: 700;
+}
+
 .live-diagnostics-toggle {
   min-height: 28px;
   padding: 0 10px;

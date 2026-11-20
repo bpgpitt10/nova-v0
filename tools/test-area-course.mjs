@@ -13,7 +13,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
 
 try {
   const { parseGkdLayout } = await load('/src/courseGeometry/nativeGkd.ts')
-  const { parseAreaPackage, fitRegistrationFromArea, buildAreaHoleGeometry } = await load('/src/courseGeometry/areaCourse.ts')
+  const { parseAreaPackage, fitRegistrationFromArea, buildAreaHoleGeometry, shareNearestRoute } = await load('/src/courseGeometry/areaCourse.ts')
   const { holeLocalYdsToLatLon, nativeWorldToHoleLocalYds } = await load('/src/courseGeometry/nativeRegistration.ts')
   const { classifyTacticalLandingPoint } = await load('/src/courseGeometry/tacticalClassification.ts')
   const { estimateGreywolfTerrain: terrainAt } = await load('/src/courseGeometry/lidar.ts')
@@ -128,6 +128,13 @@ try {
   assert.equal(classifyTacticalLandingPoint(hole, [along(250)[0] - 70, along(250)[1]]).kind, 'rough',
     "the neighbouring hole's fairway is rough here, never a target")
   assert.equal(classifyTacticalLandingPoint(hole, green).kind, 'green')
+  // Georgia Golf Club 2 and 9 (20 Nov): the next hole's fairway, 60 yd over, juts to within 25 yd
+  // of this hole's line. Near, but nearly all of it is nearer the other hole: not this hole's.
+  const thisLine = [[0, 0], [0, 400]]
+  const nextLine = [[-60, 0], [-60, 400]]
+  const jutting = [[-80, 150], [-40, 150], [-40, 190], [-25, 200], [-40, 210], [-40, 300], [-80, 300]]
+  assert.ok(shareNearestRoute(jutting, thisLine, [nextLine]) < 0.2)
+  assert.equal(shareNearestRoute([[-17, 150], [17, 150], [17, 300], [-17, 300]], thisLine, [nextLine]), 1)
   assert.ok(hole.surfaces.some((s) => s.kind === 'bunker'), 'map bunkers on the hole')
   assert.ok(hole.contextLayers?.some((l) => l.kind === 'woods'), 'map trees on the hole')
   // Terrain is the map's LiDAR, turned into the hole frame.

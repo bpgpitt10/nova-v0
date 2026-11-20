@@ -30,6 +30,26 @@ try {
   assert.equal(late?.tag, 'trees-late')
   // A steeper Driver-height descent 16 yd back is above the trees at 8 yd only if tan(d)*8 < 15: still checked at 8.
   assert.equal(flightBlockedAt(shortTrees, [0, 0], [0, 240], 38), null, 'trees far short of a long carry are flown over')
+  // Mid-flight (Georgia Golf Club 2 and 9): a stand of pines 50-90 yd out. A Driver (peak 30 yd)
+  // is still under the 27-yd canopy there, so it flies into them; the old checks missed it.
+  const stand = (from, to) => ({ ...boxedIn, contextLayers: [woodsLayer([[[-60, from], [60, from], [60, to], [-60, to]]])] })
+  assert.equal(flightBlockedAt(stand(50, 90), [0, 0], [0, 240], 38, 30)?.tag, 'trees-mid')
+  // Near the top of the flight it clears them; a punched shot (peak 12 yd) does not.
+  assert.equal(flightBlockedAt(stand(115, 150), [0, 0], [0, 240], 38, 30), null)
+  assert.equal(flightBlockedAt(stand(115, 150), [0, 0], [0, 240], 38, 12)?.tag, 'trees-mid')
+  // Coming down 40-60 yd short of the landing, still below the canopy: trees.
+  assert.equal(flightBlockedAt(stand(180, 200), [0, 0], [0, 240], 38, 30)?.tag, 'trees-mid')
+  // Trees standing on mapped rough count too (the woods layer, not the surface under it).
+  const roughUnder = { id: 'r', kind: 'rough', polygons: [[[-100, 0], [100, 0], [100, 300], [-100, 300]]], provenance: prov }
+  assert.equal(flightBlockedAt({ ...boxedIn, surfaces: [tee, fairway, roughUnder] }, [0, 0], [0, 240], 38)?.tag, 'trees-early')
+  // A single 6-yd row is one point, not a stand.
+  assert.equal(flightBlockedAt(stand(60, 66), [0, 0], [0, 240], 38, 30), null)
+  // The height model: 0 at launch, the peak a little past halfway, 0 at the carry.
+  const { ballHeightAt } = await load('/src/liveCaddie/aimOutcomeSampling.ts')
+  assert.equal(ballHeightAt(0, 240, 30, 38), 0)
+  assert.ok(Math.abs(ballHeightAt(240 * 0.56, 240, 30, 38) - 30) < 1e-9)
+  assert.ok(Math.abs(ballHeightAt(240, 240, 30, 38)) < 1e-9)
+
   // Clear line: nothing.
   const open = { ...boxedIn, contextLayers: [] }
   assert.equal(flightBlockedAt(open, [0, 0], [0, 240], 38), null)
@@ -44,7 +64,7 @@ try {
   const blockedSample = sample(boxedIn).samples.find((q) => q.flightTag)
   assert.equal(blockedSample.kind, 'deep-rough')
   assert.equal(blockedSample.state.obstruction, 'woods-or-scrub')
-  console.log('PASS: flights through trees after launch or on the way down end in the trees; thin lines and open lines are clear.')
+  console.log('PASS: flights through trees after launch, in flight below the canopy or on the way down end in the trees; thin lines, open lines and stands flown over are clear.')
 } finally {
   await server?.close()
 }

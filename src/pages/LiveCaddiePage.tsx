@@ -115,6 +115,7 @@ import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
+import { ballInTrees, PUNCH_OUT_AIM_NOTE, PUNCH_OUT_LINE, PUNCH_OUT_TITLE } from '../liveCaddie/punchOut'
 import { BLEND_RULES } from '../lib/quickBag'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import { ERROR_TEXT, courseStatusView, ocrLetter, supportLine } from '../lib/supportCodes'
@@ -1472,6 +1473,12 @@ export default function LiveCaddiePage() {
   // ---- Arm: a half-second fill (let go of the mouse), then aim in GSPro ----
   const ARM_FILL_MS = 600
   const aimPin = trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)
+  // Punch-out mode: in the trees, Looper says so and leaves the aim to the player.
+  const inTrees = useMemo(
+    () => (shotOrigin === 'non-tee' && !isShotStrategy ? ballInTrees(hole, ball, aimPin) : false),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hole, ball[0], ball[1], aimPin?.[0], aimPin?.[1], shotOrigin, isShotStrategy],
+  )
   // Yellow aim = GSPro click: on the aim line at the expected carry.
   const aimClick = !isShotStrategy && inspectedCandidate
     ? aimClickPoint(ball, inspectedCandidate.aimPoint, inspectedCandidate.meanCarryLanding, aimPin)
@@ -1500,14 +1507,14 @@ export default function LiveCaddiePage() {
     estimatedPin: estimatedPinCheck,
     aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
-    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
+    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey, inTrees,
   })
   latestAimRef.current = {
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     estimatedPin: estimatedPinCheck,
     aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
-    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
+    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey, inTrees,
   }
   latestAimOffsetRef.current = (inspectedCandidate ?? viewedBestCandidate)?.aimOffsetYds ?? null
   const armedHere = armPhase === 'armed' && eligibleArmedClub != null && eligibleArmedClub === displayedClub
@@ -1544,6 +1551,10 @@ export default function LiveCaddiePage() {
         setArmedAimKey(snap.aimKey)
         setArmedAimOffsetYds(armedOffset)
         setArmPhase('armed')
+      }
+      if (snap.inTrees) {
+        finish({ outcome: 'not-sent', message: PUNCH_OUT_AIM_NOTE })
+        return
       }
       // Auto Aim lines GSPro's minimap up on the ball and the pin. A pin Looper
       // only estimated turns and shrinks the click; refuse when that could
@@ -2345,6 +2356,7 @@ export default function LiveCaddiePage() {
         {devDiagnostics && inspectedCandidate?.modeledSamples?.length ? (() => {
           const samples = inspectedCandidate.modeledSamples
           const early = samples.filter((q) => q.flightTag === 'trees-early').length / samples.length
+          const mid = samples.filter((q) => q.flightTag === 'trees-mid').length / samples.length
           const late = samples.filter((q) => q.flightTag === 'trees-late').length / samples.length
           // Balls stopped by trees didn't roll: leave them out of the roll figure.
           const flown = samples.filter((q) => !q.flightTag)
@@ -2352,8 +2364,8 @@ export default function LiveCaddiePage() {
           const stock = flown.length ? flown.reduce((a, q) => a + (q.stockRollYds ?? 0), 0) / flown.length : 0
           return (
             <div className="live-caddie-alert">
-              Flight: {early || late
-                ? `${Math.round((early + late) * 100)}% of outcomes hit trees (${Math.round(early * 100)}% after launch, ${Math.round(late * 100)}% coming down)`
+              Flight: {early || mid || late
+                ? `${Math.round((early + mid + late) * 100)}% of outcomes hit trees (${Math.round(early * 100)}% after launch, ${Math.round(mid * 100)}% in flight, ${Math.round(late * 100)}% coming down)`
                 : 'clear of trees'}
               {` · roll ${roll.toFixed(1)} yd of ${stock.toFixed(1)} stock (surface and slope)`}
             </div>
@@ -2481,6 +2493,9 @@ export default function LiveCaddiePage() {
                     </div>
                   ) : (
                   <p className="live-decision-reason">
+                    {inTrees ? (
+                      <span className="live-punch-out"><strong>{PUNCH_OUT_TITLE}</strong> {PUNCH_OUT_LINE}</span>
+                    ) : null}
                     {greenReadText ? (
                       <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
                     ) : null}

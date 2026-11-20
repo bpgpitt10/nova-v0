@@ -141,3 +141,25 @@ export function tacticalKindNear(hole: CourseHoleGeometry, point: CoursePointYds
   cache.set(key, kind)
   return kind
 }
+
+// Trees only (woods/scrub context: LiDAR canopy or mapped woods), whatever the
+// surface under them, at 1-yd resolution per hole. For the flight: a ball
+// passing low over rough under a canopy still meets the trees.
+const quantizedWoods = new WeakMap<CourseHoleGeometry, Map<number, boolean>>()
+
+export function woodsNear(hole: CourseHoleGeometry, point: CoursePointYds): boolean {
+  const layers = (hole.contextLayers ?? []).filter((layer) => layer.kind === 'woods' || layer.kind === 'scrub')
+  if (!layers.length) return false
+  let cache = quantizedWoods.get(hole)
+  if (!cache) {
+    cache = new Map()
+    quantizedWoods.set(hole, cache)
+  }
+  const qx = Math.round(point[0]), qy = Math.round(point[1])
+  const key = (qx + 4096) * 8192 + (qy + 4096)
+  const hit = cache.get(key)
+  if (hit !== undefined) return hit
+  const inside = layers.some((layer) => insideContextLayer(layer.polygons, [qx, qy]))
+  cache.set(key, inside)
+  return inside
+}
