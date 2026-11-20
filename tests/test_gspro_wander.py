@@ -46,7 +46,7 @@ class FakeDesktop:
 
 
 class WalkTests(unittest.TestCase):
-    def run_walk(self, desktop, pins, starts=None, lies=None, carries=None):
+    def run_walk(self, desktop, pins, starts=None, lies=None, carries=None, surfaces=None):
         """`pins`: yards from each spot to the pin. `starts`: where each spot was hit from (default: moves
         every spot). `lies`: GSPro's lie name per spot. `carries`: what each green shot carried."""
         fired = []
@@ -63,6 +63,7 @@ class WalkTests(unittest.TestCase):
                 rows.append({"spot": kwargs["spot"], "note": kwargs["typed"], **kwargs["labels"],
                              "status": f"GSPro took it, ball at rest after 6.0 s; next: 7i from {pins[index] / wander.M_TO_YD:.1f} yd",
                              "lie_surface": (lies or {}).get(index + 1),
+                             "start_surface": (surfaces or {}).get(index + 1),
                              "carry_yd": next(carry_iter, 45.0) if aim == "green" else 45.0, "db_raw_carry_game_yd": 50.0})
             return rows, True
 
@@ -146,6 +147,31 @@ class WalkTests(unittest.TestCase):
         (first_name, first), (second_name, second) = green[0][0], green[1][0]
         stock = wander.green_shots(150.0, 0.9, 2)[1][1]
         self.assertLess(second["speed"], stock["speed"])
+
+    def test_a_ball_left_on_a_tee_gets_tee_shots(self):
+        # Farmlinks 2, 20 Nov: started on a 300 yd tee and hit PW and 5i instead of tee shots.
+        desktop = FakeDesktop()
+        self.run_walk(desktop, [300, 240], surfaces={1: "18"})
+        first = [shots for spot, aim, shots in self.fired if spot == 1 and aim == "tee"]
+        self.assertEqual([name for name, _ in first[0]], ["Driver off the tee", "3H off the tee", "5i off the tee"])
+
+    def test_no_driver_off_the_ground_and_no_200_mph_hybrid(self):
+        # 235 yd out of deep rough that plays 63%: out of reach, so lie shots, and never the driver.
+        desktop = FakeDesktop()
+        with patch.object(wander, "plays_here", lambda _row: 0.63):
+            self.run_walk(desktop, [235])
+        names = [name for _, _, shots in self.fired for name, _ in shots]
+        self.assertFalse(any(name.startswith("Driver") for name in names), names)
+        self.assertFalse(any(aim == "green" for _, aim, _ in self.fired))
+        # From the fairway at 200 yd, green shots stay near stock speed, the second one too.
+        desktop = FakeDesktop()
+        self.run_walk(desktop, [200], carries=[150.0, 190.0])
+        for _, aim, shots in self.fired:
+            for name, shot in shots:
+                if aim == "green":
+                    self.assertFalse(name.startswith("Driver"))
+                    stock = wander.BAG[name.split()[0]]["speed"]
+                    self.assertLessEqual(shot["speed"], stock * wander.SPEED_SCALE[1] + 0.05, name)
 
     def test_moving_the_mouse_stops_it(self):
         desktop = FakeDesktop(move_mouse_after=1)

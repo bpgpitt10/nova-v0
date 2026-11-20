@@ -217,6 +217,10 @@ NEXT_HOLE_INSIDE_YD = 50.0
 PAR3_UNDER_YD = 250.0
 #: Off a par 4 or 5 tee (the shot tool's bag has no 3 wood yet).
 TEE_CLUBS = ("Driver", "3H", "5i")
+#: GSPro's StartingSurface for a tee box (320 of the 360 first shots of a hole in live rounds are 18).
+TEE_SURFACE = 18
+#: Clubs only hit off a tee. Nobody hits driver at a green out of deep rough (Farmlinks 2, 20 Nov).
+TEE_ONLY = ("Driver",)
 
 
 def move_point(rect: tuple[float, float, float, float], kind: str, rng: random.Random) -> tuple[int, int]:
@@ -316,6 +320,9 @@ def within_reach(shots: list[tuple[str, dict[str, float]]], distance_yd: float |
 GREEN_RANGE_YD = (40.0, 240.0)
 #: Aim to land this much short of the pin, so the release finishes near it.
 GREEN_SHORT_YD = 2.0
+#: How much a green shot may be sped up or slowed down from the club's stock speed, both green
+#: shots together: a player can swing a little harder or softer, not 50% harder (a 201 mph 3H, 20 Nov).
+SPEED_SCALE = (0.85, 1.10)
 
 
 #: GSPro's reply to each shot names the next club and how far the pin is from where the next
@@ -348,15 +355,42 @@ def plays_here(row: dict[str, Any]) -> float | None:
     return None
 
 
+def is_tee(row: dict[str, Any] | None) -> bool:
+    """Whether GSPro says this shot was hit off a tee box."""
+    try:
+        return int(float((row or {}).get("start_surface"))) == TEE_SURFACE
+    except (TypeError, ValueError):
+        return False
+
+
+def off_the_deck() -> list[str]:
+    return [club for club in BAG if BAG[club].get("carry") and club not in TEE_ONLY]
+
+
+def green_in_reach(distance_yd: float, plays: float | None) -> bool:
+    """Whether the longest club hit off the ground, swung as hard as SPEED_SCALE allows, gets there."""
+    needed = max(10.0, distance_yd - GREEN_SHORT_YD) / (plays or 1.0)
+    longest = max(BAG[club]["carry"] for club in off_the_deck())
+    return needed <= longest * SPEED_SCALE[1] ** 1.5
+
+
+def clamp_speed(name: str, speed: float) -> float:
+    """Keep a green shot's speed within SPEED_SCALE of its club's stock speed."""
+    stock = BAG.get(name.split()[0], {}).get("speed")
+    if not stock:
+        return round(speed, 1)
+    return round(min(stock * SPEED_SCALE[1], max(stock * SPEED_SCALE[0], speed)), 1)
+
+
 def green_shots(distance_yd: float, plays: float | None, count: int = 2) -> list[tuple[str, dict[str, float]]]:
     """Shots meant to land on the green from here: the stock clubs nearest the distance the lie
-    makes it play, each sped up or slowed down a little to carry the number."""
+    makes it play, each sped up or slowed down a little to carry the number. Never a tee-only club."""
     needed = max(10.0, distance_yd - GREEN_SHORT_YD) / (plays or 1.0)
-    clubs = sorted((club for club in BAG if BAG[club].get("carry")), key=lambda club: abs(BAG[club]["carry"] - needed))[:count]
+    clubs = sorted(off_the_deck(), key=lambda club: abs(BAG[club]["carry"] - needed))[:count]
     shots = []
     for club in clubs:
         stock = BAG[club]
-        scale = min(1.25, max(0.75, (needed / stock["carry"]) ** (1.0 / 1.5)))  # carry grows about as speed^1.5
+        scale = min(SPEED_SCALE[1], max(SPEED_SCALE[0], (needed / stock["carry"]) ** (1.0 / 1.5)))  # carry ~ speed^1.5
         shots.append((f"{club} to green", {"speed": round(stock["speed"] * scale, 1), "vla": stock["vla"], "hla": 0.0,
                                            "spin": stock["spin"], "axis": 0.0}))
     return shots
@@ -455,6 +489,8 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             distance = pin_from_spot_yd(spot_rows[0])
             plays = plays_here(spot_rows[0])
             extra = {"pin_from_spot_yd": round(distance, 1)} if distance is not None else {}
+            if why == "start" and is_tee(spot_rows[0]):
+                why = "tee"  # the player left the ball on a tee
             if why == "tee" and distance is not None and distance >= PAR3_UNDER_YD:
                 # A par 4 or 5 tee: what players hit there, for real tee-shot roll.
                 tee = [(f"{club} off the tee", {"speed": BAG[club]["speed"], "vla": BAG[club]["vla"], "hla": 0.0,
@@ -465,7 +501,7 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
             elif distance is not None and distance < GREEN_RANGE_YD[0]:
                 say(f"  {distance:.0f} yd from the pin: chip range, moving on")
                 more = []
-            elif distance is not None and distance <= GREEN_RANGE_YD[1]:
+            elif distance is not None and distance <= GREEN_RANGE_YD[1] and green_in_reach(distance, plays):
                 say(f"  green {distance:.0f} yd away{f', plays {plays:.0%} of flat' if plays else ''}: two at the green")
                 # The first one at the green shows how the hill plays too (a green 36 yd below
                 # carries a ball much further): the second is corrected by how far the first carried.
@@ -476,12 +512,15 @@ def wander(path: Any, writer: Any, flush: Callable[[], None], *, desktop: Any, s
                     flew = more[0].get("carry_yd") if more else None
                     wanted = distance - GREEN_SHORT_YD
                     if isinstance(flew, (int, float)) and flew > 10:
-                        scale = min(1.2, max(0.8, (wanted / flew) ** (1.0 / 1.5)))
-                        second = [(name, {**shot, "speed": round(shot["speed"] * scale, 1)}) for name, shot in second]
+                        scale = (wanted / flew) ** (1.0 / 1.5)
+                        second = [(name, {**shot, "speed": clamp_speed(name, shot["speed"] * scale)}) for name, shot in second]
                     again, connected = fire(second, "green", extra)
                     more += again
             else:
-                longer = within_reach([shot for shot in lie_shots if shot not in first and shot not in soft_shots], distance)
+                if distance is not None and distance <= GREEN_RANGE_YD[1]:
+                    say(f"  green {distance:.0f} yd away but out of reach from this lie: lie shots instead")
+                longer = within_reach([shot for shot in lie_shots if shot not in first and shot not in soft_shots
+                                       and shot[0] not in TEE_ONLY], distance)
                 more, connected = fire(longer[:shots_per_spot - 1], "lie", extra) if longer else ([], True)
             spot_rows += more
         if spot_rows:
