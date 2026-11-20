@@ -80,8 +80,16 @@ const rollWind = () => often([
   [0.7, () => Math.round(between(4.5, 12.49))],
   [0.1, () => Math.round(between(12.5, 17.49))],
 ])
-const rollUpDown = () => tenth(eitherWay(often([[0.7, () => between(0, 3)], [0.22, () => between(3, 5)], [0.08, () => between(5, 6.5)]])))
-const rollAcross = () => tenth(eitherWay(often([[0.75, () => between(0, 2)], [0.2, () => between(2, 3.5)], [0.05, () => between(3.5, 4.5)]])))
+/**
+ * The lie: usually one slope stands out and the other is slight. Side slope
+ * leads more often, because it sends the ball offline, about three times as
+ * far as an up or down slope of the same degrees changes its distance.
+ */
+const rollLieSlope = (): { up: number; across: number } => {
+  const main = eitherWay(often([[0.35, () => between(0, 2)], [0.4, () => between(2, 4)], [0.2, () => between(4, 6)], [0.05, () => between(6, 7.5)]]))
+  const slight = eitherWay(between(0, 1))
+  return Math.random() < 0.65 ? { up: tenth(slight), across: tenth(main) } : { up: tenth(main), across: tenth(slight) }
+}
 /** Height of the green above the ball, in yards, as GSPro players talk about it. */
 const rollElevationYds = () => Math.round(eitherWay(often([
   [0.35, () => between(0, 2.5)],
@@ -109,12 +117,13 @@ const MAX_MOVE_YDS = 60
 const makeScenario = (): Scenario => {
   for (let tries = 0; ; tries += 1) {
     const club = pick(CLUBS)
+    const slope = rollLieSlope()
     const conditions: InsightConditions = {
       grass: rollGrass(),
       firmness: rollFirmness(),
       lie: rollLie(),
-      slopeUpDeg: rollUpDown(),
-      slopeRightDeg: rollAcross(),
+      slopeUpDeg: slope.up,
+      slopeRightDeg: slope.across,
       elevationFt: rollElevationYds() * 3,
       altitudeFt: rollAltitude(),
       windMph: rollWind(),
