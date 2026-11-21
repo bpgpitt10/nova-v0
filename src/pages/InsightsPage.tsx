@@ -404,6 +404,28 @@ const PARTS: readonly Part[] = [
   },
 ]
 
+/**
+ * The overview's cheat sheet: one rule of thumb per thing you can see before a shot, tee to cup. Rules, not
+ * every number: typical launch numbers, Bermuda soft and stimp 11 as the base unless it says otherwise.
+ */
+const CHEAT_SHEET: readonly { stage: string; see: string; rule: ReactNode; part: string }[] = [
+  { stage: 'Before you play', see: 'Your range numbers', rule: <>Trust the carries, not the totals. The range starts on Bermuda soft; set it to the course before you warm up.</>, part: 'fairways' },
+  { stage: 'Off the tee', see: 'Fairway grass', rule: <>The biggest roll setting. A drive rolls 10 to 22 yards more on Links than Bermuda soft, 4 to 9 less on soft or medium Bentgrass.</>, part: 'fairways' },
+  { stage: 'Off the tee', see: 'Fairway firmness', rule: <>Second. Soft to firm adds about 14 yards to a drive on Bermuda. On Bentgrass, irons stop where they land on any firmness.</>, part: 'fairways' },
+  { stage: 'From the lie', see: 'Deep rough', rule: <>Take the club that launches highest and still gets there. A 7 iron carried 93; a 3 hybrid 70.</>, part: 'lies' },
+  { stage: 'From the lie', see: 'Rough', rule: <>A flyer: about a dozen yards less carry on a 5 iron, then more run.</>, part: 'lies' },
+  { stage: 'From the lie', see: 'Sand, first cut, cart path', rule: <>Barely count on a full swing. Sand takes 7% of the ball speed; the first cut 1.5%.</>, part: 'lies' },
+  { stage: 'From the lie', see: 'Side slope', rule: <>Aim off toward the side the lie readout names: about 3 yards per degree with a hybrid or wood, 2 with a mid iron, 1 with a wedge.</>, part: 'slopes' },
+  { stage: 'From the lie', see: 'Up or down slope', rule: <>Irons: ignore it. A hybrid off a downslope loses about 7 yards at 4&deg;, so take loft.</>, part: 'slopes' },
+  { stage: 'Into the green', see: 'Green grass', rule: <>Read it before the firmness. Wedges barely care; a 5 iron releases 6 to 13 yards more on Links than Bermuda soft.</>, part: 'approaches' },
+  { stage: 'Into the green', see: 'Green firmness', rule: <>Half the grass effect or less. Firm Bentgrass plays like soft Bermuda.</>, part: 'approaches' },
+  { stage: 'Into the green', see: 'Stimp, full shots', rule: <>Ignore it. Stimp 8 to 13 moved a full wedge a tenth of a yard.</>, part: 'approaches' },
+  { stage: 'Around the green', see: 'Where the chip lands', rule: <>In the fairway, firm or Links adds about half again. Land it shorter.</>, part: 'chipping' },
+  { stage: 'Around the green', see: 'Stimp, chips', rule: <>It counts here: stimp 8 to 13 adds about 45%. Green firmness adds a fifth; rough 5 to 10%.</>, part: 'chipping' },
+  { stage: 'On the green', see: 'Stimp, putts', rule: <>Learn your pace at 11. Take a quarter off at 8; add a sixth at 13. Ignore the grass and firmness.</>, part: 'putting' },
+  { stage: 'On the green', see: 'Slope, putts', rule: <>Counts about two-thirds. Down 2% turns a 10-foot putt into 14. Past 4.7% at stimp 11, or 3.6% at 13, it won&rsquo;t stop.</>, part: 'putting' },
+]
+
 const OVERVIEW_COLOUR = '#f2e2b8'
 
 const colourVar = (colour: string) => ({ '--insight-colour': colour }) as CSSProperties
@@ -462,7 +484,7 @@ export default function InsightsPage() {
 
         <nav className="insights-tabs" aria-label="Parts of the series">
           <div className="insights-wrap insights-tabs__row">
-            <a className="insights-tab is-open" href="#overview" style={colourVar(OVERVIEW_COLOUR)}>
+            <a className="insights-tab is-ready" href="#overview" style={colourVar(OVERVIEW_COLOUR)}>
               <span>Overview</span>
               The whole picture
             </a>
@@ -480,15 +502,64 @@ export default function InsightsPage() {
           </div>
         </nav>
 
-        <section className="insights-part insights-part--open" id="overview" style={colourVar(OVERVIEW_COLOUR)}>
+        <section className="insights-part" id="overview" style={colourVar(OVERVIEW_COLOUR)}>
           <div className="insights-wrap">
             <p className="insights-eyebrow">Overview</p>
-            <h2>The whole picture</h2>
-            <div className="insights-open-slot">
-              <strong>Written once every part is measured.</strong>
+            <h2>Every shot is a sum</h2>
+            <div className="insights-entry__text insights-overview">
+              <p className="insights-lead">
+                Every part of this series changes one setting at a time. A real shot never does. The ball sits in the
+                rough on a side slope, the green is firm Links and the stimp is 12. Each of those is worth a few yards.
+                Added up, they decide whether you&rsquo;re putting for birdie or chipping for par.
+              </p>
+              <h3>How I think about it now</h3>
+              <ul>
+                <li>
+                  <strong>Carry is the only number that travels.</strong> Everything after the ball lands depends on the
+                  course: the grass, the firmness, the slope, the stimp.
+                </li>
+                <li>
+                  <strong>Know which settings are big.</strong> Grass type, a bad lie and a side slope move the ball by
+                  a club or more. Firmness moves it by yards. Stimp barely touches a full shot, then decides every chip
+                  and putt.
+                </li>
+                <li>
+                  <strong>None of it is random.</strong> GSPro does exactly the same thing every time. That&rsquo;s why
+                  these rules hold, and why the ones you get wrong cost you the same way every round.
+                </li>
+              </ul>
+              <h3>The cheat sheet</h3>
+              <p className="insights-overview__note">
+                Rules of thumb, not every number. Typical launch numbers, with Bermuda soft and stimp 11 as the base
+                unless it says otherwise.
+              </p>
+              <div className="insights-cheat" role="table" aria-label="Rules of thumb, tee to cup">
+                <div className="insights-cheat__row insights-cheat__head" role="row">
+                  <span role="columnheader">When you see</span>
+                  <span role="columnheader">Rule of thumb</span>
+                  <span role="columnheader">Part</span>
+                </div>
+                {CHEAT_SHEET.map((row, index) => {
+                  const part = PARTS.find((p) => p.id === row.part)
+                  const firstOfStage = index === 0 || CHEAT_SHEET[index - 1].stage !== row.stage
+                  return (
+                    <div key={row.see}>
+                      {firstOfStage ? <p className="insights-cheat__stage">{row.stage}</p> : null}
+                      <div className="insights-cheat__row" role="row" style={part ? colourVar(part.colour) : undefined}>
+                        <strong role="cell">{row.see}</strong>
+                        <span role="cell">{row.rule}</span>
+                        <a role="cell" href={`#${row.part}`}>{part ? `${part.number} ${part.name}` : ''}</a>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <h3>Why it can&rsquo;t be mental math</h3>
               <p>
-                Grass type, firmness, stimp, slope, lie and spin each move the number, and they all move it at once.
-                This piece will add them up and show why it can&rsquo;t be done as mental math.
+                The quiz at the top is one shot with seven of these on it. Most people can hold one or two of them in their head
+                and guess the rest. Doing the whole sum before every shot, for eighteen holes, is the job I built Looper to do: it
+                reads the settings, the lie and the slope from GSPro and runs the sum with your own numbers, not these
+                typical ones.
               </p>
             </div>
           </div>

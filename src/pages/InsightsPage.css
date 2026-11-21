@@ -989,3 +989,97 @@
   margin: 34px 0 0;
   font-size: 16px;
 }
+
+/* ---- Overview: the cheat sheet ---- */
+
+.insights-overview {
+  max-width: 1000px;
+  margin-top: 18px;
+}
+
+.insights-overview__note {
+  color: #9da99f;
+  font-size: 15px;
+}
+
+.insights-cheat {
+  margin: 8px 0 10px;
+  border: 1px solid #2a3a2d;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(7, 16, 10, 0.55);
+}
+
+.insights-cheat__row {
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) 1fr 132px;
+  gap: 16px;
+  align-items: baseline;
+  padding: 11px 16px;
+  border-top: 1px solid #1d2a20;
+  border-left: 4px solid var(--insight-colour, transparent);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.insights-cheat__row strong {
+  color: #ffffff;
+}
+
+.insights-cheat__row span {
+  color: #d8e2d6;
+}
+
+.insights-cheat__row a {
+  color: var(--insight-colour);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.insights-cheat__head {
+  border-top: 0;
+  border-left-color: transparent;
+  background: rgba(242, 226, 184, 0.06);
+}
+
+.insights-cheat__head span {
+  color: #f2e2b8 !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.insights-cheat__head span:last-child {
+  text-align: right;
+}
+
+.insights-cheat__stage {
+  margin: 0 !important;
+  padding: 12px 16px 4px;
+  border-top: 1px solid #2a3a2d;
+  color: #f2e2b8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 680px) {
+  .insights-cheat__row {
+    grid-template-columns: 1fr auto;
+    gap: 2px 12px;
+  }
+
+  .insights-cheat__row span {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .insights-cheat__head span:nth-child(2) {
+    display: none;
+  }
+}
