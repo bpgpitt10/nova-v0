@@ -69,6 +69,116 @@ class AimMathTests(unittest.TestCase):
         self.assertIsNotNone(result["click"])
         self.assertTrue(result["previewPng"])
 
+    def test_any_ball_colour_is_found_under_the_pin(self):
+                # GSPro's eight ball colours, as its colour picker shows them (BGR).
+        colours = {"red": (38, 50, 209), "green": (61, 164, 22), "blue": (242, 127, 0), "yellow": (50, 193, 242),
+                   "pink": (194, 64, 227), "teal": (179, 162, 22), "purple": (163, 46, 140), "orange": (13, 125, 193)}
+        for name, bgr in colours.items():
+            img = synthetic_frame((140, 400), (140, 60))
+            x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+            cv2.circle(img, (x0 + 140, y0 + 400), 5, bgr, -1)
+            result = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(110.0, 200.0))
+            self.assertEqual(result["status"], "ready", name)
+            self.assertAlmostEqual(result["minimap"]["ball"][0], 140, delta=1.5, msg=name)
+            self.assertAlmostEqual(result["minimap"]["ball"][1], 400, delta=1.5, msg=name)
+            self.assertEqual(result["minimap"]["side"], "right")
+
+    def test_the_player_banner_says_which_colour_to_look_for(self):
+        green, red = (61, 164, 22), (38, 50, 209)
+        img = synthetic_frame((140, 400), (140, 60), red_line=False)
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(img, (x0 + 140, y0 + 400), 5, green, -1)             # the ball is green
+        cv2.circle(img, (x0 + 150, y0 + 430), 5, red, -1)               # a round red thing right beside it
+        cv2.rectangle(img, (4, 22), (int(W * 0.2), 58), green, -1)      # the player's banner, in the ball's colour
+        cv2.putText(img, "Brian", (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+        self.assertAlmostEqual(aim.read_player_colour(img), 68, delta=4)
+        result = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(110.0, 200.0))
+        self.assertAlmostEqual(result["minimap"]["ball"][0], 140, delta=1.5)
+        self.assertAlmostEqual(result["minimap"]["ball"][1], 400, delta=1.5)
+        # No banner to read (plain grass there): every ball colour is tried, as before.
+        self.assertIsNone(aim.read_player_colour(synthetic_frame((140, 400), (140, 60))))
+        cv2.rectangle(img, (4, 22), (int(W * 0.2), 58), red, -1)        # a red banner: the red dot is the ball
+        self.assertIn(aim.read_player_colour(img), (0, 1, 2, 3, 4, 178, 179))
+
+    def test_a_coloured_dot_away_from_the_pin_line_is_not_the_ball(self):
+        img = synthetic_frame((140, 400), (140, 60))
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(img, (x0 + 40, y0 + 380), 5, (0, 0, 235), -1)      # a round red thing off to the side
+        cv2.circle(img, (x0 + 150, y0 + 150), 5, (0, 0, 235), -1)     # and one high up near the pin
+        result = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(110.0, 200.0))
+        self.assertAlmostEqual(result["minimap"]["ball"][0], 140, delta=1.5)
+        self.assertAlmostEqual(result["minimap"]["ball"][1], 400, delta=1.5)
+
+    def test_minimap_on_the_left(self):
+        right = synthetic_frame((140, 400), (140, 60), red_line=False)
+        img = np.full_like(right, (40, 110, 50))
+        rx0, ry0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        lx0, ly0 = int(W * aim.LEFT_MINIMAP_ROI[0]), int(H * aim.LEFT_MINIMAP_ROI[1])
+        img[ly0:ly0 + 470, lx0:lx0 + 280] = right[ry0:ry0 + 470, rx0:rx0 + 280]
+        cv2.putText(img, "173.0", (rx0 + 60, ry0 + 90), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)  # data tiles, no map
+        result = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(110.0, 200.0))
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["minimap"]["side"], "left")
+        self.assertEqual(tuple(result["minimap"]["roi"]), aim.LEFT_MINIMAP_ROI)
+        self.assertLess(result["click"]["windowX"], W * 0.16)
+        self.assertAlmostEqual(result["minimap"]["ball"][0], 140, delta=1.5)
+
+    def test_the_pin_is_found_at_any_screen_size(self):
+        # Drawn as on a 4K screen (dots about 18 px across), then shown smaller.
+        big = np.full((2160, 3840, 3), (40, 110, 50), np.uint8)
+        x0, y0 = int(3840 * aim.RIGHT_MINIMAP_ROI[0]), int(2160 * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(big, (x0 + 290, y0 + 860), 9, (0, 0, 235), -1, cv2.LINE_AA)
+        cv2.circle(big, (x0 + 290, y0 + 175), 9, (255, 255, 255), -1, cv2.LINE_AA)
+        for width, height in ((3840, 2160), (2560, 1440), (1920, 1080), (1600, 900)):
+            frame = cv2.resize(big, (width, height), interpolation=cv2.INTER_AREA)
+            crop, _origin, ball, pin, side, _roi = aim.locate_minimap(frame)
+            scale = 3840 / width
+            self.assertEqual(side, "right")
+            self.assertAlmostEqual(pin.x * scale, 290, delta=4, msg=f"{width}x{height}")
+            self.assertAlmostEqual(pin.y * scale, 175, delta=4, msg=f"{width}x{height}")
+            self.assertAlmostEqual(ball.y * scale, 860, delta=4, msg=f"{width}x{height}")
+
+    def test_a_ball_with_a_shine_in_its_middle_is_still_the_ball(self):
+        # Payne's Valley, 19 Nov: the orange dot has a small light spot right at its centre.
+        frame = np.full((2160, 3840, 3), (40, 110, 50), np.uint8)
+        x0, y0 = int(3840 * aim.LEFT_MINIMAP_ROI[0]), int(2160 * aim.LEFT_MINIMAP_ROI[1])
+        cv2.circle(frame, (x0 + 245, y0 + 860), 9, (20, 140, 250), -1, cv2.LINE_AA)   # orange
+        cv2.rectangle(frame, (x0 + 244, y0 + 859), (x0 + 246, y0 + 860), (230, 240, 250), -1)
+        cv2.circle(frame, (x0 + 242, y0 + 185), 9, (255, 255, 255), -1, cv2.LINE_AA)
+        _crop, _origin, ball, _pin, side, _roi = aim.locate_minimap(frame)
+        self.assertEqual(side, "left")
+        self.assertAlmostEqual(ball.x, 245, delta=2)
+        self.assertAlmostEqual(ball.y, 860, delta=2)
+
+    def test_a_lit_purple_ball_and_a_white_bunker_beside_the_pin(self):
+        # Payne's Valley, 19 Nov: the purple dot is dark on top, pink below, with a shine;
+        # a white bunker sits beside the green, off the ball's line.
+        frame = np.full((2160, 3840, 3), (40, 110, 50), np.uint8)
+        x0, y0 = int(3840 * aim.RIGHT_MINIMAP_ROI[0]), int(2160 * aim.RIGHT_MINIMAP_ROI[1])
+        bx, by = x0 + 288, y0 + 843
+        cv2.circle(frame, (bx, by), 9, (200, 60, 210), -1, cv2.LINE_AA)             # pink
+        cv2.ellipse(frame, (bx, by), (9, 9), 0, 180, 360, (75, 20, 70), -1)          # dark top half
+        cv2.circle(frame, (bx, by + 2), 3, (240, 220, 245), -1)                      # shine
+        cv2.circle(frame, (x0 + 200, y0 + 200), 9, (255, 255, 255), -1, cv2.LINE_AA)  # bunker
+        cv2.circle(frame, (x0 + 286, y0 + 168), 9, (255, 255, 255), -1, cv2.LINE_AA)  # pin
+        cv2.rectangle(frame, (40, 40), (int(3840 * 0.2), 125), (176, 39, 156), -1)   # purple banner
+        cv2.putText(frame, "Brian", (12, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+        self.assertAlmostEqual(aim.read_player_colour(frame), 146, delta=4)
+        _crop, _origin, ball, pin, side, _roi = aim.locate_minimap(frame)
+        self.assertEqual(side, "right")
+        self.assertAlmostEqual(ball.x, 288, delta=3)
+        self.assertAlmostEqual(pin.x, 286, delta=3)
+        self.assertAlmostEqual(pin.y, 168, delta=3)
+
+    def test_no_minimap_says_so_and_shows_what_it_saw(self):
+        img = np.full((H, W, 3), (30, 40, 30), np.uint8)
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(img, (x0 + 140, y0 + 60), 5, (255, 255, 255), -1)    # something white, nothing under it
+        with self.assertRaises(aim.AimReadError) as caught:
+            aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(110.0, 200.0))
+        self.assertIn("bottom right or bottom left", str(caught.exception))
+        self.assertTrue(caught.exception.seen and len(caught.exception.seen) > 200)
+
     def test_off_map_and_failures(self):
         img = synthetic_frame((140, 400), (140, 60))
         far = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(900.0, 200.0))

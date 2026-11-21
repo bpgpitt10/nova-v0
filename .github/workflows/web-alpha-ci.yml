@@ -88,8 +88,17 @@ jobs:
       - name: Map-area courses (GSPro's holes on an unnumbered map area)
         run: node tools/test-area-course.mjs
 
+      - name: Live Caddie records survive a full browser
+        run: node tools/test-lineage-durable.mjs
+
+      - name: Admin course installs (most-installed courses to load)
+        run: node tools/test-course-installs.mjs
+
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
+
+      - name: GSPro's own settings and altitude from its log
+        run: node tools/test-gspro-log-conditions.mjs
 
       - name: Live map matches GSPro minimap orientation
         run: node tools/test-minimap-frame.mjs
@@ -215,7 +224,7 @@ jobs:
       - name: Package validator on a whole-area package
         run: |
           python3 -m pip install --quiet --break-system-packages pytest || python3 -m pip install --quiet pytest
-          python3 -m pytest -q tests/test_validate_package_area.py tests/test_area_package_clip.py
+          python3 -m pytest -q tests/test_validate_package_area.py tests/test_area_package_clip.py tests/test_find_course.py
 
       - name: Canadian elevation (NRCan HRDEM) reads
         run: |

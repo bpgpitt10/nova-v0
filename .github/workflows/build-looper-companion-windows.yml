@@ -64,6 +64,8 @@ on:
       - "helpers/install_looper_companion.cmd"
       - "helpers/uninstall_looper_companion.ps1"
       - "helpers/looper_companion_setup.iss"
+      - "helpers/looper_voice.py"
+      - "helpers/gspro_hotkeys.py"
       - ".github/workflows/build-looper-companion-windows.yml"
 
 permissions:
@@ -86,6 +88,98 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install pyinstaller opengolfcoach numpy opencv-python-headless
+          # EXPERIMENTAL voice commands: offline speech recognition + microphone.
+          python -m pip install vosk sounddevice
+
+      - name: Fetch the offline speech model (experimental voice commands)
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "vosk-model.zip"
+          Invoke-WebRequest -Uri "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip" -OutFile $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          Write-Host "speech model sha256: $hash ($((Get-Item $zip).Length) bytes)"
+          Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP "vosk-model")
+          $inner = Get-ChildItem (Join-Path $env:RUNNER_TEMP "vosk-model") -Directory | Select-Object -First 1
+          if (!$inner -or !(Test-Path (Join-Path $inner.FullName "am"))) { throw "Speech model layout not as expected." }
+          Copy-Item $inner.FullName -Destination voice-model -Recurse -Force
+
+      - name: Speak test commands into WAV files
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $format = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
+          New-Item -ItemType Directory -Path voice-wav -Force | Out-Null
+          $lines = [ordered]@{
+            "caddie-3w"   = "Caddie, arm three wood."
+            "looper-3w"   = "Looper, arm three wood."
+            "caddie-7i"   = "Caddie, seven iron."
+            "looper-it"   = "Looper, arm it."
+            "caddie-clear" = "Caddie, clear."
+            "looper-flyover" = "Looper, flyover."
+            "looper-aim"  = "Looper, aim left five yards."
+            "caddie-aim"  = "Caddie, aim right twelve."
+            "caddie-clubup" = "Caddie, club up."
+            "looper-wind" = "Looper, refresh wind."
+            "looper-sand" = "Looper, sand wedge."
+            "looper-updatewind" = "Looper, update wind."
+            "looper-newwind" = "Looper, give me new wind."
+            "caddie-fiveleft" = "Caddie, five left."
+            "looper-givemethree" = "Looper, give me the three wood."
+            "looper-yourcall" = "Looper, your call."
+            "looper-armsecond" = "Looper, arm second best."
+            "looper-safest" = "Caddie, safest line."
+            "caddie-moreclub" = "Caddie, more club."
+            "chatter2"    = "Can you give me the wind on that one? I think I need more club, it went left."
+            "chatter"     = "Nice shot. I think that one found the fairway bunker on the left."
+          }
+          foreach ($name in $lines.Keys) {
+            $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+            $synth.SetOutputToWaveFile((Join-Path "voice-wav" "$name.wav"), $format)
+            $synth.Speak($lines[$name])
+            $synth.Dispose()
+          }
+          Get-ChildItem voice-wav | ForEach-Object { Write-Host "$($_.Name) $($_.Length) bytes" }
+
+      - name: Voice selftest from source
+        shell: pwsh
+        run: |
+          $env:LOOPER_VOICE_MODEL = (Resolve-Path voice-model).Path
+          $failed = $false
+          foreach ($wav in Get-ChildItem voice-wav -Filter *.wav) {
+            $json = python helpers/looper_voice.py --voice-selftest $wav.FullName
+            Write-Host "$($wav.BaseName): $json"
+          }
+          # The synthetic voice is not a person, so only the plainest cases must pass:
+          # "caddie" as a wake word works, and chatter never becomes a command.
+          $caddie = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/caddie-3w.wav).Path) | ConvertFrom-Json
+          if ($caddie.status -ne "ok" -or $caddie.commands.Count -lt 1 -or $caddie.commands[0].club -ne "3W") {
+            throw "Voice selftest: 'Caddie, arm three wood' was not recognised: $($caddie | ConvertTo-Json -Compress -Depth 5)"
+          }
+          # "flyover" was once heard as "five wood": it must be its own command now.
+          $flyover = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-flyover.wav).Path) | ConvertFrom-Json
+          if ($flyover.commands.Count -lt 1 -or $flyover.commands[0].action -ne "gspro" -or $flyover.commands[0].key -ne "flyover") {
+            throw "Voice selftest: 'Looper, flyover' was not recognised as flyover: $($flyover | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $aim = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-aim.wav).Path) | ConvertFrom-Json
+          if ($aim.commands.Count -lt 1 -or $aim.commands[0].action -ne "aim" -or $aim.commands[0].direction -ne "left" -or $aim.commands[0].yards -ne 5) {
+            throw "Voice selftest: 'Looper, aim left five yards' was not recognised: $($aim | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $wind = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-updatewind.wav).Path) | ConvertFrom-Json
+          if ($wind.commands.Count -lt 1 -or $wind.commands[0].action -ne "wind") {
+            throw "Voice selftest: 'Looper, update wind' was not recognised: $($wind | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $second = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/looper-armsecond.wav).Path) | ConvertFrom-Json
+          if ($second.commands.Count -lt 1 -or $second.commands[0].action -ne "aim-line" -or $second.commands[0].line -ne "second" -or -not $second.commands[0].arm) {
+            throw "Voice selftest: 'Looper, arm second best' was not recognised: $($second | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $chatter2 = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/chatter2.wav).Path) | ConvertFrom-Json
+          if ($chatter2.commands.Count -ne 0) {
+            throw "Voice selftest: command-like chatter produced a command: $($chatter2 | ConvertTo-Json -Compress -Depth 5)"
+          }
+          $chatter = (python helpers/looper_voice.py --voice-selftest (Resolve-Path voice-wav/chatter.wav).Path) | ConvertFrom-Json
+          if ($chatter.commands.Count -ne 0) {
+            throw "Voice selftest: chatter produced a command: $($chatter | ConvertTo-Json -Compress -Depth 5)"
+          }
 
       - name: Reuse physically validated portable Tesseract bundle
         shell: pwsh
@@ -129,6 +223,9 @@ jobs:
           python -m PyInstaller --noconfirm --clean --onefile --noconsole `
             --name LooperCompanion `
             --paths helpers `
+            --collect-all vosk `
+            --collect-all sounddevice `
+            --collect-all _sounddevice_data `
             helpers/looper_companion.py
 
       - name: Smoke test companion executable
@@ -252,6 +349,19 @@ jobs:
           New-Item -ItemType Directory -Path package -Force | Out-Null
           Copy-Item dist/LooperCompanion.exe package/LooperCompanion.exe
           Copy-Item -Path portable-ocr -Destination package/ocr -Recurse -Force
+          # EXPERIMENTAL voice commands: the speech model sits next to the exe.
+          New-Item -ItemType Directory -Path package/voice -Force | Out-Null
+          Copy-Item -Path voice-model -Destination package/voice/model -Recurse -Force
+          # The packaged exe must recognise speech too (bundled engine + model).
+          $out = Join-Path $env:RUNNER_TEMP "voice-selftest.json"
+          $run = Start-Process -FilePath "package/LooperCompanion.exe" -ArgumentList "--voice-selftest", (Resolve-Path voice-wav/caddie-3w.wav).Path, $out -PassThru
+          if (!$run.WaitForExit(120000)) { $run.Kill(); throw "Packaged voice selftest did not finish." }
+          if (!(Test-Path $out)) { throw "Packaged voice selftest wrote no result." }
+          $packaged = Get-Content $out -Raw | ConvertFrom-Json
+          Write-Host "packaged voice selftest: $(Get-Content $out -Raw)"
+          if ($packaged.status -ne "ok" -or $packaged.commands.Count -lt 1 -or $packaged.commands[0].club -ne "3W") {
+            throw "Packaged voice selftest failed."
+          }
           Copy-Item helpers/install_looper_companion.ps1 package/install_looper_companion.ps1
           Copy-Item helpers/install_looper_companion.cmd package/install_looper_companion.cmd
           Copy-Item helpers/uninstall_looper_companion.ps1 package/uninstall_looper_companion.ps1
@@ -308,6 +418,30 @@ jobs:
           }
           $status = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/status" -Headers @{ Origin = "https://thelooper.golf" } -TimeoutSec 5
           Write-Host "installed companion release: $($status.release)"
+          # EXPERIMENTAL voice: the installed copy has the speech model, and asking
+          # it to listen on a machine with no microphone fails politely.
+          if ($status.capabilities.voice -ne $true) { throw "installed companion does not report voice support" }
+          $voiceHeaders = @{ Origin = "https://thelooper.golf" }
+          $quiet = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=0" -Headers $voiceHeaders -TimeoutSec 5
+          if ($quiet.schemaVersion -ne "voice-commands-v2") { throw "voice endpoint missing" }
+          $null = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=1" -Headers $voiceHeaders -TimeoutSec 5
+          Start-Sleep -Seconds 4
+          $listen = Invoke-RestMethod -Uri "http://127.0.0.1:8787/companion/v1/voice?listen=1&since=0" -Headers $voiceHeaders -TimeoutSec 5
+          Write-Host "voice on this runner: $($listen.status) $($listen.reason) device=$($listen.device)"
+          if (@("listening", "starting", "unavailable") -notcontains $listen.status) { throw "unexpected voice status $($listen.status)" }
+          if (!(Wait-Health)) { throw "companion stopped answering after a voice request" }
+          # EXPERIMENTAL GSPro shortcuts: refused without the intent header, refused
+          # for unknown keys, and with no GSPro window nothing is pressed.
+          $keyUrl = "http://127.0.0.1:8787/companion/v1/gspro-key"
+          $noIntent = $null
+          try { Invoke-WebRequest -Uri $keyUrl -Method Post -Headers $voiceHeaders -ContentType "application/json" -Body '{"key":"flyover"}' -TimeoutSec 5 | Out-Null } catch { $noIntent = $_.Exception.Response.StatusCode.value__ }
+          if ($noIntent -ne 403) { throw "gspro-key without the intent header must be refused (got $noIntent)" }
+          $keyHeaders = @{ Origin = "https://thelooper.golf"; "X-Looper-Intent" = "gspro-key" }
+          $unknown = Invoke-RestMethod -Uri $keyUrl -Method Post -Headers $keyHeaders -ContentType "application/json" -Body '{"key":"enter"}' -TimeoutSec 5
+          if ($unknown.status -ne "blocked" -or $unknown.reason -ne "unknown-key") { throw "unknown key was not refused: $($unknown | ConvertTo-Json -Compress)" }
+          $noGspro = Invoke-RestMethod -Uri $keyUrl -Method Post -Headers $keyHeaders -ContentType "application/json" -Body '{"key":"flyover"}' -TimeoutSec 5
+          if ($noGspro.status -ne "blocked" -or $noGspro.reason -ne "gspro-not-connected") { throw "flyover without GSPro must be blocked: $($noGspro | ConvertTo-Json -Compress)" }
+          Write-Host "gspro-key safety checks: ok ($($status.capabilities.gsproKeys -join ', '))"
           # Uninstall leaves nothing running and removes the start-with-Windows entry.
           $un = Get-ChildItem $installDir -Filter "unins*.exe" | Select-Object -First 1
           if (!$un) { throw "uninstaller missing" }
@@ -444,6 +578,27 @@ jobs:
             --notes "Serves GSPro's currentRound.dat, output_log.txt and GSPro.db to the Looper web app (read-only, allowlisted, no paths), so no GSPro folder picker is needed. Keeps every round's raw records under %LOCALAPPDATA%\Looper\Companion\rounds. No mouse or keyboard input." `
             --prerelease
 
+      # EXPERIMENTAL voice: a public download for the sim PC (build artifacts
+      # need a GitHub sign-in). A prerelease in this repo, one tag per commit;
+      # it is not the players' download and no one is told to update to it.
+      - name: Publish the experimental voice installer
+        if: github.ref == 'refs/heads/experimental-voice-arm' || github.ref == 'refs/heads/companion-aim-minimap'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "experimental-voice-$($env:GITHUB_SHA.Substring(0, 8))"
+          gh release view $tag --repo "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -eq 0) { Write-Host "$tag already published"; exit 0 }
+          gh release create $tag LooperCompanionSetup.exe `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "EXPERIMENTAL: Looper Companion with voice arming ($tag)" `
+            --notes "Test build for Brian's sim. Not a player release. Voice arming is experimental and unmerged." `
+            --prerelease
+          if ($LASTEXITCODE -ne 0) { throw "experimental release failed" }
+          Write-Host "download: https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/LooperCompanionSetup.exe"
+
       - name: Publish rolling companion prerelease
         if: github.ref == 'refs/heads/web-course-importer-surface-semantics-v2'
         shell: pwsh
@@ -481,6 +636,14 @@ jobs:
           $tag = "v$release"
           gh release view $tag --repo $env:COMPANION_RELEASES_REPO *> $null
           if ($LASTEXITCODE -eq 0) { Write-Host "$tag is already published; bump COMPANION_RELEASE to ship a new build."; exit 0 }
+          # Checked before anything is published, so a bad notice can't leave a release half done.
+          $notice = Get-Content helpers/companion-release-notice.json -Raw | ConvertFrom-Json
+          if ($notice.importantRelease -and ([version]$notice.importantRelease -gt [version]$release)) {
+            throw "companion-release-notice.json marks $($notice.importantRelease) as important, but this release is $release."
+          }
+          foreach ($field in @("bugFix", "feature")) {
+            if ($notice.$field -and $notice.$field.Length -gt 160) { throw "$field in companion-release-notice.json is over 160 characters." }
+          }
           $notes = (git log -1 --pretty=%s)
           gh release create $tag LooperCompanionSetup.exe looper-windows-companion.zip `
             --repo $env:COMPANION_RELEASES_REPO `
@@ -498,6 +661,10 @@ jobs:
             publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
             notes = $notes
             source = "nova-v0@$env:GITHUB_SHA"
+            # The red update box on the site (helpers/companion-release-notice.json).
+            importantRelease = $notice.importantRelease
+            bugFix = $notice.bugFix
+            feature = $notice.feature
           } | ConvertTo-Json
           function Put-File($path, $content, $message) {
             $existing = gh api "repos/$env:COMPANION_RELEASES_REPO/contents/$path" --jq .sha 2>$null

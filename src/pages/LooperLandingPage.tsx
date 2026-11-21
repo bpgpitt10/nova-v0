@@ -134,6 +134,8 @@ export default function LooperLandingPage({
   )
   const [gsproState, setGsproState] = useState<GsproConnectionState>('checking')
   const [gsproViaCompanion, setGsproViaCompanion] = useState(false)
+  /** The companion answers but GSPro isn't ready yet (it takes a few seconds after a start). */
+  const [companionUp, setCompanionUp] = useState(false)
   const [rangeOpen, setRangeOpen] = useState(
     () => new URLSearchParams(window.location.search).get('openRange') === '1',
   )
@@ -176,7 +178,8 @@ export default function LooperLandingPage({
       return
     }
 
-    setGsproState('checking')
+    // A repeat look while waiting keeps the message up instead of flashing 'checking'.
+    setGsproState((prev) => (prev === 'not-connected' ? prev : 'checking'))
 
     try {
       const handle = await loadGsproDirectoryHandle()
@@ -189,10 +192,14 @@ export default function LooperLandingPage({
         )
       }
       if (!handle) {
+        // Silence and "running, GSPro not found yet" read very differently to a player.
+        const answering = await readLooperCompanionStatus().then(() => true, () => false)
+        setCompanionUp(answering)
         setGsproState('not-connected')
-        setShowWelcome(await shouldPromptForCompanion())
+        setShowWelcome(answering ? false : await shouldPromptForCompanion())
         return
       }
+      setCompanionUp(true)
 
       markOnboardingComplete()
       void markGsproConnectedOnAccount()
@@ -220,6 +227,14 @@ export default function LooperLandingPage({
     window.addEventListener('focus', refreshOnFocus)
     return () => window.removeEventListener('focus', refreshOnFocus)
   }, [refreshGsproStatus])
+
+  // Not connected yet: look again every few seconds, so starting the companion or
+  // GSPro connects the page without a click.
+  useEffect(() => {
+    if (gsproState !== 'not-connected') return
+    const timer = window.setInterval(() => void refreshGsproStatus(), 5_000)
+    return () => window.clearInterval(timer)
+  }, [gsproState, refreshGsproStatus])
 
   const updateState: CompanionUpdateState = gsproViaCompanion ? companionUpdateState(companionRelease, companionLatest) : 'unknown'
   const downloadLabel = companionLatest
@@ -348,6 +363,16 @@ export default function LooperLandingPage({
         <div className="looper-landing-gspro-status is-neutral">
           The Looper Companion runs on your GSPro PC: start it there and this page connects.{' '}
           <CompanionDownloadLinks compact />
+        </div>
+      )
+    }
+
+    if (gsproState === 'not-connected' && companionUp) {
+      return (
+        <div className="looper-landing-gspro-line is-warn" role="status">
+          <span className="looper-landing-status-dot is-warn" aria-hidden="true" />
+          <strong>Companion running, waiting for GSPro</strong>
+          <span>Open GSPro on this PC. This page connects on its own, usually within a few seconds.</span>
         </div>
       )
     }

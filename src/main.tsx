@@ -19,6 +19,7 @@ import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import RoundsPage from './pages/RoundsPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
+import AdminCoursesPage from './pages/AdminCoursesPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
 import CourseRenderDevPage from './dev/CourseRenderDevPage.tsx'
 import CourseGeometryDevPage from './dev/CourseGeometryDevPage.tsx'
@@ -335,6 +336,7 @@ function RootRouter() {
     const showRounds = pathname === '/rounds' || pathname.startsWith('/rounds/') || pathname === '/game' || pathname.startsWith('/game/')
     const showDataManagement = pathname === '/data-management' || pathname === '/manage-data'
     const showAdminUsers = pathname === '/admin/users'
+    const showAdminCourses = pathname === '/admin/courses'
     const showCloudRepair = pathname === '/cloud-repair'
 
     if (showCourseRenderDev) return <CourseRenderDevPage />
@@ -352,6 +354,7 @@ function RootRouter() {
     if (showFaq) return <FaqPage />
     if (showSignOut) return <SignOutPage />
     if (showAdminUsers) return <AdminUsersPage />
+    if (showAdminCourses) return <AdminCoursesPage />
     if (showCloudRepair) return <CloudRepairPage />
     if (showBagSetup || !hasBagConfig) return <BagSetupPage />
     // New players: a starting bag right after the clubs, so Live Caddie has

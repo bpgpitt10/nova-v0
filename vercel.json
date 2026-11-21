@@ -7,6 +7,7 @@
     "deploymentEnabled": {
       "*": false,
       "web-*": true,
+      "experimental-*": true,
       "auth-cloud-persistence": true,
       "course-geometry-tactical-v0": true
     }

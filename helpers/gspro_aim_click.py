@@ -38,14 +38,21 @@ VERIFY_DELAY_S = 0.3
 CAPTURE_ATTEMPTS = 4
 
 
-def find_aim_marker(crop_bgr: np.ndarray):
-    """Centre of GSPro's magenta aim reticle on the minimap crop, or None."""
+def find_aim_marker(crop_bgr: np.ndarray, ball=None):
+    """Centre of GSPro's magenta aim reticle on the minimap crop, or None.
+
+    ``ball``: the ball dot's pixel. A purple or pink ball is the reticle's colour
+    (Farmlinks, 19 Nov: "285 px off" was the ball itself), so nothing on it counts.
+    """
     hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, MAGENTA_LOW, MAGENTA_HIGH)
     count, _, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    keep_away = 2.0 * native_aim.BALL_DOT_FRACTION * crop_bgr.shape[1]
     best = None
     for i in range(1, count):
         area = stats[i, cv2.CC_STAT_AREA]
+        if ball is not None and math.hypot(centroids[i][0] - ball[0], centroids[i][1] - ball[1]) <= keep_away:
+            continue
         if area >= MIN_MARKER_PIXELS and (best is None or area > best[0]):
             best = (area, centroids[i])
     if best is None:
@@ -98,16 +105,17 @@ def aim_click(
         preview = native_aim.aim_preview(
             frame, ball_world=ball_world, pin_world=pin_world, target_world=target_world)
     except Exception as error:
-        return blocked("minimap-not-read", detail=str(error)[:160])
+        # `seenPng`: the crop Looper looked at, so the page can show why it missed.
+        return blocked("minimap-not-read", detail=str(error)[:300], seenPng=getattr(error, "seen", None))
     if preview.get("status") != "ready":
         return blocked(preview.get("status") or "minimap-not-read")
     if not preview["checks"]["alignedLikeGspro"]:
         return blocked("minimap-not-aligned")
 
     height, width = frame.shape[:2]
-    roi = native_aim.RIGHT_MINIMAP_ROI
-    x0, y0 = int(width * roi[0]), int(height * roi[1])
     mini = preview["minimap"]
+    roi = tuple(mini.get("roi") or native_aim.RIGHT_MINIMAP_ROI)  # the side the minimap was found on
+    x0, y0 = int(width * roi[0]), int(height * roi[1])
     try:
         plan = direct_click.prepare_verified_minimap_click(
             window=window,
@@ -138,8 +146,8 @@ def aim_click(
     sleep(VERIFY_DELAY_S)
     try:
         after = _capture(capture, find_window(), sleep)
-        crop, _ = native_aim.crop_minimap(after)
-        marker = find_aim_marker(crop)
+        crop, _ = native_aim.crop_minimap(after, roi)
+        marker = find_aim_marker(crop, ball=mini["ball"])
     except Exception:
         return result
     if marker is None:

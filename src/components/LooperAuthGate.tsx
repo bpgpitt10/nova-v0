@@ -1,4 +1,5 @@
 import { CompanionChip } from './CompanionChip'
+import { CompanionUpdateNotice } from './CompanionUpdateNotice'
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
 import authBackground from '../assets/Backgrounds/looper-entry-links.webp'
@@ -453,6 +454,7 @@ export default function LooperAuthGate({ children }: Props) {
   if (state === 'allowed') {
     return (
       <>
+        {user ? <CompanionUpdateNotice /> : null}
         {user ? (
           <div className="looper-account-control">
             <CompanionChip />

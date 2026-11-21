@@ -33,10 +33,13 @@ FinishedLabel=The companion is installed, running in the background, and will st
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\ocr"
+Type: filesandordirs; Name: "{app}\voice"
 
 [Files]
 Source: "package\LooperCompanion.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "package\ocr\*"; DestDir: "{app}\ocr"; Flags: ignoreversion recursesubdirs createallsubdirs
+; EXPERIMENTAL voice commands: the offline speech model.
+Source: "package\voice\*"; DestDir: "{app}\voice"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Icons]
 Name: "{userprograms}\Looper Companion"; Filename: "{app}\LooperCompanion.exe"

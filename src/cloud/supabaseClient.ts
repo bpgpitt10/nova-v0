@@ -103,6 +103,7 @@ type SupabaseClientLike = {
     ): { data: { subscription: AuthSubscription } }
   }
   from<T>(table: string): SupabaseQueryBuilder<T>
+  rpc<T>(fn: string, args?: Record<string, unknown>): Promise<{ data: T | null; error: SupabaseError | null }>
   functions: {
     invoke<T = unknown>(name: string, options?: { body?: unknown }): Promise<{ data: T | null; error: SupabaseError | null }>
   }

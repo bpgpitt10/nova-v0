@@ -1,0 +1,86 @@
+/* The red box for a companion update that matters. Fixed, so no page's layout moves. */
+.companion-update-notice {
+  position: fixed;
+  top: 58px;
+  left: 50%;
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(760px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid #ff8a80;
+  border-radius: 12px;
+  background: #b3261e;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: Inter, system-ui, sans-serif;
+  transform: translateX(-50%);
+}
+
+.companion-update-notice__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.companion-update-notice__title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.companion-update-notice__line {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.companion-update-notice__how {
+  color: #ffdad6;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.companion-update-notice__actions {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: stretch;
+  gap: 6px;
+  text-align: center;
+}
+
+.companion-update-notice__download {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #fff;
+  color: #8c1d18;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.companion-update-notice__notes,
+.companion-update-notice__later {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #ffdad6;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .companion-update-notice {
+    flex-direction: column;
+    align-items: stretch;
+    top: 52px;
+  }
+}

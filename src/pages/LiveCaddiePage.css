@@ -1297,6 +1297,13 @@
   border-color: rgba(134, 239, 172, 0.5);
 }
 
+/* EXPERIMENTAL voice: a command that didn't land keeps the green outline and
+   shows a faint red fill for a moment. */
+.live-diagnostics-toggle[data-voice-miss='true'] {
+  background: rgba(239, 68, 68, 0.22);
+  transition: background 120ms ease-out;
+}
+
 /* A club being looked at (not armed): white outline; yellow stays for REC/armed. */
 .live-club-strip button.previewing {
   border-color: rgba(255, 255, 255, 0.85) !important;

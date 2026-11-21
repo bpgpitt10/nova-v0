@@ -272,6 +272,7 @@ def work(request: dict, key: str) -> None:
         'lon': request['lon'],
         'nameRegex': name_regex(request['course_name']),
         'osmId': request.get('osm_id'),
+        'osmType': request.get('osm_type'),
         'gsproAliases': [request['gspro_course_key']] if request.get('gspro_course_key') else [],
     }
     report = load_course.load_one(

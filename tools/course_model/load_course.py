@@ -165,7 +165,8 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
     if not load.stage('find', py, str(HERE / 'find_course.py'), '--name-regex', regex,
                       '--lat', str(request['lat']), '--lon', str(request['lon']),
                       '--radius-m', str(request.get('radiusM', 8000)), '--out', str(model),
-                      *(['--osm-id', str(request['osmId'])] if request.get('osmId') else [])):
+                      *(['--osm-id', str(request['osmId'])] if request.get('osmId') else []),
+                      *(['--osm-type', request['osmType']] if request.get('osmType') in ('way', 'relation') else [])):
         return load.finish(request, extra)
     bbox = json.loads((model / 'course-bbox.json').read_text())
     extra['osmCourse'] = bbox['osm']
