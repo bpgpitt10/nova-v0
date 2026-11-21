@@ -2415,7 +2415,6 @@ export default function LiveCaddiePage() {
             riseIn={puttRiseIn}
             stimp={greenConditions?.stimp ?? null}
             elevationSource={puttElevationSource}
-            checkRiseIn={puttMapRiseIn != null ? puttGsproRiseIn : null}
           />
         ) : holdFirstTeeRecommendation ? (
           <section className="live-empty-state" data-recommendation-gate="first-tee-capture">
