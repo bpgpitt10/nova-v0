@@ -16,7 +16,7 @@ const ft = (value: number) => (value >= 10 ? `${Math.round(value)} ft` : `${valu
 /**
  * The green-side card: how hard to hit this putt. Pace only; break isn't measured yet, so no aim line.
  */
-export default function PuttReadCard({ distanceFt, riseIn, stimp, elevationSource }: Props) {
+export default function PuttReadCard({ distanceFt, riseIn, stimp }: Props) {
   if (distanceFt == null || !(distanceFt > 0)) {
     return (
       <section className="putt-read" data-state="waiting">
@@ -64,10 +64,7 @@ export default function PuttReadCard({ distanceFt, riseIn, stimp, elevationSourc
             )}
       </div>
 
-      <p className="putt-read__note">
-        Pace only: break isn&rsquo;t measured yet, so read the line yourself.
-        {elevationSource ? ` Rise or fall from the ${elevationSource}.` : ''}
-      </p>
+      <p className="putt-read__note">Pace only. You own the aim.</p>
     </section>
   )
 }
