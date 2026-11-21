@@ -33,18 +33,6 @@ export default function PuttReadCard({ distanceFt, riseIn, stimp, elevationSourc
   return (
     <section className="putt-read" data-state={read.runaway ? 'runaway' : 'ready'}>
       <span className="live-kicker">ON GREEN · STIMP {read.stimp % 1 ? read.stimp.toFixed(1) : read.stimp}</span>
-      <div className="putt-read__line">
-        <strong>{ft(distanceFt)}</strong>
-        {direction == null ? <span className="putt-read__slope">rise or fall not read yet</span>
-          : direction === 'flat' ? <span className="putt-read__slope">flat</span>
-            : (
-              <span className={`putt-read__slope is-${direction}`}>
-                {direction === 'uphill' ? '▲' : '▼'} {feetInches(riseIn ?? 0)} {direction}
-                <small> · {Math.abs(read.grade * 100).toFixed(1)}%</small>
-              </span>
-            )}
-      </div>
-
       {read.runaway ? (
         <p className="putt-read__warn">
           <b>This one won&rsquo;t stop.</b> At stimp {read.stimp} a putt can&rsquo;t stop on a downhill steeper than
@@ -62,6 +50,19 @@ export default function PuttReadCard({ distanceFt, riseIn, stimp, elevationSourc
           )}
         </div>
       )}
+
+      {/* GSPro already shows these two, so they sit under the read, smaller. */}
+      <div className="putt-read__line">
+        <strong>{ft(distanceFt)}</strong>
+        {direction == null ? <span className="putt-read__slope">rise or fall not read yet</span>
+          : direction === 'flat' ? <span className="putt-read__slope">flat</span>
+            : (
+              <span className={`putt-read__slope is-${direction}`}>
+                {direction === 'uphill' ? '▲' : '▼'} {feetInches(riseIn ?? 0)} {direction}
+                <small> · {Math.abs(read.grade * 100).toFixed(1)}%</small>
+              </span>
+            )}
+      </div>
 
       <p className="putt-read__note">
         Pace only: break isn&rsquo;t measured yet, so read the line yourself.

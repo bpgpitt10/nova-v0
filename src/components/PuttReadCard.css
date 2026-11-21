@@ -15,21 +15,22 @@
 }
 
 .putt-read__line {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 14px;
+  margin-top: 14px;
 }
 
 .putt-read__line strong {
-  font-family: Fraunces, Georgia, 'Times New Roman', serif;
-  font-size: clamp(64px, 11vw, 104px);
-  font-weight: 600;
-  line-height: 1;
+  font-size: clamp(22px, 2.6vw, 28px);
+  font-weight: 700;
   color: #ffffff;
 }
 
 .putt-read__slope {
-  font-size: clamp(20px, 2.6vw, 26px);
+  font-size: clamp(18px, 2.2vw, 22px);
   font-weight: 700;
   color: #cfd8cd;
 }
@@ -51,24 +52,23 @@
 .putt-read__plays {
   display: grid;
   justify-items: center;
-  gap: 2px;
-  margin-top: 10px;
+  gap: 4px;
 }
 
 .putt-read__plays > span {
-  color: #9da99f;
-  font-size: 13px;
+  color: #eab308;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .putt-read__plays > b {
   font-family: Fraunces, Georgia, 'Times New Roman', serif;
-  font-size: clamp(44px, 7vw, 64px);
+  font-size: clamp(80px, 13vw, 128px);
   font-weight: 600;
-  line-height: 1.05;
-  color: #2ec4e6;
+  line-height: 1;
+  color: #eab308;
 }
 
 .putt-read__plays > small {
