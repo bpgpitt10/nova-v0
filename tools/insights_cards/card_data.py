@@ -37,26 +37,31 @@ CARDS = [
     {
         "id": "lies",
         "title": "What each [lie] takes off the ball",
-        "lede": "GSPro doesn’t take a flat percentage off. It cuts ball speed and spin, and in deep rough how much depends on "
-                "the launch: the lower the ball comes off, the more the grass grabs it.",
+        "lede": "GSPro cuts ball speed and spin, and not by a flat percentage. It moves a little from shot to shot, and in deep "
+                "rough it depends on the launch: the lower the ball comes off, the more the grass grabs it.",
         "panels": [
-            {"kind": "grid", "title": "What’s left", "sub": "of ball speed and spin", "cols": ["Speed", "Spin"], "diff": False,
-             "rows": [("Fairway", ["100%", "100%"]), ("First cut", ["98.5%", "95%"]), ("Rough", ["94%", "77%"]),
-                      ("Sand", ["93%", "100%"]), ("Deep rough", ["64–81%", "53%"]), ("Cart path", ["100%", "100%"])],
-             "foot": "Sand: full swings; slower swings lose more. Cart path: a driver-type shot loses about a quarter of its speed."},
+            {"kind": "ranges", "title": "What\u2019s left", "sub": "of ball speed and spin, every shot measured", "span": "wide",
+             "cols": ["Ball speed", "Spin"], "scale": (45, 100), "ticks": [50, 60, 70, 80, 90, 100],
+             "rows": [("First cut", [(99, 99, 99, 99, 99), (95, 95, 95, 95, 95)]),
+                      ("Rough", [(91, 93, 94, 96, 98), (60, 68, 77, 81, 81)]),
+                      ("Sand", [(83, 88, 93, 93, 93), (80, 90, 100, 100, 100)]),
+                      ("Deep rough", [(62, 71, 79, 81, 81), (49, 49, 53, 56, 56)]),
+                      ("Cart path", [(75, 100, 100, 100, 100), (100, 100, 100, 100, 100)])],
+             "foot": "Dot: the typical shot. Bar: most shots. Line: every shot I measured. It moves with the shot: deep rough with the launch angle, "
+                     "sand with how hard you swing; a driver-type shot off the cart path loses about a quarter."},
             {"kind": "bars", "title": "Deep rough", "sub": "ball speed kept, by launch", "max": 100,
-             "rows": [("9° launch", 64, "64%"), ("12°", 71, "71%"), ("14°", 72, "69–74%"),
-                      ("19°", 77, "77%"), ("24°", 79, "79%"), ("30°", 81, "81%")]},
-            {"kind": "bars", "title": "Carry out of deep rough", "sub": "against the clean carry", "max": 200, "span": "wide",
-             "rows": [("3 hybrid", 70, "70 of 200", 200), ("5 iron", 80, "80 of 179", 179), ("7 iron", 93, "93 of 159", 159),
-                      ("Pitching wedge", 82, "82 of 122", 122), ("Sand wedge", 66, "66 of 96", 96)],
+             "rows": [("9\u00b0 launch", 64, "64%"), ("12\u00b0", 71, "71%"), ("14\u00b0", 72, "69\u201374%"),
+                      ("19\u00b0", 77, "77%"), ("24\u00b0", 79, "79%"), ("30\u00b0", 81, "81%")]},
+            {"kind": "bars", "title": "Out of deep rough", "sub": "carry vs clean", "max": 200,
+             "rows": [("3 hybrid", 70, "70 / 200", 200), ("5 iron", 80, "80 / 179", 179), ("7 iron", 93, "93 / 159", 159),
+                      ("PW", 82, "82 / 122", 122), ("SW", 66, "66 / 96", 96)],
              "foot": "Typical carries from shots across many deep rough lies."},
         ],
         "takeaways": [
             ("Deep rough is a launch problem.", "The lower it launches, the more speed the grass takes."),
             ("Take less club, not more.", "A 7 iron carried 93 out of deep rough; a 3 hybrid 70."),
             ("Rough is a flyer.", "It keeps the speed, takes a quarter of the spin, and the ball runs."),
-            ("Sand and first cut barely count.", "Sand takes 7% of a full swing’s speed; the first cut 1.5%."),
+            ("Sand and first cut barely count.", "Sand takes 7% of a full swing’s speed; the first cut about 1%."),
         ],
         "footer": "Measured in GSPro 4.1.9, November 2026, from shots fired out of each lie on four courses. Speed and spin kept "
                   "are GSPro’s own penalty numbers. Launch numbers are typical for each club; yours will differ.",

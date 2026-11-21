@@ -112,6 +112,28 @@ def bars_panel(p, colour):
             + (f'<p class="foot">{e(p["foot"])}</p>' if p.get("foot") else "") + "</section>")
 
 
+def ranges_panel(p, colour):
+    """Range bars per row, one chart per column: line = every shot, bar = most shots (10th-90th), dot = typical."""
+    lo, hi = p["scale"]
+    pos = lambda v: 100 * (v - lo) / (hi - lo)
+    charts = []
+    for ci, col in enumerate(p["cols"]):
+        rows = []
+        for label, cells in p["rows"]:
+            mn, p10, med, p90, mx = cells[ci]
+            text = f"{med:g}%" if mn == mx else f"{med:g}%  <small>{mn:g}–{mx:g}</small>"
+            rows.append(
+                f'<div class="rng"><span class="lbl">{e(label)}</span><span class="track">'
+                f'<i class="whisk" style="left:{pos(mn):.1f}%;width:{max(0.6, pos(mx) - pos(mn)):.1f}%"></i>'
+                f'<i class="band" style="left:{pos(p10):.1f}%;width:{max(1.2, pos(p90) - pos(p10)):.1f}%;background:{colour}"></i>'
+                f'<i class="dot" style="left:{pos(med):.1f}%"></i></span><span class="val">{text}</span></div>')
+        ticks = "".join(f'<span style="left:{pos(t):.1f}%">{t}%</span>' for t in p["ticks"])
+        charts.append(f'<div class="rngchart"><h4>{e(col)}</h4>{"".join(rows)}<div class="ticks"><span class="lbl"></span><span class="tk">{ticks}</span><span class="val"></span></div></div>')
+    sub = f' <span class="sub">{e(p["sub"])}</span>' if p.get("sub") else ""
+    return (f'<section class="panel {p.get("span", "")}"><header><h3>{e(p["title"])}{sub}</h3></header>'
+            f'<div class="rngs">{"".join(charts)}</div>' + (f'<p class="foot">{e(p["foot"])}</p>' if p.get("foot") else "") + "</section>")
+
+
 def tile_panel(p, colour):
     items = "".join(f'<div class="tile"><b style="color:{colour}">{e(big)}</b><span>{e(text)}</span></div>'
                     for big, text in p["tiles"])
@@ -120,7 +142,7 @@ def tile_panel(p, colour):
             f'<div class="tiles">{items}</div>' + (f'<p class="foot">{e(p["foot"])}</p>' if p.get("foot") else "") + "</section>")
 
 
-PANEL = {"grid": grid_panel, "bars": bars_panel, "tiles": tile_panel}
+PANEL = {"grid": grid_panel, "bars": bars_panel, "tiles": tile_panel, "ranges": ranges_panel}
 
 
 def tabs(current):
@@ -198,6 +220,20 @@ th.row small {{ display: block; font-size: 9px; font-weight: 500; color: #8e9b90
 .tile {{ display: grid; grid-template-columns: 104px 1fr; gap: 10px; align-items: baseline; }}
 .tile b {{ white-space: nowrap; font-family: Fraunces, Georgia, serif; font-size: 24px; font-weight: 600; line-height: 1; }}
 .tile span {{ font-size: 11.5px; color: #cfd8cd; line-height: 1.35; }}
+.rngs {{ display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 4px; }}
+.rngchart h4 {{ margin: 0 0 6px; font-size: 8.5px; letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, {colour} 70%, #e7efe4); }}
+.rng, .ticks {{ display: grid; grid-template-columns: 70px 1fr 82px; align-items: center; gap: 8px; font-size: 11.5px; margin-bottom: 7px; }}
+.rng .lbl {{ font-weight: 600; }}
+.rng .track, .ticks .tk {{ position: relative; height: 14px; }}
+.rng .track {{ background: #142118; border-radius: 7px; }}
+.rng .track i {{ position: absolute; top: 50%; transform: translateY(-50%); }}
+.rng .whisk {{ height: 2px; background: #8e9b90; }}
+.rng .band {{ height: 8px; border-radius: 4px; opacity: .85; }}
+.rng .dot {{ width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px #0b140d; }}
+.rng .val {{ text-align: right; font-weight: 700; }}
+.rng .val small {{ font-weight: 500; color: #8e9b90; font-size: 9.5px; }}
+.ticks {{ margin: 0; }}
+.ticks .tk span {{ position: absolute; transform: translateX(-50%); font-size: 8.5px; color: #6f7d70; }}
 .foot {{ margin: 6px 2px 0; font-size: 9.5px; color: #8e9b90; }}
 ul {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin: 16px 0 0; padding: 0; list-style: none; }}
 li {{ border-left: 3px solid; padding: 1px 0 1px 10px; font-size: 12px; line-height: 1.4; color: #cfd8cd; }}

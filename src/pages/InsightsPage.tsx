@@ -107,9 +107,9 @@ const PARTS: readonly Part[] = [
     question: 'Your bag stops working in deep rough',
     card: {
       src: liesCard,
-      alt: 'Ball speed and spin GSPro leaves after each lie, deep rough speed by launch angle, and carries out of deep rough for a 3 hybrid, 5 iron, 7 iron and wedges against their clean carries.',
+      alt: 'Range of ball speed and spin GSPro leaves after each lie, deep rough speed by launch angle, and carries out of deep rough for a 3 hybrid, 5 iron, 7 iron and wedges against their clean carries.',
       width: 1600,
-      height: 1832,
+      height: 1630,
     },
     caddie: 'Looper reads the lie from GSPro before every shot, and works out each club from there, not from your fairway numbers.',
     article: (
@@ -132,8 +132,8 @@ const PARTS: readonly Part[] = [
             come out runs on landing.
           </li>
           <li>
-            <strong>Rough is a flyer, not a penalty.</strong> It costs a few percent of speed but up to a third of the
-            spin. A 5 iron from the rough carried 12 yards less than from the fairway and finished 2 yards further,
+            <strong>Rough is a flyer, not a penalty.</strong> It costs 3 to 7% of speed but 20 to 30% of the spin,
+            depending on the shot. A 5 iron from the rough carried 12 yards less than from the fairway and finished 2 yards further,
             because it ran out.
           </li>
           <li>
@@ -141,7 +141,7 @@ const PARTS: readonly Part[] = [
             iron and leaves the spin alone. Slower swings lose more of both.
           </li>
           <li>
-            <strong>The first cut barely counts.</strong> About 1.5% of speed and 5% of spin.
+            <strong>The first cut barely counts.</strong> About 1% of speed and 5% of spin.
           </li>
           <li>
             <strong>The cart path is free</strong>, unless you hit a driver-type shot off it, which loses about a
@@ -381,8 +381,8 @@ const PARTS: readonly Part[] = [
           </li>
           <li>
             <strong>Some putts never stop.</strong> Past a certain downhill grade the ball can&rsquo;t stop: about
-            7.5% at stimp 8, 4.7% at stimp 11 and 3.6% at stimp 13. At stimp 13 on a 4.5% slope, every putt I hit
-            from 2 to 7 mph ran about 75 feet.
+            7.5% at stimp 8, 4.7% at stimp 11 and 3.6% at stimp 13. At stimp 13 on a 4.5% slope, not one putt
+            stopped on the slope, at any speed. They rolled on until the green flattened out.
           </li>
         </ul>
         <h3>What to do with it</h3>
@@ -414,7 +414,7 @@ const CHEAT_SHEET: readonly { stage: string; see: string; rule: ReactNode; part:
   { stage: 'Off the tee', see: 'Fairway firmness', rule: <>Second. Soft to firm adds about 14 yards to a drive on Bermuda. On Bentgrass, irons stop where they land on any firmness.</>, part: 'fairways' },
   { stage: 'From the lie', see: 'Deep rough', rule: <>Take the club that launches highest and still gets there. A 7 iron carried 93; a 3 hybrid 70.</>, part: 'lies' },
   { stage: 'From the lie', see: 'Rough', rule: <>A flyer: about a dozen yards less carry on a 5 iron, then more run.</>, part: 'lies' },
-  { stage: 'From the lie', see: 'Sand, first cut, cart path', rule: <>Barely count on a full swing. Sand takes 7% of the ball speed; the first cut 1.5%.</>, part: 'lies' },
+  { stage: 'From the lie', see: 'Sand, first cut, cart path', rule: <>Barely count on a full swing. Sand takes 7% of the ball speed; the first cut about 1%.</>, part: 'lies' },
   { stage: 'From the lie', see: 'Side slope', rule: <>Aim off toward the side the lie readout names: about 3 yards per degree with a hybrid or wood, 2 with a mid iron, 1 with a wedge.</>, part: 'slopes' },
   { stage: 'From the lie', see: 'Up or down slope', rule: <>Irons: ignore it. A hybrid off a downslope loses about 7 yards at 4&deg;, so take loft.</>, part: 'slopes' },
   { stage: 'Into the green', see: 'Green grass', rule: <>Read it before the firmness. Wedges barely care; a 5 iron releases 6 to 13 yards more on Links than Bermuda soft.</>, part: 'approaches' },
