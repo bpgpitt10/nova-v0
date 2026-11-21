@@ -50,8 +50,39 @@ export type ChipFlight = Readonly<{
   landing: Readonly<{ speedMph: number; descentDeg: number; spinRpm: number }>
 }>
 
-/** The flight that carries `carryYds`, interpolated between the measured shots. */
-export const chipFlight = (type: ChipType, carryYds: number): ChipFlight => {
+/**
+ * The flight that carries `carryYds`. `launchDeltaDeg` is what the slope under the ball adds to the
+ * launch (+ off an upslope): the same carry then comes in steeper and slower, like the next shot up,
+ * so it runs less; off a downslope it comes in like the next shot down and runs more. The spin stays
+ * this shot's own (per mph), since the swing hasn't changed.
+ */
+export const chipFlight = (type: ChipType, carryYds: number, launchDeltaDeg = 0): ChipFlight => {
+  const base = measuredChipFlight(type, carryYds)
+  if (Math.abs(launchDeltaDeg) < 0.25) return base
+  const launch = Math.max(CHIP_LAUNCH_DEG.bump, Math.min(CHIP_LAUNCH_DEG.flop, CHIP_LAUNCH_DEG[type] + launchDeltaDeg))
+  const upper = CHIP_TYPES.find((t) => CHIP_LAUNCH_DEG[t] >= launch) ?? 'flop'
+  const lower = CHIP_TYPES[Math.max(0, CHIP_TYPES.indexOf(upper) - 1)]
+  if (upper === lower) return base
+  const a = measuredChipFlight(lower, base.carryYds)
+  const b = measuredChipFlight(upper, base.carryYds)
+  const t = (launch - CHIP_LAUNCH_DEG[lower]) / (CHIP_LAUNCH_DEG[upper] - CHIP_LAUNCH_DEG[lower])
+  const mix = (x: number, y: number) => x + (y - x) * t
+  const ballSpeedMph = mix(a.ballSpeedMph, b.ballSpeedMph)
+  const spinPerMph = base.spinRpm / base.ballSpeedMph
+  return {
+    carryYds: base.carryYds,
+    ballSpeedMph,
+    spinRpm: spinPerMph * ballSpeedMph,
+    landing: {
+      speedMph: mix(a.landing.speedMph, b.landing.speedMph),
+      descentDeg: mix(a.landing.descentDeg, b.landing.descentDeg),
+      spinRpm: (base.landing.spinRpm / base.ballSpeedMph) * ballSpeedMph,
+    },
+  }
+}
+
+/** The flight as GSPro measured it from a level lie, interpolated between the measured shots. */
+const measuredChipFlight = (type: ChipType, carryYds: number): ChipFlight => {
   const rows = FLIGHT[type]
   const c = Math.max(rows[0][2] * 0.5, Math.min(rows[rows.length - 1][2], carryYds))
   let i = rows.findIndex((row) => row[2] >= c)
@@ -90,6 +121,8 @@ export type ChipSetting = Readonly<{
    * shot's speed, so the card says how big a swing it takes; spin is scaled by GSPro's sand numbers.
    */
   fromSand?: boolean
+  /** Slope under the ball along the shot, degrees (+ uphill): changes the launch, so the run. */
+  lieUpDownDeg?: number | null
 }>
 
 const ROUGH = { speed: 0.97, spin: 0.68 }
@@ -183,7 +216,7 @@ const troubleBefore = (carry: number, probe: LandingProbe) => {
 }
 
 const releaseFor = (type: ChipType, carry: number, probe: LandingProbe, setting: ChipSetting) => {
-  const flight = chipFlight(type, carry)
+  const flight = chipFlight(type, carry, (setting.lieUpDownDeg ?? 0) * upDownLieShare(CHIP_LAUNCH_DEG[type]))
   // From sand the flight is the ball as it leaves the sand; its spin is GSPro's sand share of the bigger swing's.
   const sandSpin = setting.fromSand
     ? (() => { const raw = rawSpeedFromSand(flight.ballSpeedMph); return sandSpinFactor(raw) / sandSpeedFactor(raw) })()

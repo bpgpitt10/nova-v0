@@ -30,9 +30,10 @@ export default function ChipLabPreviewPage() {
       fairway: { courseType, fairwayFirmness },
       fromRough: fromRough && !fromSand,
       fromSand,
+      lieUpDownDeg: upDown,
     },
     Math.max(0, distance - greenStarts),
-  ), [distance, greenStarts, beforeGreen, slopePct, stimp, courseType, greenFirmness, fairwayFirmness, fromRough, fromSand])
+  ), [distance, greenStarts, beforeGreen, slopePct, stimp, courseType, greenFirmness, fairwayFirmness, fromRough, fromSand, upDown])
 
   const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[courseType]
   const slider = (label: string, value: number, set: (v: number) => void, min: number, max: number, step: number, unit: string) => (

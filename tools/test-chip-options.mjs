@@ -69,6 +69,13 @@ try {
   const flopAim = chipLieRead({ launchDeg: 40 }, 20, 4, -3)
   assert.ok(bumpAim.aimLeftFt < flopAim.aimLeftFt && flopAim.aimLeftFt < 0, 'starts left, so aim right; the bump most')
   assert.ok(bumpAim.launchDeltaDeg < 0)
+  // Slope under the ball: off an upslope the same chip launches higher and runs less, so it's flown
+  // further; off a downslope it runs more and is flown shorter.
+  const flat = byType(chipOptions(25, line(8, 'fairway', 0), setting, 17))
+  const upslope = byType(chipOptions(25, line(8, 'fairway', 0), { ...setting, lieUpDownDeg: 6 }, 17))
+  const downslope = byType(chipOptions(25, line(8, 'fairway', 0), { ...setting, lieUpDownDeg: -6 }, 17))
+  assert.ok(upslope.pitch.flight.carryYds > flat.pitch.flight.carryYds + 0.3, 'upslope: fly it further')
+  assert.ok(downslope.pitch.flight.carryYds < flat.pitch.flight.carryYds - 0.3, 'downslope: fly it shorter')
   // Break: a green that climbs to the right (downhill is left) takes the run left, so the aim goes right;
   // the bump (more run) needs more than the flop; a level green needs none.
   const { chipBreakAimFt } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')

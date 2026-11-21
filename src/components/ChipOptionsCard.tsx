@@ -19,6 +19,8 @@ type Props = {
   surface?: string
   /** Feet to aim left (+) or right (-) so each chip's run breaks to the hole; null when not known. */
   breakLeftFt?: Partial<Record<ChipType, number | null>> | null
+  /** The break was scaled to GSPro's own height for this line (the map and GSPro's green differ). */
+  breakScaled?: boolean
   /** Height of the hole above (+) or below (-) the ball, feet, and where it was read. */
   riseFt?: number | null
   riseSource?: 'GSPro' | 'green map' | null
@@ -50,7 +52,7 @@ const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs
 export default function ChipOptionsCard({
   distanceYds, options, shown, onShow, conditions, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
-  terrain = null, hazard = null, safeMiss = null, riseFt = null, riseSource = null, breakLeftFt = null,
+  terrain = null, hazard = null, safeMiss = null, riseFt = null, riseSource = null, breakLeftFt = null, breakScaled = false,
 }: Props) {
   const riseText = riseFt == null ? null
     : Math.abs(riseFt) < 0.25 ? 'level'
@@ -163,7 +165,7 @@ export default function ChipOptionsCard({
           </em>
         </div>
         <div className="chip-conditions__row">
-          <span>Break on the green<small>{hasGreenMap ? 'the run, from the green map (estimate)' : 'no green map here'}</small></span>
+          <span>Break on the green<small>{hasGreenMap ? (breakScaled ? 'green map, scaled to GSPro’s height (estimate)' : 'the run, from the green map (estimate)') : 'no green map here'}</small></span>
           <b>{breakFt == null ? '—' : Math.abs(breakFt) < 1 ? 'straight' : `${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}</b>
           <em className={breakFt != null && Math.abs(breakFt) >= 1 ? 'is-off' : ''}>
             {breakFt == null ? '—' : Math.abs(breakFt) < 1 ? 'no change to the aim'
@@ -175,7 +177,7 @@ export default function ChipOptionsCard({
           <b>{upText}</b>
           <em>
             {lie && Math.abs(lie.launchDeltaDeg) >= 0.75
-              ? `launches ${Math.abs(lie.launchDeltaDeg).toFixed(0)}° ${lie.launchDeltaDeg > 0 ? 'higher: flies a touch more, runs less' : 'lower: flies a touch less, runs more'}`
+              ? `launches ${Math.abs(lie.launchDeltaDeg).toFixed(0)}° ${lie.launchDeltaDeg > 0 ? 'higher: lands softer, runs less' : 'lower: comes in hotter, runs more'} (in the numbers)`
               : lieUpDownDeg == null ? '—' : 'no change'}
           </em>
         </div>
@@ -189,7 +191,7 @@ export default function ChipOptionsCard({
         </div>
         <div className="chip-conditions__row">
           <span>Ball data<small>to hit this chip</small></span>
-          <b>{current ? `${current.launchDeg}° launch` : '—'}</b>
+          <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
           <em>{current ? `${Math.round(current.flight.ballSpeedMph)} mph · ${Math.round(current.flight.spinRpm / 50) * 50} rpm (typical spin; yours may differ)` : '—'}</em>
         </div>
         {terrain ? (

@@ -1163,6 +1163,10 @@ export default function LiveCaddiePage() {
   const chipDistanceYds = !isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) : null
   // A tapped chip belongs to one ball position; the next shot starts on Looper's pick again.
   const chipShotKey = `${holeNumber}|${Math.round(ball[0])}|${Math.round(ball[1])}`
+  // GSPro's lie under the ball, read here because the chips are sized before the card's own lie values.
+  const chipLieUpDownDeg = lieObservation?.status === 'READY'
+    && typeof lieObservation.upDownDegrees === 'number' && Number.isFinite(lieObservation.upDownDegrees)
+    ? lieObservation.upDownDegrees : null
   const chipLab = chipLabOn && chipLie && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
     ? (() => {
         const dx = (pinEstimate[0] - ball[0]) / chipDistanceYds
@@ -1212,7 +1216,7 @@ export default function LiveCaddiePage() {
         const options = chipOptions(
           chipDistanceYds,
           (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry) }),
-          { green, fairway, fromRough, fromSand: chipFromSand },
+          { green, fairway, fromRough, fromSand: chipFromSand, lieUpDownDeg: chipLieUpDownDeg },
           greenStarts == null ? null : chipDistanceYds - greenStarts,
         )
         const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[green.courseType]
@@ -1229,6 +1233,10 @@ export default function LiveCaddiePage() {
           landingPoint: shown ? along(shown.flight.carryYds) : null,
           hasGreenMap: Boolean(greenDetail),
           riseFt,
+          // GSPro's green against Looper's map on the same line: where the map is steeper than GSPro's
+          // green (Royal New Kent 2, 21 Nov: 2.5 times), its break is too big by about the same share.
+          breakScale: hudRiseFt != null && mapRiseFt != null && Math.abs(mapRiseFt) >= 0.3 && Math.sign(hudRiseFt) === Math.sign(mapRiseFt)
+            ? Math.min(1.5, Math.max(0.35, hudRiseFt / mapRiseFt)) : 1,
           riseSource: hudRiseFt != null ? 'GSPro' as const : mapRiseFt != null ? 'green map' as const : null,
         }
       })()
@@ -1529,11 +1537,14 @@ export default function LiveCaddiePage() {
     return analyzeGreen(greenDetail, greens)
   }, [hole, greenDetail])
   // Chip lab: the aim that lets each chip's run break to the hole, from the green map's slope.
-  const chipBreakKey = chipLab ? `${chipShotKey}|${chipLab.options.map((o) => `${o.flight.carryYds.toFixed(1)}/${o.runYds.toFixed(1)}`).join(',')}` : null
+  const chipBreakKey = chipLab ? `${chipShotKey}|${chipLab.breakScale.toFixed(2)}|${chipLab.options.map((o) => `${o.flight.carryYds.toFixed(1)}/${o.runYds.toFixed(1)}`).join(',')}` : null
   const chipBreak = useMemo(() => {
     if (!chipLab || !greenReadAnalysis || !pinEstimate) return null
     const slope = slopeFieldFromGreenRead(greenReadAnalysis)
-    return Object.fromEntries(chipLab.options.map((o) => [o.type, chipBreakAimFt(slope, ball, pinEstimate, o, greenConditions?.stimp ?? null)])) as Record<ChipType, number | null>
+    return Object.fromEntries(chipLab.options.map((o) => {
+      const aim = chipBreakAimFt(slope, ball, pinEstimate, o, greenConditions?.stimp ?? null)
+      return [o.type, aim == null ? null : aim * chipLab.breakScale]
+    })) as Record<ChipType, number | null>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chipBreakKey, greenReadAnalysis])
   const greenReachable = (() => {
@@ -2613,6 +2624,7 @@ export default function LiveCaddiePage() {
                       lieUpDownDeg={hasLiveLie ? lieUpDownDeg : null}
                       surface={normalizedCurrentSurface}
                       breakLeftFt={chipBreak}
+                      breakScaled={chipLab.breakScale !== 1}
                       riseFt={chipLab.riseFt}
                       riseSource={chipLab.riseSource}
                       onAim={aimChip}
