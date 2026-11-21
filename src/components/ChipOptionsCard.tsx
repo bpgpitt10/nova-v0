@@ -17,6 +17,9 @@ type Props = {
   lieUpDownDeg?: number | null
   /** What the ball is sitting on, in plain words. */
   surface?: string
+  /** Height of the hole above (+) or below (-) the ball, feet, and where it was read. */
+  riseFt?: number | null
+  riseSource?: 'GSPro' | 'green map' | null
   /** Aim GSPro for this chip (Auto Aim). */
   onAim?: (type: ChipType) => void
   aim?: { type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null
@@ -45,8 +48,11 @@ const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs
 export default function ChipOptionsCard({
   distanceYds, options, shown, onShow, conditions, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
-  terrain = null, hazard = null, safeMiss = null,
+  terrain = null, hazard = null, safeMiss = null, riseFt = null, riseSource = null,
 }: Props) {
+  const riseText = riseFt == null ? null
+    : Math.abs(riseFt) < 0.25 ? 'level'
+      : `${riseFt > 0 ? '▲' : '▼'} ${Math.floor(Math.abs(riseFt))} ft ${Math.round((Math.abs(riseFt) % 1) * 12)} in`
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
@@ -131,6 +137,15 @@ export default function ChipOptionsCard({
         <div className="chip-conditions__title">
           <span>What’s moving this chip</span>
           <b>{current ? CHIP_LABEL[current.type] : '—'}</b>
+        </div>
+        <div className="chip-conditions__row">
+          <span>To the hole<small>{riseSource ? `from ${riseSource === 'GSPro' ? 'GSPro’s pin height' : 'the green map'}` : 'height not read yet'}</small></span>
+          <b>{riseText ?? '—'}</b>
+          <em>
+            {riseFt == null ? '—'
+              : Math.abs(riseFt) < 0.25 ? 'no change'
+                : `${(Math.abs(riseFt) / (distanceYds * 3) * 100).toFixed(1)}% ${riseFt > 0 ? 'uphill: runs less' : 'downhill: runs more'}${hasGreenMap ? ', in the run already' : riseSource === 'GSPro' ? ', in the run as one even slope' : ''}`}
+          </em>
         </div>
         <div className="chip-conditions__row">
           <span>Side slope<small>{lieKnown ? 'GSPro lie' : 'lie not read yet'}</small></span>

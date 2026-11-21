@@ -1175,7 +1175,17 @@ export default function LiveCaddiePage() {
           return 'other'
         }
         const pinElevation = greenDetail ? sampleCourseGreenElevation(greenDetail, pinEstimate) : null
+        // GSPro's own ball-to-pin height (the player box, top left; the pin sign shows the same number).
+        // Only this shot's reading, and only when its distance agrees with ours (Brian, 21 Nov).
+        const hudRiseFt = hudReading && liveMatchesHole && hudReading.shotNumber === liveSnapshot?.nextShotNumber
+          && hudReading.distanceToPinYds != null && Math.abs(hudReading.distanceToPinYds - chipDistanceYds) <= 2.5
+          && typeof hudReading.elevationFt === 'number' && Number.isFinite(hudReading.elevationFt)
+          ? hudReading.elevationFt : null
+        const mapRiseFt = pinElevation != null && ballTerrain ? pinElevation - ballTerrain.elevationFt : null
+        const riseFt = hudRiseFt ?? mapRiseFt
         const gradeToHole = (carry: number) => {
+          // No green map: GSPro's height spread evenly along the line is the best there is.
+          if ((!greenDetail || pinElevation == null) && hudRiseFt != null) return hudRiseFt / (chipDistanceYds * 3)
           if (!greenDetail || pinElevation == null) return null
           const at = sampleCourseGreenElevation(greenDetail, along(carry))
           const runFt = (chipDistanceYds - carry) * 3
@@ -1217,6 +1227,8 @@ export default function LiveCaddiePage() {
           shown: shown?.type ?? null,
           landingPoint: shown ? along(shown.flight.carryYds) : null,
           hasGreenMap: Boolean(greenDetail),
+          riseFt,
+          riseSource: hudRiseFt != null ? 'GSPro' as const : mapRiseFt != null ? 'green map' as const : null,
         }
       })()
     : null
@@ -2584,6 +2596,8 @@ export default function LiveCaddiePage() {
                       lieLeftRightDeg={hasLiveLie ? lieLeftRightDeg : null}
                       lieUpDownDeg={hasLiveLie ? lieUpDownDeg : null}
                       surface={normalizedCurrentSurface}
+                      riseFt={chipLab.riseFt}
+                      riseSource={chipLab.riseSource}
                       onAim={aimChip}
                       aim={chipAim && chipAim.shot === chipShotKey ? chipAim : null}
                       terrain={shotStrategy?.terrain ?? null}
