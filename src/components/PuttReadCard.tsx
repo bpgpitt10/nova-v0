@@ -1,7 +1,7 @@
 import { BASELINE_STIMP, feetInches, readPutt } from '../liveCaddie/puttRead'
 import './PuttReadCard.css'
 
-export type PuttElevationSource = 'green map' | 'GSPro HUD'
+export type PuttElevationSource = 'green map' | 'GSPro' | 'GSPro HUD'
 
 type Props = {
   distanceFt: number | null
@@ -64,7 +64,7 @@ export default function PuttReadCard({ distanceFt, riseIn, stimp }: Props) {
             )}
       </div>
 
-      <p className="putt-read__note">Pace only. You own the aim.</p>
+      <p className="putt-read__note">Pace only. You own the read.</p>
     </section>
   )
 }
