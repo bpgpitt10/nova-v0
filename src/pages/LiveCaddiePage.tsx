@@ -112,6 +112,10 @@ import {
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
+import PuttReadCard from '../components/PuttReadCard'
+import ChipOptionsCard from '../components/ChipOptionsCard'
+import { CHIP_ZONE_YDS, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
@@ -358,6 +362,8 @@ export default function LiveCaddiePage() {
   const [showPracticeShots, setShowPracticeShots] = useState(false)
   const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [armedClub, setArmedClub] = useState<string | null>(null)
+  const [chipLabOn] = useState(() => isChipLabEnabled())
+  const [armedChip, setArmedChip] = useState<ChipType | null>(null)
   // Clicking a club only previews it; Arm commits (fills, then aims in GSPro).
   const [previewClub, setPreviewClub] = useState<string | null>(null)
   const [armPhase, setArmPhase] = useState<'idle' | 'filling' | 'aiming' | 'armed'>('idle')
@@ -1135,6 +1141,64 @@ export default function LiveCaddiePage() {
   const authoritativeGsproSurface = liveMatchesHole ? liveSnapshot?.surface ?? null : null
   const normalizedCurrentSurface = (authoritativeGsproSurface ?? surface).trim().toLowerCase()
   const isGreenSurface = normalizedCurrentSurface === 'green'
+  // On the green: the putt's length and its rise or fall, ball to hole, for the putt card. This is
+  // never the tee read: the HUD's tee-to-pin height says nothing about a putt. Until GSPro's putting
+  // HUD (or the sign over the pin) is confirmed to give ball-to-hole height, only the green map does.
+  const puttDistanceFt = isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) * 3 : null
+  const puttMapRiseIn = (() => {
+    if (!isGreenSurface || !greenDetail || !pinEstimate) return null
+    const at = sampleCourseGreenElevation(greenDetail, ball)
+    const hole = sampleCourseGreenElevation(greenDetail, pinEstimate)
+    return at != null && hole != null ? (hole - at) * 12 : null
+  })()
+  const puttRiseIn = puttMapRiseIn
+  const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : null
+  // Chip lab (on unless ?chipLab=off): around the green, the four chip options in place of the club pick.
+  const chipDistanceYds = !isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) : null
+  const chipLab = chipLabOn && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
+    ? (() => {
+        const dx = (pinEstimate[0] - ball[0]) / chipDistanceYds
+        const dy = (pinEstimate[1] - ball[1]) / chipDistanceYds
+        const along = (carry: number): CoursePointYds => [ball[0] + dx * carry, ball[1] + dy * carry]
+        const surfaceAt = (carry: number): LandingSurface => {
+          const kind = classifyPoint(hole, along(carry)).kind
+          if (kind === 'green' || kind === 'fairway' || kind === 'rough' || kind === 'deep-rough' || kind === 'bunker') return kind
+          if (kind === 'tee') return 'fairway'
+          if (kind === 'water' || kind === 'penalty') return 'water'
+          return 'other'
+        }
+        const pinElevation = greenDetail ? sampleCourseGreenElevation(greenDetail, pinEstimate) : null
+        const gradeToHole = (carry: number) => {
+          if (!greenDetail || pinElevation == null) return null
+          const at = sampleCourseGreenElevation(greenDetail, along(carry))
+          const runFt = (chipDistanceYds - carry) * 3
+          return at != null && runFt > 1 ? (pinElevation - at) / runFt : null
+        }
+        let greenStarts: number | null = null
+        for (let carry = 0; carry <= chipDistanceYds; carry += 0.5) {
+          if (surfaceAt(carry) === 'green') { greenStarts = carry; break }
+        }
+        const green = { courseType: greenConditions?.courseType ?? 'medium', greenFirmness: greenConditions?.greenFirmness ?? 'medium', stimp: greenConditions?.stimp ?? null }
+        const fairway = { courseType: fairwayConditions?.courseType ?? green.courseType, fairwayFirmness: fairwayConditions?.fairwayFirmness ?? 'medium' }
+        const fromRough = normalizedCurrentSurface.includes('rough')
+        const options = chipOptions(
+          chipDistanceYds,
+          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry) }),
+          { green, fairway, fromRough },
+          greenStarts == null ? null : chipDistanceYds - greenStarts,
+        )
+        const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[green.courseType]
+        const conditions = `${grass} · ${green.greenFirmness} green, ${fairway.fairwayFirmness} fairway`
+          + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}`
+        const armedOption = options.find((o) => o.type === armedChip) ?? null
+        return {
+          options,
+          conditions,
+          landingPoint: armedOption ? along(armedOption.flight.carryYds) : null,
+          hasGreenMap: Boolean(greenDetail),
+        }
+      })()
+    : null
   const greenGuidance = !isGreenSurface && hole && greenDetail && trustedLivePin
     && liveMatchesHole && liveSnapshot?.ballSource !== 'world-provisional'
     && Math.hypot(ball[0] - trustedLivePin[0], ball[1] - trustedLivePin[1]) <= 260
@@ -2382,11 +2446,21 @@ export default function LiveCaddiePage() {
             {loadError ? <ScreenOnlyCaddie companionConnected={companionStatus?.gspro.status === 'connected'} /> : null}
           </section>
         ) : isGreenSurface ? (
-          <section className="live-empty-state">
-            <span className="live-kicker">ON GREEN</span>
-            <h1>Caddie paused.</h1>
-            <p>Looper is recording the putt sequence and hole completion for scoring, but it is not calculating a club, aim, wind or lie recommendation.</p>
-          </section>
+          <PuttReadCard
+            distanceFt={puttDistanceFt}
+            riseIn={puttRiseIn}
+            stimp={greenConditions?.stimp ?? null}
+            elevationSource={puttElevationSource}
+          />
+        ) : chipLab && chipDistanceYds != null ? (
+          <ChipOptionsCard
+            distanceYds={chipDistanceYds}
+            options={chipLab.options}
+            armed={armedChip}
+            onArm={setArmedChip}
+            conditions={chipLab.conditions}
+            hasGreenMap={chipLab.hasGreenMap}
+          />
         ) : holdFirstTeeRecommendation ? (
           <section className="live-empty-state" data-recommendation-gate="first-tee-capture">
             <span className="live-kicker">PROVISIONAL TEE · NOT YET MEASURED</span>
@@ -2645,6 +2719,7 @@ export default function LiveCaddiePage() {
                 <LiveCaddieMap
                   hole={hole}
                   ball={ball}
+                  landingPoint={chipLab?.landingPoint ?? null}
                   target={isShotStrategy && shotStrategy ? shotStrategy.target : target}
                   pinEstimate={pinEstimate}
                   candidate={isShotStrategy || !inspectedCandidate ? null
