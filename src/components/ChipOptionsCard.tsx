@@ -127,7 +127,7 @@ export default function ChipOptionsCard({
       </section>
 
       {onAim && current ? (
-        <>
+        <div className="chip-options__arm-wrap">
           <button
             type="button"
             className={`chip-options__arm${aimedThis && aim?.state === 'aimed' ? ' is-aimed' : ''}`}
@@ -140,7 +140,7 @@ export default function ChipOptionsCard({
           </button>
           {/* Always there, so a message never moves the button. */}
           <p className="chip-options__arm-note">{aimedThis && aim && aim.state !== 'aiming' ? aim.message : ''}</p>
-        </>
+        </div>
       ) : null}
 
       <aside className="chip-conditions" aria-label="What is moving this chip">

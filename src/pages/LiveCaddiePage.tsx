@@ -1740,11 +1740,7 @@ export default function LiveCaddiePage() {
     const fail = (message: string) => setChipAim({ shot: chipShotKey, type, state: 'not-aimed', message })
     const lieOnly = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
     const lieRead = { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (chipBreak?.[type] ?? 0) }
-    // Straight at the pin is where GSPro already points on a new shot: nothing to click.
-    if (Math.abs(lieRead.aimLeftFt) < 1) {
-      setChipAim({ shot: chipShotKey, type, state: 'aimed', message: 'Aim is straight at the pin, where GSPro already points. Nothing to move (reset GSPro’s aim if you changed it).' })
-      return
-    }
+    // Always click, even for a straight line: GSPro's aim may not be on the pin.
     if (!trustedLivePin) return fail("Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot).")
     if (!companionCanAim) {
       return fail(companionStatus?.gspro.status === 'connected'

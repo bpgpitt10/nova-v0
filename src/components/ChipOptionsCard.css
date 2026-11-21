@@ -96,16 +96,33 @@
   background: rgba(249, 115, 22, 0.12);
 }
 
-.chip-row.is-avoid,
 .chip-row.is-not-needed {
   opacity: 0.5;
+}
+
+/* Avoid: light diagonal crosshatch and dim text, so it reads "don't" at a glance. */
+.chip-row.is-avoid {
+  border-color: rgba(220, 110, 90, 0.28);
+  background:
+    repeating-linear-gradient(45deg, rgba(220, 110, 90, 0.13) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-45deg, rgba(220, 110, 90, 0.13) 0 1px, transparent 1px 9px),
+    rgba(0, 0, 0, 0.18);
+  color: #7d8a80;
+}
+
+.chip-row.is-avoid .chip-row__num,
+.chip-row.is-avoid .chip-row__name small {
+  color: #6b776d;
+}
+
+.chip-row.is-avoid .chip-row__tag {
+  color: #d98a78;
 }
 
 .chip-row.is-short {
   opacity: 0.85;
 }
 
-.chip-row.is-shown.is-avoid,
 .chip-row.is-shown.is-not-needed,
 .chip-row.is-shown.is-short {
   opacity: 1;
@@ -175,7 +192,7 @@
   border-radius: 12px;
   background: rgba(7, 16, 10, 0.5);
   color: #e7efe4;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .chip-conditions__title {
@@ -183,7 +200,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 9px 14px;
   background: rgba(249, 115, 22, 0.1);
 }
 
@@ -202,14 +219,14 @@
 .chip-conditions__row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 12px;
-  padding: 11px 14px;
+  gap: 1px 12px;
+  padding: 7px 14px;
   border-top: 1px solid rgba(49, 66, 51, 0.6);
 }
 
 .chip-conditions__row span {
   display: grid;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -228,7 +245,7 @@
 .chip-conditions__row em {
   grid-column: 1 / -1;
   color: #cfd8cd;
-  font-size: 13px;
+  font-size: 12.5px;
   font-style: normal;
 }
 
@@ -239,7 +256,7 @@
 
 .chip-conditions__foot {
   margin: 0;
-  padding: 10px 14px 12px;
+  padding: 8px 14px 10px;
   border-top: 1px solid rgba(49, 66, 51, 0.6);
   color: #8e9b90;
   font-size: 12px;
@@ -282,7 +299,7 @@
 }
 
 .chip-options__arm-note {
-  min-height: 54px;
+  min-height: 36px;
   margin: 6px 0 0;
   color: #8e9b90;
   font-size: 12.5px;
@@ -290,12 +307,14 @@
 }
 
 /* Same spot as the normal card's arm button: bottom of the left column, never moving. */
-.live-decision-card > .chip-options__arm {
+/* Button and note travel together in the card's arm row (the strategy grid has no note row,
+   and a stray grid area made the browser add tracks and squeeze the card). */
+.live-decision-card > .chip-options__arm-wrap {
   grid-area: arm;
   align-self: end;
+  min-width: 0;
 }
 
-.live-decision-card > .chip-options__arm-note {
-  grid-area: note;
-  align-self: start;
+.chip-row.is-shown.is-avoid {
+  border-color: #f97316;
 }
