@@ -256,6 +256,9 @@ jobs:
       - name: Trees in the flight path
         run: node tools/test-flight-trees.mjs
 
+      - name: Punch-out mode in the trees
+        run: node tools/test-punch-out.mjs
+
       - name: Bag is range data only
         run: node tools/test-range-only-bag.mjs
 

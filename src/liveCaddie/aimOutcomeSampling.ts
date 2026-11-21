@@ -1,4 +1,4 @@
-import { tacticalKindNear } from '../courseGeometry/tacticalClassification'
+import { tacticalKindNear, woodsNear } from '../courseGeometry/tacticalClassification'
 import { TACTICAL_SURFACE_SEMANTICS } from '../courseGeometry/semantics'
 import type {
   CourseHoleGeometry,
@@ -36,7 +36,7 @@ export type ModeledAimSample = {
   /** The player's stock rollout for this sample, before any surface/slope scaling. */
   stockRollYds?: number
   /** The flight ran into trees: right after launch, or on the way down. The landing is where it hit. */
-  flightTag?: 'trees-early' | 'trees-late'
+  flightTag?: FlightTreeTag
   kind: CourseSurfaceClassification
   /** Exact geometric state retained for later SG/value evaluation. */
   state: DecisionLandingState
@@ -210,26 +210,56 @@ const summarizeSurfaceKinds = (
  *   point alone is usually an outline brushing the line).
  * - Descent: 8 and 16 yd before touchdown, where the ball is under 15 yd high
  *   (d × tan(descent) < 15): woods there = it came down through the trees.
- * Woods = what the tactical classifier calls deep rough (mapped woods/scrub);
- * mapped surfaces (tee, fairway, rough) are never woods.
+ * Woods = mapped trees (woods/scrub context) whatever the surface under them,
+ * or what the tactical classifier calls deep rough.
  */
 const LAUNCH_CHECK_YDS = [12, 24, 36] as const
 const DESCENT_CHECK_YDS = [8, 16] as const
 const TREE_HEIGHT_YDS = 15
+/**
+ * Mid-flight (Georgia Golf Club 2 and 9, 20 Nov: a tee shot through a stand of
+ * pines to the next fairway passed both checks above). Between them, every
+ * MID_STEP_YDS the ball's height is compared with the canopy: two points in a row
+ * inside mapped trees with the ball below CANOPY_YDS = it flew into them. No
+ * canopy heights are in the course packages yet, so one height for all trees,
+ * set high on purpose (tall pines run 80-100 ft): the caddie should not
+ * recommend threading a stand.
+ */
+const CANOPY_YDS = 27
+const MID_STEP_YDS = 8
+/** When the club has no measured peak height. */
+const DEFAULT_PEAK_YDS = 28
+/** Share of the carry at which the ball peaks (a little past halfway for full shots). */
+const APEX_SHARE = 0.56
+
+export type FlightTreeTag = 'trees-early' | 'trees-mid' | 'trees-late'
+
+/** Height of the ball (yd above the launch) `d` yd along a flight of `carry` yd. */
+export const ballHeightAt = (d: number, carry: number, peakYds: number, descentDeg: number | null) => {
+  const apex = carry * APEX_SHARE
+  if (d <= apex) return peakYds * (1 - ((apex - d) / apex) ** 2)
+  // Fall from the apex so the arrival angle matches the club's descent where known.
+  const fall = carry - apex
+  const tan = typeof descentDeg === 'number' && descentDeg > 0 ? Math.tan((descentDeg * Math.PI) / 180) : null
+  const power = tan ? Math.min(4, Math.max(1.2, (tan * fall) / peakYds)) : 2
+  return peakYds * (1 - ((d - apex) / fall) ** power)
+}
 
 export const flightBlockedAt = (
   hole: CourseHoleGeometry,
   ball: CoursePointYds,
   carryLanding: CoursePointYds,
   descentDeg: number | null,
-): { point: CoursePointYds; tag: 'trees-early' | 'trees-late' } | null => {
+  peakHeightYds?: number | null,
+): { point: CoursePointYds; tag: FlightTreeTag } | null => {
   const dx = carryLanding[0] - ball[0]
   const dy = carryLanding[1] - ball[1]
   const carry = Math.hypot(dx, dy)
   if (carry < 50) return null
   const ux = dx / carry, uy = dy / carry
   const at = (d: number): CoursePointYds => [ball[0] + ux * d, ball[1] + uy * d]
-  const woods = (p: CoursePointYds) => tacticalKindNear(hole, p) === 'deep-rough'
+  // Trees whatever the ground under them (trees on mapped rough used to be missed), or mapped deep rough/scrub.
+  const woods = (p: CoursePointYds) => woodsNear(hole, p) || tacticalKindNear(hole, p) === 'deep-rough'
   const early = LAUNCH_CHECK_YDS.filter((d) => d < carry - 10).map((d) => ({ d, hit: woods(at(d)) }))
   if (early.filter((e) => e.hit).length >= 2) {
     return { point: at(early.find((e) => e.hit)!.d), tag: 'trees-early' }
@@ -241,6 +271,14 @@ export const flightBlockedAt = (
       const p = at(carry - back)
       if (woods(p)) return { point: p, tag: 'trees-late' }
     }
+  }
+  const peak = typeof peakHeightYds === 'number' && peakHeightYds > 5 ? peakHeightYds : DEFAULT_PEAK_YDS
+  let previous: number | null = null
+  for (let d = LAUNCH_CHECK_YDS[LAUNCH_CHECK_YDS.length - 1] + MID_STEP_YDS; d < carry - DESCENT_CHECK_YDS[0]; d += MID_STEP_YDS) {
+    const low = ballHeightAt(d, carry, peak, descentDeg) < CANOPY_YDS
+    const inTrees = low && woodsNear(hole, at(d))
+    if (inTrees && previous !== null) return { point: at(previous), tag: 'trees-mid' }
+    previous = inTrees ? d : null
   }
   return null
 }
@@ -276,7 +314,7 @@ export const sampleModeledAimDistribution = ({
   /** Optional destination-terrain transform applied after baseline rollout. */
   landingTransform?: LandingTransform
   /** Check the flight against woods right after launch and on the way down (spec piece 3). */
-  flightCheck?: Readonly<{ descentDeg: number | null }> | null
+  flightCheck?: Readonly<{ descentDeg: number | null; peakHeightYds?: number | null }> | null
   /**
    * The player's own shot shape (empiricalShotCore). When present these draws
    * replace the bell curve; carry/lateral sigmas still size the map's rings.
@@ -336,7 +374,7 @@ export const sampleModeledAimDistribution = ({
   const samples = draws.map(({ carryYds: carry, totalYds: total, offlineYds: offline }): ModeledAimSample => {
     const carryLanding = addScaled(ball, forward, carry, right, offline)
     const baselineLanding = addScaled(ball, forward, total, right, offline)
-    const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg) : null
+    const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg, flightCheck.peakHeightYds) : null
     if (blocked) {
       const classification = { kind: 'deep-rough' as const, surfaceId: null, confidence: 'medium' as const }
       return {
