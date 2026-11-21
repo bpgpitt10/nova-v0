@@ -5,13 +5,20 @@ import { createServer } from 'vite'
 
 const server = await createServer({ appType: 'custom', logLevel: 'silent', server: { middlewareMode: true } })
 try {
-  const { chipOptions, chipFlight } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')
+  const { chipOptions, chipFlight, levelCarryFor } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')
   const setting = { green: { courseType: 'medium', greenFirmness: 'medium', stimp: 11 }, fairway: { courseType: 'medium', fairwayFirmness: 'medium' }, fromRough: false }
   const line = (greenStarts, before, grade) => (carry) => ({ surface: carry < greenStarts ? before : 'green', gradeToHole: grade })
   const byType = (options) => Object.fromEntries(options.map((o) => [o.type, o]))
 
   // GSPro's own flights come back at the measured carries.
   assert.ok(Math.abs(chipFlight('pitch', 31.71).ballSpeedMph - 43.0) < 0.05)
+  // Landing above the ball: a longer level carry (2.5 ft up on a 29 yd pitch, about 30.5); below: shorter.
+  const pitchDescent = chipFlight('pitch', 29).landing.descentDeg
+  const up = levelCarryFor(29, pitchDescent, 2.5)
+  assert.ok(up > 30 && up < 31.2, `uphill landing ${up}`)
+  assert.ok(levelCarryFor(29, pitchDescent, -2.5) < 29 - 0.8)
+  assert.ok(levelCarryFor(29, pitchDescent, 15) > 38, 'five yards up is a much bigger swing')
+  assert.equal(levelCarryFor(29, pitchDescent, null), 29)
   assert.ok(Math.abs(chipFlight('bump', 10.98).landing.descentDeg - 11.27) < 0.05)
 
   // Open green, gentle upslope (Briarwood): every option finishes at the hole. Landing on the green

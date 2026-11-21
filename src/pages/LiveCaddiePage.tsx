@@ -1204,6 +1204,17 @@ export default function LiveCaddiePage() {
           ? hudReading.elevationFt : null
         const mapRiseFt = pinElevation != null && ballTerrain ? pinElevation - ballTerrain.elevationFt : null
         const riseFt = hudRiseFt ?? mapRiseFt
+        // GSPro's green against Looper's map on the same line: where the map is steeper than GSPro's
+        // green (Royal New Kent 2, 21 Nov: 2.5 times), its break is too big by about the same share.
+        const heightScale = hudRiseFt != null && mapRiseFt != null && Math.abs(mapRiseFt) >= 0.3 && Math.sign(hudRiseFt) === Math.sign(mapRiseFt)
+          ? Math.min(1.5, Math.max(0.35, hudRiseFt / mapRiseFt)) : 1
+        // How far above (+) the ball the landing spot is: the map's shape, held to GSPro's height;
+        // with no map there, GSPro's height spread evenly along the line.
+        const landingRiseFt = (carry: number): number | null => {
+          const z = greenDetail ? sampleCourseGreenElevation(greenDetail, along(carry)) : null
+          if (z != null && ballTerrain) return (z - ballTerrain.elevationFt) * heightScale
+          return riseFt != null ? riseFt * (carry / chipDistanceYds) : null
+        }
         const gradeToHole = (carry: number) => {
           // No green map: GSPro's height spread evenly along the line is the best there is.
           if ((!greenDetail || pinElevation == null) && hudRiseFt != null) return hudRiseFt / (chipDistanceYds * 3)
@@ -1231,7 +1242,7 @@ export default function LiveCaddiePage() {
         }
         const options = chipOptions(
           chipDistanceYds,
-          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry) }),
+          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry), riseFt: landingRiseFt(carry) }),
           { green, fairway, fromRough, fromSand: chipFromSand, lieUpDownDeg: chipLieUpDownDeg },
           greenStarts == null ? null : chipDistanceYds - greenStarts,
         )
@@ -1253,10 +1264,7 @@ export default function LiveCaddiePage() {
           landingPoint: shown ? along(shown.flight.carryYds) : null,
           hasGreenMap: Boolean(greenDetail),
           riseFt,
-          // GSPro's green against Looper's map on the same line: where the map is steeper than GSPro's
-          // green (Royal New Kent 2, 21 Nov: 2.5 times), its break is too big by about the same share.
-          breakScale: hudRiseFt != null && mapRiseFt != null && Math.abs(mapRiseFt) >= 0.3 && Math.sign(hudRiseFt) === Math.sign(mapRiseFt)
-            ? Math.min(1.5, Math.max(0.35, hudRiseFt / mapRiseFt)) : 1,
+          breakScale: heightScale,
           riseSource: hudRiseFt != null ? 'GSPro' as const : mapRiseFt != null ? 'green map' as const : null,
         }
       })()

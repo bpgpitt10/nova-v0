@@ -111,6 +111,8 @@ export type LandingProbe = (carryYds: number) => Readonly<{
   gradeToHole: number | null
   /** Sand or water within a few yards either side of the landing spot, when there is any. */
   sideTrouble?: LandingSurface | null
+  /** Height of the landing spot above (+) or below (-) the ball, feet, when known. */
+  riseFt?: number | null
 }>
 
 export type ChipSetting = Readonly<{
@@ -147,7 +149,28 @@ export type ChipOption = Readonly<{
   reason: string | null
   /** From sand: the clean-lie carry of the swing this takes ("swing it like a 27 yd pitch"). */
   swingLikeYds: number | null
+  /** Height of the landing spot above (+) or below (-) the ball, feet; null when not known. */
+  landingRiseFt: number | null
+  /** The carry this swing flies on level ground: more than `flight.carryYds` when landing uphill. */
+  levelCarryYds: number
+  /** The ball as it leaves the lie for that swing (ball data). */
+  swingFlight: ChipFlight
 }>
+
+/**
+ * The level-ground carry of a flight that lands `carryYds` out on ground `riseFt` above the ball.
+ * The flight is taken as a parabola through the ball whose slope at its level landing is the shot's
+ * measured descent: landing higher cuts it off sooner, so it needs a longer level carry (and lower,
+ * a shorter one). 2.5 ft up on a 29 yd pitch: about 30.5. Capped where the flight can't climb that high.
+ */
+export const levelCarryFor = (carryYds: number, descentDeg: number, riseFt: number | null | undefined) => {
+  if (riseFt == null || !Number.isFinite(riseFt) || Math.abs(riseFt) < 0.1 || !(carryYds > 0)) return carryYds
+  const slope = Math.tan((descentDeg * Math.PI) / 180)
+  const d = carryYds * 3
+  const denom = slope * d - riseFt
+  if (denom <= slope * d * 0.25) return carryYds * 1.6
+  return Math.min(carryYds * 1.6, Math.max(carryYds * 0.6, (slope * d * d) / denom / 3))
+}
 
 /** The raw (before the sand) ball speed that leaves the sand at `afterMph`. */
 const rawSpeedFromSand = (afterMph: number) => {
@@ -354,6 +377,10 @@ export const chipOptions = (
         ? `Out of the bunker: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past its edge.`
         : `Carries the ${SURFACE_NAME[trouble.surface]}: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past it.`
       : null
+    const landingRiseFt = probe(s.flight.carryYds).riseFt ?? null
+    const levelCarryYds = levelCarryFor(s.flight.carryYds, s.flight.landing.descentDeg, landingRiseFt)
+    const swingFlight = Math.abs(levelCarryYds - s.flight.carryYds) < 0.05 ? s.flight
+      : chipFlight(s.type, levelCarryYds, (setting.lieUpDownDeg ?? 0) * upDownLieShare(CHIP_LAUNCH_DEG[s.type]))
     return {
       type: s.type,
       launchDeg: CHIP_LAUNCH_DEG[s.type],
@@ -364,7 +391,10 @@ export const chipOptions = (
       verdict,
       reason: carryNote && verdict !== 'avoid' ? (reason ? `${reason} ${carryNote}` : carryNote) : reason,
       swingLikeYds: setting.fromSand && verdict !== 'avoid'
-        ? carryForSpeed(s.type, rawSpeedFromSand(s.flight.ballSpeedMph)) : null,
+        ? carryForSpeed(s.type, rawSpeedFromSand(swingFlight.ballSpeedMph)) : null,
+      landingRiseFt,
+      levelCarryYds,
+      swingFlight,
     }
   })
 }

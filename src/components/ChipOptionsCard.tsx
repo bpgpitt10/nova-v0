@@ -47,6 +47,10 @@ const TAG: Readonly<Record<ChipOption['verdict'], string | null>> = {
 const BREAK_STRAIGHT_FT = 0.25
 
 const yd = (value: number) => (value < 10 ? value.toFixed(1) : String(Math.round(value)))
+const heightText = (ft: number) => {
+  const a = Math.abs(ft)
+  return a >= 3 ? `${Math.round(a)} ft` : `${Math.floor(a)} ft ${Math.round((a % 1) * 12)} in`.replace(/^0 ft /, '')
+}
 const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs(value) / 3)} yd` : `${Math.max(1, Math.round(Math.abs(value)))} ft`)
 
 /**
@@ -69,6 +73,10 @@ export default function ChipOptionsCard({
   const tagFor = (option: ChipOption) => (edgeUnclear(option) ? 'Edge unclear' : TAG[option.verdict] ?? '')
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
+  // Landing a yard or more off level changes the swing: say it like sand does (Brian, 21 Nov).
+  const heightCounts = current != null && Math.abs(current.levelCarryYds - current.flight.carryYds) >= 1
+  const swingYds = current == null ? null
+    : current.swingLikeYds ?? (heightCounts ? current.levelCarryYds : null)
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
   const lieOnly = current ? chipLieRead(current, distanceYds, lieLeftRightDeg, lieUpDownDeg) : null
   const breakFt = current ? breakLeftFt?.[current.type] ?? null : null
@@ -85,12 +93,19 @@ export default function ChipOptionsCard({
     <>
       <section className="chip-options" aria-label="Chip options">
         <div className="chip-options__head">
-          {current?.swingLikeYds != null ? (
-            // From sand the number to play is the swing, not the distance: big and yellow, like a putt's Plays like.
+          {swingYds != null && current ? (
+            // From sand, or landing well above or below the ball, the number to play is the swing, not
+            // the distance: big and yellow, like a putt's Plays like.
             <div className="chip-options__swing">
               <span>Swing for</span>
-              <b>{Math.round(current.swingLikeYds)} YD CARRY</b>
-              <small>{Math.round(distanceYds)} yd to the pin &middot; the sand takes it down to {yd(current.flight.carryYds)}</small>
+              <b>{Math.round(swingYds)} YD CARRY</b>
+              <small>
+                {Math.round(distanceYds)} yd to the pin
+                {heightCounts && current.landingRiseFt != null
+                  ? ` · lands ${heightText(current.landingRiseFt)} ${current.landingRiseFt > 0 ? 'above' : 'below'} you`
+                  : ''}
+                {current.swingLikeYds != null ? ` · the sand takes it down to ${yd(current.flight.carryYds)}` : ` · flies ${yd(current.flight.carryYds)} on this ground`}
+              </small>
             </div>
           ) : (
             <div className="chip-options__distance">{Math.round(distanceYds)} YDS</div>
@@ -136,7 +151,11 @@ export default function ChipOptionsCard({
             </p>
             {current.swingLikeYds != null ? (
               <p className="chip-options__reason">
-                From sand: make the swing of a clean {Math.round(current.swingLikeYds)} yd carry {CHIP_LABEL[current.type].toLowerCase()}. The sand takes it down to {yd(current.flight.carryYds)}.
+                From sand: make the swing of a clean {Math.round(current.swingLikeYds)} yd carry {CHIP_LABEL[current.type].toLowerCase()}. The sand takes it down to {yd(current.flight.carryYds)}{heightCounts ? ` (it lands ${current.landingRiseFt != null && current.landingRiseFt > 0 ? 'uphill' : 'downhill'}, in that already)` : ''}.
+              </p>
+            ) : heightCounts && current.landingRiseFt != null ? (
+              <p className="chip-options__reason">
+                Lands {current.landingRiseFt > 0 ? 'uphill' : 'downhill'}: make the swing of a {Math.round(current.levelCarryYds)} yd carry on level ground. {current.landingRiseFt > 0 ? 'The slope catches it' : 'It drops'} at {yd(current.flight.carryYds)}.
               </p>
             ) : null}
             {edgeUnclear(current)
@@ -229,7 +248,7 @@ export default function ChipOptionsCard({
         <div className="chip-conditions__row">
           <span>Ball data<small>to hit this chip</small></span>
           <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
-          <em>{current ? `${Math.round(current.flight.ballSpeedMph)} mph · ${Math.round(current.flight.spinRpm / 50) * 50} rpm (typical spin; yours may differ)` : '—'}</em>
+          <em>{current ? `${Math.round(current.swingFlight.ballSpeedMph)} mph · ${Math.round(current.swingFlight.spinRpm / 50) * 50} rpm (typical spin; yours may differ)` : '—'}</em>
         </div>
         <p className="chip-conditions__foot">
           {conditions}.{hasGreenMap ? ' The run uses the green’s slope to the hole.' : ' No green map here, so the run is for a level green and there’s no break.'}
