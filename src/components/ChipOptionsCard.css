@@ -308,6 +308,18 @@
   font-weight: 700;
 }
 
+.chip-conditions__row.is-modeled span,
+.chip-conditions__row.is-modeled b,
+.chip-conditions__row.is-modeled em {
+  color: #7d8a80;
+}
+
+.chip-conditions__row.is-modeled span,
+.chip-conditions__row.is-modeled b {
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .chip-conditions__notes {
   grid-column: 1 / -1;
   display: grid;

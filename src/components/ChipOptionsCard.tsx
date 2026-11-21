@@ -7,8 +7,8 @@ type Props = {
   /** The chip whose landing is on the map. */
   shown: ChipType | null
   onShow: (type: ChipType) => void
-  /** e.g. "Bermuda · medium green, firm fairway · stimp 12" */
-  conditions: string
+  /** e.g. "Bermuda · medium green, firm fairway · stimp 12". Not shown on the card (the player set them). */
+  conditions?: string
   /** False: no green map here, so no break. */
   hasGreenMap: boolean
   fromSand?: boolean
@@ -57,7 +57,7 @@ const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs
  * Tap a row to put its landing on the map.
  */
 export default function ChipOptionsCard({
-  distanceYds, options, shown, onShow, conditions, hasGreenMap, fromSand = false,
+  distanceYds, options, shown, onShow, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
   pinNotes = [], greenEdgeUncertain = false, riseFt = null, riseSource = null, breakLeftFt = null,
 }: Props) {
@@ -233,15 +233,12 @@ export default function ChipOptionsCard({
             <ul className="chip-conditions__notes">{pinNotes.map((note) => <li key={note}>{note}</li>)}</ul>
           </div>
         ) : null}
-        <div className="chip-conditions__row">
-          <span>Ball data</span>
+        {/* The model's assumption, not a measurement: faded, and said so. */}
+        <div className="chip-conditions__row is-modeled">
+          <span>Modeled ball data</span>
           <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
-          <em>{current ? `${Math.round(current.swingFlight.ballSpeedMph)} mph · ${Math.round(current.swingFlight.spinRpm / 50) * 50} rpm (typical spin; yours may differ)` : '—'}</em>
+          <em>{current ? `${Math.round(current.swingFlight.ballSpeedMph)} mph · ${Math.round(current.swingFlight.spinRpm / 50) * 50} rpm` : '—'}</em>
         </div>
-        <p className="chip-conditions__foot">
-          {conditions}.{hasGreenMap ? ' The run uses the green’s slope to the hole.' : ' No green map here, so the run is for a level green and there’s no break.'}
-          {' '}Ground short of the green isn’t mapped for slope.
-        </p>
       </aside>
     </>
   )
