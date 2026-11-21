@@ -524,10 +524,14 @@ export const installedCourseCandidates = (
   return keys
 }
 
-const installedCourseKeysFor = async (courseId: CourseId): Promise<string[]> => {
+/** This course's installs in the player's GSPro, and whether the companion answered at all. */
+const installedCourseKeysFor = async (courseId: CourseId): Promise<{ keys: string[]; libraryRead: boolean }> => {
   const entry = getCourseCatalogEntry(courseId)
   const library = await readLooperCompanionCourseLibrary().catch(() => null)
-  return installedCourseCandidates([entry.name, ...courseGsproAliases(entry)], library?.courses ?? [])
+  return {
+    keys: installedCourseCandidates([entry.name, ...courseGsproAliases(entry)], library?.courses ?? []),
+    libraryRead: Array.isArray(library?.courses),
+  }
 }
 
 /**
@@ -608,7 +612,7 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
   let gsproElsewhere: string | null = null
   let candidates: string[] = []
   if (!registration) {
-    const installed = await installedCourseKeysFor(courseId)
+    const { keys: installed, libraryRead } = await installedCourseKeysFor(courseId)
     const gsproKeyIsThisCourse = courseKey != null && (installed.length === 0
       || installed.some((k) => sameName(k, courseKey!))
       || installedCourseCandidates([entry.name, ...courseGsproAliases(entry)], [{ courseKey, courseName: keyAsName(courseKey) }]).length > 0)
@@ -616,6 +620,11 @@ const loadContext = async (courseId: CourseId, courseKey: string | null): Promis
     else {
       if (courseKey) gsproElsewhere = courseKey
       candidates = installed
+    }
+    // The companion listed the library and this course isn't in it: not installed, not "start the
+    // companion" (Brian, 21 Nov: Quail Hollow with the companion connected).
+    if (candidates.length === 0 && libraryRead) {
+      return { context: null, status: { state: 'gkd-not-found', courseKey: entry.name } }
     }
     if (candidates.length === 0) return { context: null, status: { state: 'no-registration', courseName: entry.name } }
   }
