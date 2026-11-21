@@ -49,8 +49,6 @@ const CLUBS: readonly Club[] = [
 const GRASS = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' } as const
 const LIE_NAMES: Record<InsightLie, string> = { fairway: 'Fairway', rough: 'Rough', 'deep-rough': 'Deep rough', sand: 'Sand' }
 const LEVELS = ['soft', 'medium', 'firm'] as const
-/** Every shot is on stimp 11: Looper's green model does not change with stimp yet. */
-const STIMP = 11
 /** Show how everyone is doing once there are enough reads for it to mean something. */
 const STATS_FROM_READS = 20
 
@@ -107,6 +105,8 @@ const rollLie = (): InsightLie => often<InsightLie>([
   [0.3, () => 'fairway'], [0.3, () => 'rough'], [0.22, () => 'deep-rough'], [0.18, () => 'sand'],
 ])
 const rollGrass = () => often<(typeof LEVELS)[number]>([[0.35, () => 'soft'], [0.45, () => 'medium'], [0.2, () => 'firm']])
+/** Green speed: mostly 10 to 12, sometimes a slow 9 or a tournament 13. */
+const rollStimp = () => often([[0.1, () => 9], [0.25, () => 10], [0.3, () => 11], [0.25, () => 12], [0.1, () => 13]])
 const rollFirmness = () => often<(typeof LEVELS)[number]>([[0.25, () => 'soft'], [0.5, () => 'medium'], [0.25, () => 'firm']])
 
 /**
@@ -128,6 +128,7 @@ const makeScenario = (): Scenario => {
       elevationFt: rollElevationYds() * 3,
       altitudeFt: rollAltitude(),
       windMph: rollWind(),
+      stimp: rollStimp(),
       windFromDeg: Math.round((Math.random() * 360) / 15) * 15,
     }
     // The pin is wherever this club normally finishes: find the carry first so the ball lands on the green.
@@ -233,10 +234,11 @@ export default function InsightsReadQuiz() {
       { key: 'altitude', change: { altitudeFt: conditions.altitudeFt } },
       { key: 'elevation', change: { elevationFt: conditions.elevationFt } },
       { key: 'green', change: { grass: conditions.grass, firmness: conditions.firmness } },
+      { key: 'stimp', change: { stimp: conditions.stimp } },
     ]
     let running: InsightConditions = INSIGHT_BASELINE
     let before = finishOf(running, baseYds, club.swing)
-    const worth: Record<string, { yards: number; side: number }> = { stimp: { yards: 0, side: 0 } }
+    const worth: Record<string, { yards: number; side: number }> = {}
     for (const layer of layers) {
       running = { ...running, ...layer.change }
       const after = finishOf(running, baseYds, club.swing)
@@ -289,7 +291,7 @@ export default function InsightsReadQuiz() {
       actualSideYds: answer.finish.sideYds,
       guessYds: distance,
       guessSideYds: side,
-      conditions: { ...conditions, stimp: STIMP },
+      conditions,
     }).then((ok) => {
       if (ok) void loadInsightReadStats().then((found) => { if (found) setStats(found) })
     })
@@ -330,7 +332,7 @@ export default function InsightsReadQuiz() {
     { key: 'altitude', name: 'Altitude', value: conditions.altitudeFt === 0 ? 'Sea level' : `${conditions.altitudeFt.toLocaleString('en-US')} ft` },
     { key: 'elevation', name: 'Elevation', value: conditions.elevationFt === 0 ? 'Level' : `${Math.round(Math.abs(conditions.elevationFt) / 3)} yd ${conditions.elevationFt > 0 ? 'up' : 'down'}` },
     { key: 'green', name: 'Green', value: `${GRASS[conditions.grass]}, ${conditions.firmness}` },
-    { key: 'stimp', name: 'Stimp', value: `${STIMP}` },
+    { key: 'stimp', name: 'Stimp', value: `${conditions.stimp}` },
   ]
 
 
@@ -360,12 +362,10 @@ export default function InsightsReadQuiz() {
                     {/* Always two lines, distance then line, so every tile's rule sits at the same height. */}
                     <b className={checked ? 'is-shown' : ''}>
                       {checked
-                        ? known.key === 'stimp'
-                          ? 'as normal'
-                          : `${signed(worth.yards)} yd`
+                        ? `${signed(worth.yards)} yd`
                         : '?'}
                       <br />
-                      {(checked && known.key !== 'stimp' && sideWords(worth.side)) || '\u00a0'}
+                      {(checked && sideWords(worth.side)) || '\u00a0'}
                     </b>
                   </li>
                 )

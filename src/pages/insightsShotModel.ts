@@ -12,8 +12,8 @@ import { getSurfaceResponse } from '../liveCaddie/surfaceResponse'
  *
  * It strings together the same models the live caddie uses, in the same order:
  * the lie's penalty, the slope of the lie, GSPro's carry, altitude, elevation
- * and wind on the flight, then the release on the green or the roll short of it.
- * Stimp is not here: Looper's green model does not have it yet.
+ * and wind on the flight, then the release on the green (grass, firmness and
+ * stimp) or the roll short of it.
  */
 
 export type InsightSwing = Readonly<{ ballSpeedMph: number; launchDeg: number; spinRpm: number }>
@@ -33,6 +33,8 @@ export type InsightConditions = Readonly<{
   windMph: number
   /** Where the wind comes from: 0 is straight into you, 90 from the right, 180 behind, 270 from the left. */
   windFromDeg: number
+  /** Green speed. It acts on the roll part of the release only (the 20 Nov fit). */
+  stimp: number
 }>
 
 export type InsightFinish = Readonly<{ totalYds: number; sideYds: number; carryYds: number; onGreen: boolean }>
@@ -42,7 +44,7 @@ export const INSIGHT_SWING: InsightSwing = { ballSpeedMph: 108, launchDeg: 19.5,
 
 export const INSIGHT_BASELINE: InsightConditions = {
   grass: 'medium', firmness: 'medium', lie: 'fairway',
-  slopeUpDeg: 0, slopeRightDeg: 0, elevationFt: 0, altitudeFt: 0, windMph: 0, windFromDeg: 0,
+  slopeUpDeg: 0, slopeRightDeg: 0, elevationFt: 0, altitudeFt: 0, windMph: 0, windFromDeg: 0, stimp: 11,
 }
 
 const LIE_SURFACE: Record<InsightLie, string | null> = { fairway: null, rough: 'TVGrough', 'deep-rough': 'TVGdeeprough', sand: 'TVGsand' }
@@ -97,7 +99,7 @@ export const finishOf = (conditions: InsightConditions, pinYds: number, swing: I
   const arrival = { ballSpeedMph: launch.ballSpeedMph, spinRpm: launch.totalSpinRpm, descentDeg: descent ?? 45 }
   const onGreen = Math.abs(carry - (pinYds + INSIGHT_HOLE.green.longYds)) <= INSIGHT_HOLE.green.halfDepthYds
   const run = onGreen
-    ? predictGreenRelease(arrival, { courseType: conditions.grass, greenFirmness: conditions.firmness })
+    ? predictGreenRelease(arrival, { courseType: conditions.grass, greenFirmness: conditions.firmness, stimp: conditions.stimp })
     : predictFairwayRoll(arrival, { courseType: conditions.grass, fairwayFirmness: conditions.firmness })
   const total = carry + (run ?? 0)
   side += total * Math.sin((conditions.slopeRightDeg * sidehillLieShare(afterLie) * Math.PI) / 180)
