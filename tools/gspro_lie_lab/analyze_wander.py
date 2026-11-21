@@ -394,13 +394,18 @@ def speed_class(row: dict[str, Any]) -> str | None:
     return pick(num(row.get("sent_speed_mph")), [90, 110, 130], SPEED_CLASSES[::-1])
 
 
-def coverage(kept: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Every cell of every grid we want filled, with how many shots it has and how many it needs."""
-    cells: list[dict[str, Any]] = []
+def coverage(kept: list[dict[str, Any]], calm: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Every cell of every grid we want filled, with how many shots it has and how many it needs.
 
-    def grid(group: str, rows_: list[str], cols: list[str], target: Any, key, note: str = "") -> None:
+    Grids about the flight (roll, tee shots, elevation, altitude, landing slope) count calm runs only;
+    the lie and stance grids count every kept shot (see mark_wind).
+    """
+    cells: list[dict[str, Any]] = []
+    calm = kept if calm is None else calm
+
+    def grid(group: str, rows_: list[str], cols: list[str], target: Any, key, note: str = "", flight: bool = False) -> None:
         counts: Counter = Counter()
-        for row in kept:
+        for row in (calm if flight else kept):
             found = key(row)
             if found and found[0] in rows_ and found[1] in cols:
                 counts[found] += 1
@@ -419,13 +424,14 @@ def coverage(kept: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grid("Roll by setting", ["fairway", "green", "semi-rough", "rough", "deep rough", "sand"], SETTINGS,
          lambda landed: 20 if landed in ("fairway", "green") else 6,
          lambda r: (r["landed_on"], r["green_setting"] if r["landed_on"] == "green" else r["fairway_setting"])
-         if r["roll"] is not None else None, "Green rows use the green firmness, the rest the fairway firmness.")
+         if r["roll"] is not None else None, "Green rows use the green firmness, the rest the fairway firmness.", True)
     grid("Tee shots by setting", ["Driver", "3W", "3H"], SETTINGS, 3,
-         lambda r: (r["club_group"], r["fairway_setting"]) if r["aim"] == "tee" or r["lie"] == "tee" else None)
+         lambda r: (r["club_group"], r["fairway_setting"]) if r["aim"] == "tee" or r["lie"] == "tee" else None,
+         flight=True)
     grid("Elevation change", SPEED_CLASSES, DROP_BANDS, 5,
          lambda r: (speed_class(r), pick(r["drop_ft"], [-60, -20, -5, 5, 20, 60], DROP_BANDS))
          if r["lie"] in CLEAN_LIES and r["speed_kept"] is None else None,
-         "Fairway and tee only, so the lie doesn't mix in.")
+         "Fairway and tee only, so the lie doesn't mix in.", True)
     grid("Stance slope", STANCE_BANDS, SIDE_BANDS, 5,
          lambda r: (pick(num(r.get("slope_up_deg")), [-4, -2, 2, 4], STANCE_BANDS),
                     pick(num(r.get("slope_right_deg")), [-4, -2, 2, 4], SIDE_BANDS))
@@ -433,10 +439,10 @@ def coverage(kept: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grid("Course altitude", ALTITUDE_BANDS, SPEED_CLASSES, 8,
          lambda r: (pick(r.get("altitude_ft"), [250, 1000, 2500, 4000], ALTITUDE_BANDS), speed_class(r))
          if r["lie"] in CLEAN_LIES and r["speed_kept"] is None else None,
-         "Altitude from GSPro's log, so send the log with each CSV.")
+         "Altitude from GSPro's log, so send the log with each CSV.", True)
     grid("Landing slope", ["fairway", "green"], ROLL_SLOPE_BANDS, 6,
          lambda r: (r["landed_on"], pick(num(r.get("roll_height_change_in")), [-24, -6, 6, 24], ROLL_SLOPE_BANDS))
-         if r["roll"] is not None else None, "Height the ball gained or lost while rolling.")
+         if r["roll"] is not None else None, "Height the ball gained or lost while rolling.", True)
     return cells
 
 
@@ -453,13 +459,55 @@ def inventory(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "course": Counter(r.get("course_key") or "unknown" for r in group).most_common(1)[0][0],
                     "settings": ", ".join(sorted({r["fairway_setting"] for r in group if r["fairway_setting"]})) or "unknown",
                     "altitude_ft": group[0].get("altitude_ft"),
+                    "wind": bool(group[0].get("windy")), "straight_curve_yd": group[0].get("run_curve_yd"),
                     "shots": len(group), "kept": sum(1 for r in group if not r["left_out"])})
     return out
+
+
+WINDY_CURVE_YD = 1.0  # median curve of straight shots: 0.0 yd on every calm run, 2.9 yd on Greywolf (wind on)
+WINDY_MIN_SHOTS = 8
+
+
+def straight_curves(group: list[dict[str, Any]]) -> list[float]:
+    """|curve| of shots GSPro should fly dead straight: no spin axis, level side stance, a real carry."""
+    out = []
+    for r in group:
+        curve, axis, side = num(r.get("curve_yd")), num(r.get("gspro_axis_deg")), num(r.get("slope_right_deg"))
+        if curve is None or not r["carry"] or r["carry"] < 60:
+            continue
+        if (axis is not None and abs(axis) > 1) or (side is not None and abs(side) > 1.5):
+            continue
+        out.append(abs(curve))
+    return out
+
+
+def mark_wind(rows: list[dict[str, Any]]) -> dict[str, float]:
+    """Wind bends straight shots, so a run whose straight shots curve had wind on.
+
+    Wind moves carry, roll, where green shots finish and how far offline a shot goes, so those leave
+    a windy run out. What the lie and the stance do at launch (speed, spin and launch kept, launch
+    change on a slope) happens before the ball meets the air, so those stay in.
+    """
+    by_file: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_file[row["source_file"]].append(row)
+    windy = {}
+    for name, group in by_file.items():
+        curves = straight_curves(group)
+        curve = statistics.median(curves) if len(curves) >= WINDY_MIN_SHOTS else None
+        is_windy = curve is not None and curve >= WINDY_CURVE_YD
+        for row in group:
+            row["windy"] = is_windy
+            row["run_curve_yd"] = curve
+        if is_windy:
+            windy[name] = curve
+    return windy
 
 
 def analyse(rows: list[dict[str, Any]]) -> dict[str, Any]:
     reasons = Counter()
     kept = []
+    windy = mark_wind(rows)
     for row in rows:
         why = why_left_out(row)
         row["left_out"] = why or ""
@@ -467,6 +515,7 @@ def analyse(rows: list[dict[str, Any]]) -> dict[str, Any]:
             reasons[why] += 1
         else:
             kept.append(row)
+    calm = [r for r in kept if not r["windy"]]
     return {
         "shots": len(rows), "kept": len(kept), "left_out": dict(reasons.most_common()),
         "courses": dict(Counter(r.get("course_key") or "unknown" for r in kept).most_common()),
@@ -474,9 +523,10 @@ def analyse(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "spots": len({(r["source_file"], r.get("spot")) for r in kept}),
         "aims": dict(Counter(r["aim"] for r in kept).most_common()),
         "lies": dict(Counter(r["lie"] for r in kept).most_common()),
-        "lie_penalty": lie_penalty(kept), "roll": roll_tables(kept), "green": green_table(kept),
-        "elevation": elevation(kept),
-        "coverage": coverage(kept), "inventory": inventory(rows),
+        "windy_runs": windy, "windy_shots": len(kept) - len(calm),
+        "lie_penalty": lie_penalty(kept), "roll": roll_tables(calm), "green": green_table(calm),
+        "elevation": elevation(calm),
+        "coverage": coverage(kept, calm), "inventory": inventory(rows),
     }, kept
 
 
@@ -505,6 +555,11 @@ def summary(result: dict[str, Any]) -> str:
              f"{result['kept']} shots kept of {result['shots']}, from {result['spots']} spots on {result['holes']} holes.", ""]
     if result["left_out"]:
         lines += ["Left out: " + "; ".join(f"{why} {n}" for why, n in result["left_out"].items()) + ".", ""]
+    if result.get("windy_runs"):
+        lines += ["Wind was on in " + ", ".join(f"{name} (straight shots curved {curve:.1f} yd)"
+                                                for name, curve in result["windy_runs"].items())
+                  + f": its {result['windy_shots']} shots count for the lie penalty and stance only, not for carry, "
+                  "roll, green shots or elevation.", ""]
     lines += ["Courses: " + ", ".join(f"{c} {n}" for c, n in result["courses"].items()) + ".",
               "Hit from: " + ", ".join(f"{lie} {n}" for lie, n in result["lies"].items()) + ".", ""]
 
@@ -569,7 +624,7 @@ def summary(result: dict[str, Any]) -> str:
 OUT_FIELDS = ["source_file", "course_key", "hole", "spot", "shot", "club_group", "aim", "lie", "landed_on", "finished_on",
               "left_out", "carry", "total", "roll", "roll_share", "descent", "landing_spin", "launch", "speed_kept",
               "spin_kept", "vla_kept", "pin_from_spot", "left_from_pin", "long_by", "drop_ft", "carry_vs_flat",
-              "speed_vs_stock", "slope_up_deg", "slope_right_deg", "sideways_yd", "sent_speed_mph", "sent_vla_deg",
+              "speed_vs_stock", "windy", "altitude_ft", "slope_up_deg", "slope_right_deg", "sideways_yd", "sent_speed_mph", "sent_vla_deg",
               "sent_spin_rpm", "db_id"]
 
 

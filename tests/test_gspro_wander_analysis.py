@@ -11,7 +11,7 @@ import analyze_wander as aw  # noqa: E402
 FIELDS = ["test", "club", "aim", "status", "carry_yd", "total_yd", "roll_yd", "lie_surface", "lie_speed_pct", "lie_spin_pct",
           "lie_vla_pct", "start_surface", "landing_material", "landing_surface", "finish_surface", "db_pin_yd",
           "db_raw_carry_game_yd", "start_y", "land_y", "sent_speed_mph", "sent_vla_deg", "descent_deg",
-          "landing_spin_rpm", "spot", "db_id", "pin_from_spot_yd", "course_key", "hole"]
+          "landing_spin_rpm", "spot", "db_id", "pin_from_spot_yd", "course_key", "hole", "curve_yd", "gspro_axis_deg", "slope_right_deg"]
 
 
 def shot(i, **over):
@@ -94,6 +94,38 @@ class AnalysisTests(unittest.TestCase):
         self.assertAlmostEqual(green["first"], 3.0 * aw.M_TO_YD, places=3)
         self.assertAlmostEqual(green["second"], 1.0 * aw.M_TO_YD, places=3)
         self.assertLess(result["elevation"]["fit"]["b"], 0)  # landing below carries further
+
+
+
+class WindTests(unittest.TestCase):
+    def rows(self, curve):
+        return [aw.derive({**shot(i, aim="fairway", landing_material="TVGfairway", landing_surface=2, finish_surface=2,
+                                  curve_yd=curve, gspro_axis_deg=0, slope_right_deg=0),
+                           "source_file": "looper_lab_w.csv", "altitude_ft": 0, "clipped_foliage": False})
+                for i in range(10)]
+
+    def test_calm_run_counts_everywhere(self):
+        result, kept = aw.analyse(self.rows(0.0))
+        self.assertEqual(result["windy_runs"], {})
+        self.assertTrue(result["roll"]["clubs"])
+        self.assertEqual(result["windy_shots"], 0)
+
+    def test_windy_run_keeps_lie_data_only(self):
+        result, kept = aw.analyse(self.rows(3.0))
+        self.assertIn("looper_lab_w.csv", result["windy_runs"])
+        self.assertEqual(result["windy_shots"], 10)
+        self.assertEqual(len(kept), 10)  # still kept for the lie penalty and stance
+        self.assertEqual(result["roll"]["clubs"], [])
+        self.assertEqual(result["elevation"]["n"], 0)
+        roll_cells = [c for c in result["coverage"] if c["group"] == "Roll by setting"]
+        self.assertTrue(all(c["n"] == 0 for c in roll_cells))
+        self.assertTrue(result["inventory"][0]["wind"])
+        self.assertIn("Wind was on", aw.summary(result))
+
+    def test_curved_shots_with_spin_axis_dont_count_as_wind(self):
+        rows = [{**r, "gspro_axis_deg": "8"} for r in self.rows(3.0)]
+        result, _ = aw.analyse(rows)
+        self.assertEqual(result["windy_runs"], {})
 
 
 if __name__ == "__main__":
