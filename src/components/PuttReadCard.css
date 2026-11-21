@@ -36,11 +36,11 @@
 }
 
 .putt-read__slope.is-uphill {
-  color: #f2b45a;
+  color: #cfd8cd;
 }
 
 .putt-read__slope.is-downhill {
-  color: #6fd3ef;
+  color: #cfd8cd;
 }
 
 .putt-read__slope small {
@@ -56,7 +56,7 @@
 }
 
 .putt-read__plays > span {
-  color: #eab308;
+  color: #ffffff;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -105,4 +105,9 @@
   color: #8e9b90;
   font-size: 13px;
   line-height: 1.4;
+}
+
+/* Context, not the read: the yellow belongs to the number alone. */
+.putt-read > .live-kicker {
+  color: #9da99f;
 }
