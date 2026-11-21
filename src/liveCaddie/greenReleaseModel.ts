@@ -9,7 +9,15 @@ import type { FairwayArrival } from './fairwayRollModel'
  * on greens with no swing, most from one spot at Briarwood West with only the
  * settings changed (Bentgrass, Bermuda, Links x soft, medium, firm; the same
  * six shots each run, at 126 and 174 yd), plus Royal New Kent and Woodhaven.
- * Stimp was 11 or 12 throughout, so stimp is not in the model yet.
+ * Stimp was 11 throughout (a few runs didn't record it).
+ *
+ * Stimp (20 Nov, to be checked at stimp 8 and 13 on Briarwood West): a
+ * stimpmeter reading is how far a ball rolls on the flat from a fixed speed,
+ * so the green's rolling friction goes as 1/stimp. The bounce (grab and bite,
+ * set by course type and firmness) is taken to be the same at every stimp and
+ * only the roll after it to change: the release scales as stimp / 11, and the
+ * slope correction uses that stimp's friction. tools/gspro_lie_lab/
+ * check_stimp_release.mjs tests exactly this on the shots.
  *
  * Shape (a bounce, then a roll): the ball lands with a forward speed and a
  * downward speed. The green takes forward speed in proportion to the downward
@@ -24,7 +32,23 @@ import type { FairwayArrival } from './fairwayRollModel'
  * percentile); 0.9 yd mean on shots held out of the fit.
  */
 
-export type GreenConditions = Readonly<{ courseType: Firmness; greenFirmness: Firmness }>
+export type GreenConditions = Readonly<{
+  courseType: Firmness
+  greenFirmness: Firmness
+  /** As picked at Start a Round (GSPro doesn't log it). Missing means the fit's own stimp, 11. */
+  stimp?: number | null
+}>
+
+/** The stimp the 18 Nov release fit was measured at. */
+export const REFERENCE_STIMP = 11
+const STIMP_RANGE = [6, 15] as const
+
+const usableStimp = (stimp: number | null | undefined): number =>
+  typeof stimp === 'number' && Number.isFinite(stimp) && stimp >= STIMP_RANGE[0] && stimp <= STIMP_RANGE[1]
+    ? stimp : REFERENCE_STIMP
+
+/** How much further the ball rolls after the bounce than at stimp 11 (rolling friction goes as 1/stimp). */
+export const stimpReleaseFactor = (stimp: number | null | undefined): number => usableStimp(stimp) / REFERENCE_STIMP
 
 /** Bentgrass, Bermuda, Links in GSPro's own order (its log writes 0, 1, 2). */
 const TYPE_INDEX: Record<Firmness, 0 | 1 | 2> = { soft: 0, medium: 1, firm: 2 }
@@ -38,6 +62,10 @@ const FIT = {
 } as const
 /** Rolling friction of the green as a share of gravity (stimp 11). */
 export const GREEN_ROLL_FRICTION = 0.04253
+
+/** Rolling friction at a stimp: a faster green has less. */
+export const greenRollFriction = (stimp: number | null | undefined): number =>
+  GREEN_ROLL_FRICTION * REFERENCE_STIMP / usableStimp(stimp)
 
 const LIMITS = { ballSpeedMph: [35, 150], spinRpm: [1500, 13500], descentDeg: [25, 58] } as const
 const RELEASE_RANGE_YDS = [-10, 35] as const
@@ -63,7 +91,7 @@ export const greenReleaseFromLanding = (
   const forward = landing.speedMph * Math.cos(rad(landing.descentDeg))
   const down = landing.speedMph * Math.sin(rad(landing.descentDeg))
   const left = forward - grab * down - bite * (landing.spinRpm / 1000)
-  return clamp(run * left * Math.abs(left), RELEASE_RANGE_YDS)
+  return clamp(run * left * Math.abs(left) * stimpReleaseFactor(conditions.stimp), RELEASE_RANGE_YDS)
 }
 
 /**
@@ -99,10 +127,14 @@ export const predictGreenRelease = (
  * The release on a slope: `grade` is rise over run along the shot's line
  * (+ uphill). A ball coming back down the line meets the slope the other way.
  */
-export const greenReleaseOnSlope = (releaseYds: number, grade: number | null | undefined): number => {
+export const greenReleaseOnSlope = (
+  releaseYds: number,
+  grade: number | null | undefined,
+  stimp: number | null = null,
+): number => {
   if (typeof grade !== 'number' || !Number.isFinite(grade)) return releaseYds
   const alongMotion = releaseYds >= 0 ? grade : -grade
-  return releaseYds / clamp(1 + alongMotion / GREEN_ROLL_FRICTION, [0.25, 4])
+  return releaseYds / clamp(1 + alongMotion / greenRollFriction(stimp), [0.25, 4])
 }
 
 export type GreenReleaseEstimate = Readonly<{

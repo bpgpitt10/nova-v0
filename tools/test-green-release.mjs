@@ -64,6 +64,20 @@ try {
   const estimate = estimateGreenRelease({ arrival: nine, descentDeltaDeg: 3, stockRolloutYds: 5, conditions: { courseType: 'medium', greenFirmness: 'firm' } })
   assert.ok(estimate && estimate.descentDeg === 43.2 && estimate.stockYds === 5)
   assert.ok(estimate.predictedYds < predictGreenRelease(nine, { courseType: 'medium', greenFirmness: 'firm' }))  // steeper: less release
+  // Stimp (20 Nov): the roll after the bounce goes as 1/friction, so as stimp / 11; no stimp is stimp 11.
+  const { stimpReleaseFactor, greenRollFriction, GREEN_ROLL_FRICTION } = await load('/src/liveCaddie/greenReleaseModel.ts')
+  const landing = { speedMph: 40, descentDeg: 40, spinRpm: 5000 }
+  const bermuda = { courseType: 'soft', greenFirmness: 'medium' }
+  const at11 = greenReleaseFromLanding(landing, bermuda)
+  assert.equal(greenReleaseFromLanding(landing, { ...bermuda, stimp: 11 }), at11)
+  assert.equal(greenReleaseFromLanding(landing, { ...bermuda, stimp: null }), at11)
+  assert.ok(Math.abs(greenReleaseFromLanding(landing, { ...bermuda, stimp: 13 }) - at11 * 13 / 11) < 1e-9)
+  assert.ok(Math.abs(greenReleaseFromLanding(landing, { ...bermuda, stimp: 8 }) - at11 * 8 / 11) < 1e-9)
+  assert.equal(stimpReleaseFactor(40), 1, 'a stimp no green plays at is ignored')
+  assert.ok(greenRollFriction(13) < GREEN_ROLL_FRICTION && greenRollFriction(8) > GREEN_ROLL_FRICTION)
+  // Uphill takes more off a fast green's release than a slow one's (less friction to compare the slope with).
+  assert.ok(greenReleaseOnSlope(10, 0.02, 13) / 10 < greenReleaseOnSlope(10, 0.02, 8) / 10)
+
   console.log(`green release ok (131 landings: ${mean(fromLanding).toFixed(2)} yd from landing numbers, ${mean(fromLaunch).toFixed(2)} yd from launch)`)
 } finally {
   await server?.close()
