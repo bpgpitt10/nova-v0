@@ -8,9 +8,11 @@ import { decisionBasis, paperCostStrokes } from './decisionOptions'
 import {
   loadArmedLiveClub,
   LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT,
+  shownRecommendationBefore,
 } from '../lib/liveClubAttribution'
 import { loadLiveGsproRoundArchive, type ArchivedGsproCourseShot } from '../lib/liveGsproRoundArchive'
 import {
+  getActiveLocalUserId,
   LIVE_CADDIE_LINEAGE_STORAGE_KEY,
   persistWorkingCacheValueForActiveUser,
 } from '../lib/localUserScope'
@@ -53,7 +55,14 @@ export type LiveCaddieLineageStore = {
   records: LiveCaddieLineageRecord[]
 }
 
-const MAX_LOCAL_RECORDS = 4000
+/**
+ * The browser keeps only the recent records: the cloud copy is the real one.
+ * 4000 records (twice: the working copy and the per-user safety copy) filled a
+ * browser's storage on 14 Nov, and every record after that was lost.
+ */
+const MAX_LOCAL_RECORDS = 1200
+/** When the browser refuses a save, keep this many and try once more. */
+const TRIMMED_LOCAL_RECORDS = 300
 const ARCHIVE_RECONCILE_MS = 1000
 const CLOUD_FLUSH_DELAY_MS = 250
 const BASELINE_FIRST_SHOT_RACE_TOLERANCE_MS = 2000
@@ -95,8 +104,17 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? value as Record<string, unknown>
     : null
 
+/**
+ * When the browser's storage refuses the store, the page carries on with this
+ * copy (for the same signed-in player) so records keep linking up.
+ */
+let storeInMemory: { userId: string | null; store: LiveCaddieLineageStore } | null = null
+
 export const loadLiveCaddieLineageStore = (): LiveCaddieLineageStore => {
   if (typeof window === 'undefined') return emptyStore()
+  if (storeInMemory && storeInMemory.userId === getActiveLocalUserId()) {
+    return { ...storeInMemory.store, records: [...storeInMemory.store.records] }
+  }
   try {
     const raw = window.localStorage.getItem(LIVE_CADDIE_LINEAGE_STORAGE_KEY)
     if (!raw) return emptyStore()
@@ -147,9 +165,31 @@ const saveStore = (store: LiveCaddieLineageStore) => {
   if (store.records.length > MAX_LOCAL_RECORDS) {
     store.records = store.records.slice(-MAX_LOCAL_RECORDS)
   }
-  const serialized = JSON.stringify(store)
-  window.localStorage.setItem(LIVE_CADDIE_LINEAGE_STORAGE_KEY, serialized)
-  persistWorkingCacheValueForActiveUser(LIVE_CADDIE_LINEAGE_STORAGE_KEY, serialized)
+  const write = (records: LiveCaddieLineageRecord[]) => {
+    const serialized = JSON.stringify({ ...store, records })
+    window.localStorage.setItem(LIVE_CADDIE_LINEAGE_STORAGE_KEY, serialized)
+    persistWorkingCacheValueForActiveUser(LIVE_CADDIE_LINEAGE_STORAGE_KEY, serialized)
+  }
+  try {
+    write(store.records)
+    storeInMemory = null
+    return
+  } catch {
+    // Full: drop the old records (they are in the cloud) and try once more.
+  }
+  try {
+    window.localStorage.removeItem(LIVE_CADDIE_LINEAGE_STORAGE_KEY)
+    persistWorkingCacheValueForActiveUser(LIVE_CADDIE_LINEAGE_STORAGE_KEY, null)
+    store.records = store.records.slice(-TRIMMED_LOCAL_RECORDS)
+    write(store.records)
+    storeInMemory = null
+    return
+  } catch (error) {
+    if (!storeInMemory) {
+      console.warn('[Live Caddie lineage] browser storage is full; records go to the cloud and are kept in this page.', error)
+    }
+  }
+  storeInMemory = { userId: getActiveLocalUserId(), store: { ...store, records: [...store.records] } }
 }
 
 const newestRecord = (
@@ -234,8 +274,9 @@ const appendRecord = (
     id: input.id ?? uuid(),
   }
   store.records.push(record)
-  saveStore(store)
+  // Cloud first: a browser that refuses the local save must not lose the record.
   queueCloudRecord(record)
+  saveStore(store)
   return record
 }
 
@@ -468,6 +509,57 @@ const stateForPhysicalPreShot = (
   return null
 }
 
+/**
+ * No club armed: the recommendation Live Caddie had on screen when the shot was
+ * hit, as a decision (capturedAtArm false), so the round still says "Looper said X".
+ */
+const shownDecisionForState = (
+  store: LiveCaddieLineageStore,
+  preState: LiveCaddieLineageRecord,
+  observedAt: string,
+): LiveCaddieLineageRecord | null => {
+  if (!store.activeRoundId || preState.payload.surface === 'green') return null
+  const existing = newestRecord(store, (record) => (
+    record.lineageRoundId === store.activeRoundId
+    && record.recordType === 'decision'
+    && record.stateId === preState.id
+  ))
+  if (existing) return existing
+  // Only what was shown after the ball came to rest here, not the previous spot's pick.
+  const shown = shownRecommendationBefore(observedAt, preState.createdAt)
+  if (!shown) return null
+  const options = shown.intent?.options ?? null
+  const recommendedOption = options?.find((option) => option.club === shown.recommendedClub) ?? null
+  const payload: Record<string, unknown> = {
+    stateId: preState.id,
+    recommendedClub: shown.recommendedClub,
+    recommendedStockCarryYds: shown.intent?.stockCarryYds ?? null,
+    recommendedExpectedStrokes: recommendedOption?.expectedStrokes ?? null,
+    recommendedCatastrophe: recommendedOption?.catastrophe ?? null,
+    recommendedConfidence: recommendedOption?.confidence ?? null,
+    decisionStrength: recommendedOption?.strength ?? null,
+    modelBasis: decisionBasis(options),
+    options,
+    modeledSurface: preState.payload.surface ?? null,
+    capturedAtArm: false,
+    shownAt: shown.seenAt,
+  }
+  return appendRecord(store, {
+    lineageRoundId: store.activeRoundId,
+    recordType: 'decision',
+    createdAt: shown.seenAt,
+    supersedesId: null,
+    stateId: preState.id,
+    decisionId: null,
+    shotSpecId: null,
+    attemptId: null,
+    outcomeId: null,
+    gsproRoundId: null,
+    gsproShotId: null,
+    payload: { ...payload, fingerprint: decisionFingerprint(payload) },
+  })
+}
+
 const latestArmedSpecForState = (
   store: LiveCaddieLineageStore,
   stateId: string,
@@ -680,7 +772,7 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
   const spec = isPutt ? null : latestArmedSpecForState(store, preState.id)
   const decision = spec?.decisionId
     ? store.records.find((record) => record.id === spec.decisionId) ?? null
-    : null
+    : isPutt ? null : shownDecisionForState(store, preState, shot.observedAt)
   const priorSameSlot = newestRecord(store, (record) => (
     record.lineageRoundId === store.activeRoundId
     && record.recordType === 'shot_attempt'
