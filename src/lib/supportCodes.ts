@@ -87,7 +87,7 @@ export const courseStatusView = (
     case 'no-folder':
       return { code: 'C6', tone: 'action', text: 'Start the Looper Companion on your GSPro PC.', action: 'choose-folder' }
     case 'gkd-not-found':
-      return { code: 'C8', tone: 'action', text: "This course isn't installed in your GSPro." }
+      return { code: 'C8', tone: 'action', text: "This course isn't installed in your GSPro. Install it in GSPro to play it with Looper." }
     case 'needs-permission':
       return { code: 'C9', tone: 'action', text: 'Looper needs access to your GSPro folder again.', action: 'allow-folder' }
     case 'off':
