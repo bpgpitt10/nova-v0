@@ -1,0 +1,6 @@
+{
+  "bump": {"speed": 34.0, "vla": 12.0, "spin": 1300, "carry": 10.0},
+  "chip": {"speed": 27.2, "vla": 20.0, "spin": 2000, "carry": 10.0},
+  "pitch": {"speed": 24.1, "vla": 28.0, "spin": 3000, "carry": 10.0},
+  "flop": {"speed": 22.2, "vla": 40.0, "spin": 2600, "carry": 10.0}
+}

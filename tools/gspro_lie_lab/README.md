@@ -128,3 +128,11 @@ Type a club and press Enter: GSPro gets your stock ball data for it (the same Su
 - `plan.py`: spots, shots and stock launch numbers.
 - `analyze.py`: tables and fits.
 - Tests: `python -m unittest tests.test_gspro_lie_lab` from the repo root (fake GSPro socket and data folder).
+
+## Roll replay (`roll_replay.py`)
+
+Fires each club's stock shot into GSPro's Practice Range, with no swing, and records carry, total and roll from GSPro's own range record (`GSPro.db`, read only). For re-measuring roll after a GSPro physics change (4.1.9) and across Course Type and Fairway Firmness. Needs `test_shots.py` and `open_connect.py` in the same folder. Close the Uneekor launcher, open the Practice Range, keep Looper's practice session closed so the shots stay out of the bag, then:
+
+    python roll_replay.py --type medium --fairway medium
+
+Run it once per setting; each run writes `roll_replay_<type>_<fairway>_<time>.csv`.
