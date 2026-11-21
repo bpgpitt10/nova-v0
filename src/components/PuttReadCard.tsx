@@ -46,23 +46,19 @@ export default function PuttReadCard({ distanceFt, riseIn, stimp, elevationSourc
       </div>
 
       {read.runaway ? (
-        <div className="putt-read__warn">
+        <p className="putt-read__warn">
           <b>This one won&rsquo;t stop.</b> At stimp {read.stimp} a putt can&rsquo;t stop on a downhill steeper than
           {' '}{read.runawayPercent.toFixed(1)}%. Die it at the hole; the green has to flatten to stop it.
-        </div>
+        </p>
       ) : (
         <div className="putt-read__plays">
-          <div>
-            <span>Plays like</span>
-            <b>{read.playsLikeFt != null ? ft(read.playsLikeFt) : '–'}</b>
-            <small>{flatKnown ? 'flat, this green' : 'until the slope is read'}</small>
-          </div>
+          <span>Plays like</span>
+          <b>{read.playsLikeFt != null ? ft(read.playsLikeFt) : '–'}</b>
+          <small>{flatKnown ? 'on a flat green at this speed' : 'until the slope is read'}</small>
           {sameAsBaseline ? null : (
-            <div className="putt-read__baseline">
-              <span>Your stimp-11 stroke</span>
-              <b>{read.stimp11Ft != null ? ft(read.stimp11Ft) : '–'}</b>
-              <small>hit it like this on a flat stimp-11 green</small>
-            </div>
+            <p className="putt-read__baseline">
+              Your stimp-11 stroke: <b>{read.stimp11Ft != null ? ft(read.stimp11Ft) : '–'}</b>
+            </p>
           )}
         </div>
       )}

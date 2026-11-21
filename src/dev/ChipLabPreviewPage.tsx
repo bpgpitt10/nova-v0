@@ -47,7 +47,7 @@ export default function ChipLabPreviewPage() {
   )
   const firmness: readonly [Firmness, string][] = [['soft', 'Soft'], ['medium', 'Medium'], ['firm', 'Firm']]
   return (
-    <main style={{ maxWidth: 980, margin: '0 auto', padding: '32px 16px', color: '#e7efe4' }}>
+    <main style={{ maxWidth: 560, margin: '0 auto', padding: '32px 16px', color: '#e7efe4' }}>
       <h2 style={{ marginTop: 0 }}>Chip lab preview</h2>
       <p style={{ color: '#9da99f' }}>
         Around the green, inside 40 yards. Set up a chip and see how far to fly each shot. Flight is from GSPro&rsquo;s
@@ -58,7 +58,7 @@ export default function ChipLabPreviewPage() {
         {slider('Green starts', greenStarts, setGreenStarts, 0, 35, 1, ' yd out')}
         {slider('Slope to the hole (+ uphill)', slopePct, setSlopePct, -4, 4, 0.5, '%')}
         {slider('Stimp', stimp, setStimp, 8, 13, 0.5, '')}
-        {pick('Before the green', beforeGreen, setBeforeGreen, [['fairway', 'Fairway'], ['rough', 'Rough'], ['bunker', 'Bunker']])}
+        {pick('Before the green', beforeGreen, setBeforeGreen, [['fairway', 'Fairway'], ['rough', 'Rough'], ['bunker', 'Bunker'], ['water', 'Water']])}
         {pick('Course type', courseType, setCourseType, [['soft', 'Bentgrass'], ['medium', 'Bermuda'], ['firm', 'Links']])}
         {pick('Green firmness', greenFirmness, setGreenFirmness, firmness)}
         {pick('Fairway firmness', fairwayFirmness, setFairwayFirmness, firmness)}
@@ -69,8 +69,8 @@ export default function ChipLabPreviewPage() {
       <ChipOptionsCard
         distanceYds={distance}
         options={options}
-        armed={armed}
-        onArm={setArmed}
+        shown={armed ?? options.find((o) => o.verdict === 'good')?.type ?? options.find((o) => o.verdict === 'fine')?.type ?? null}
+        onShow={setArmed}
         conditions={`${grass} · ${greenFirmness} green, ${fairwayFirmness} fairway · stimp ${stimp}${fromRough ? ' · from the rough' : ''}`}
         hasGreenMap
       />

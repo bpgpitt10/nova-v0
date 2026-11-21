@@ -1,11 +1,13 @@
+/* On the green: the read, centred, no boxes. The putt's length, its rise or fall, then how it plays. */
 .putt-read {
   display: grid;
-  gap: 14px;
-  padding: 22px 24px;
-  border: 1px solid #2f4233;
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(46, 196, 230, 0.07), rgba(7, 16, 10, 0.6));
+  justify-items: center;
+  gap: 12px;
+  max-width: 720px;
+  margin: clamp(24px, 6vh, 64px) auto;
+  padding: 0 16px;
   color: #e7efe4;
+  text-align: center;
 }
 
 .putt-read h1 {
@@ -13,22 +15,21 @@
 }
 
 .putt-read__line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 16px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
 }
 
 .putt-read__line strong {
   font-family: Fraunces, Georgia, 'Times New Roman', serif;
-  font-size: clamp(40px, 7vw, 56px);
+  font-size: clamp(64px, 11vw, 104px);
   font-weight: 600;
   line-height: 1;
   color: #ffffff;
 }
 
 .putt-read__slope {
-  font-size: 20px;
+  font-size: clamp(20px, 2.6vw, 26px);
   font-weight: 700;
   color: #cfd8cd;
 }
@@ -42,66 +43,66 @@
 }
 
 .putt-read__slope small {
-  font-size: 15px;
+  font-size: 0.75em;
   font-weight: 600;
   color: #9da99f;
 }
 
 .putt-read__plays {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.putt-read__plays > div {
-  display: grid;
+  justify-items: center;
   gap: 2px;
-  padding: 12px 14px;
-  border: 1px solid #2a3a2d;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  margin-top: 10px;
 }
 
-.putt-read__plays span {
+.putt-read__plays > span {
   color: #9da99f;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.putt-read__plays b {
+.putt-read__plays > b {
   font-family: Fraunces, Georgia, 'Times New Roman', serif;
-  font-size: 34px;
+  font-size: clamp(44px, 7vw, 64px);
   font-weight: 600;
+  line-height: 1.05;
   color: #2ec4e6;
 }
 
-.putt-read__plays .putt-read__baseline b {
-  color: #f2e2b8;
+.putt-read__plays > small {
+  color: #9da99f;
+  font-size: 14px;
 }
 
-.putt-read__plays small {
-  color: #9da99f;
-  font-size: 13px;
+.putt-read__baseline {
+  margin: 10px 0 0;
+  color: #cfd8cd;
+  font-size: 16px;
+}
+
+.putt-read__baseline b {
+  color: #ffffff;
+  font-size: 20px;
 }
 
 .putt-read__warn {
-  padding: 12px 14px;
-  border: 1px solid #7a4b1d;
-  border-radius: 12px;
-  background: rgba(249, 115, 22, 0.1);
-  color: #f7d2b0;
-  font-size: 15px;
+  max-width: 520px;
+  margin: 10px 0 0;
+  color: #ffd3c4;
+  font-size: 17px;
   line-height: 1.45;
 }
 
 .putt-read__warn b {
-  color: #ffffff;
+  color: #ff8a6b;
 }
 
 .putt-read__note {
-  margin: 0;
+  max-width: 520px;
+  margin: 8px 0 0;
   color: #8e9b90;
   font-size: 13px;
+  line-height: 1.4;
 }

@@ -32,6 +32,16 @@ try {
   const links = byType(chipOptions(18, line(12, 'fairway', 0), { ...setting, fairway: { courseType: 'firm', fairwayFirmness: 'firm' } }, 6))
   const bermuda = byType(chipOptions(18, line(12, 'fairway', 0), setting, 6))
   assert.ok(links.bump.flight.carryYds < bermuda.bump.flight.carryYds)
+  // A bunker up to the green (Brian, 21 Nov: the first card landed on its lip): every chip that's
+  // kept lands at least CLEAR_TROUBLE_YDS past the sand and says it carries it.
+  const { CLEAR_TROUBLE_YDS } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')
+  const sand = byType(chipOptions(22, line(8, 'bunker', 0.01), setting, 14))
+  for (const o of Object.values(sand)) {
+    if (o.verdict !== 'fine' && o.verdict !== 'good') continue
+    assert.ok(o.flight.carryYds >= 8 + CLEAR_TROUBLE_YDS - 0.5, `${o.type} clears the bunker (${o.flight.carryYds})`)
+    assert.equal(o.carries?.surface, 'bunker')
+    assert.match(o.reason ?? '', /Carries the bunker/)
+  }
   console.log('chip options ok')
 } finally {
   await server.close()

@@ -91,12 +91,38 @@ export type ChipOption = Readonly<{
   /** Yards it runs after landing. */
   runYds: number
   landsOn: LandingSurface
+  /** The trouble it flies over on the way, and how far past it the ball lands. */
+  carries: Readonly<{ surface: LandingSurface; overYds: number; landsPastYds: number }> | null
   verdict: 'good' | 'fine' | 'not-needed' | 'avoid'
   reason: string | null
 }>
 
+const SURFACE_NAME: Readonly<Record<LandingSurface, string>> = {
+  green: 'green', fairway: 'fairway', fringe: 'fringe', rough: 'rough', 'deep-rough': 'deep rough', bunker: 'bunker', water: 'water', other: 'trouble',
+}
+
 const BAD_LANDING: Partial<Record<LandingSurface, string>> = {
   rough: 'Lands in the rough', 'deep-rough': 'Lands in deep rough', bunker: 'Lands in the bunker', water: 'Lands in the water', other: 'Lands off the short grass',
+}
+
+/**
+ * A chip has to land at least this far past sand, water or rough it flies over (Brian, 21 Nov: the
+ * first card landed on the bunker's lip). A yard or two short is an ordinary miss with a chip.
+ */
+export const CLEAR_TROUBLE_YDS = 2.5
+
+/** The last stretch of trouble on the line before `carry`: where it ends, or null if the line is clean. */
+const troubleBefore = (carry: number, probe: LandingProbe) => {
+  let end: number | null = null
+  let surface: LandingSurface | null = null
+  for (let at = 0.5; at < carry; at += 0.5) {
+    const kind = probe(at).surface
+    if (BAD_LANDING[kind] && kind !== 'other') {
+      end = at
+      surface = kind
+    }
+  }
+  return end == null || surface == null ? null : { end, surface }
 }
 
 const releaseFor = (type: ChipType, carry: number, probe: LandingProbe, setting: ChipSetting) => {
@@ -106,8 +132,12 @@ const releaseFor = (type: ChipType, carry: number, probe: LandingProbe, setting:
     : flight.landing
   const at = probe(carry)
   // Rough, sand and water landings weren't measured; take them as stopping where they land, so sizing
-  // carries the ball over them onto short grass where it can.
+  // carries the ball over them onto short grass where it can. Landing just past them counts as in them.
   if (BAD_LANDING[at.surface]) return { flight, run: 0, landsOn: at.surface, grade: at.gradeToHole }
+  const trouble = troubleBefore(carry, probe)
+  if (trouble && carry - trouble.end < CLEAR_TROUBLE_YDS) {
+    return { flight, run: 0, landsOn: trouble.surface, grade: at.gradeToHole }
+  }
   // A chip landing in the fairway runs about as it would on a green of the fairway's grass and firmness.
   const conditions: GreenConditions = at.surface === 'green'
     ? setting.green
@@ -136,8 +166,10 @@ export const sizeChip = (type: ChipType, distanceYds: number, probe: LandingProb
   const at = releaseFor(type, (lo + hi) / 2, probe, setting)
   // Stuck on the edge of trouble: the answer is the first carry onto short grass.
   if (BAD_LANDING[at.landsOn]) {
-    const over = releaseFor(type, hi + 0.05, probe, setting)
-    if (!BAD_LANDING[over.landsOn]) return { ...over, short: false, tooHot: false }
+    for (let carry = hi + 0.05; carry <= hi + CLEAR_TROUBLE_YDS + 0.6; carry += 0.25) {
+      const over = releaseFor(type, carry, probe, setting)
+      if (!BAD_LANDING[over.landsOn]) return { ...over, short: false, tooHot: false }
+    }
   }
   return { ...at, short: false, tooHot: false }
 }
@@ -165,7 +197,7 @@ export const chipOptions = (
     let reason: string | null = null
     if (bad) {
       verdict = 'avoid'
-      reason = `${bad}: GSPro's chips weren't measured landing there.`
+      reason = `${bad} or too close to it to trust.`
     } else if (s.short) {
       verdict = 'avoid'
       reason = 'Can’t get there with this shot.'
@@ -186,12 +218,17 @@ export const chipOptions = (
     } else if (tight && downhill && s.run > 2 * s.flight.carryYds) {
       reason = 'Runs a long way downhill: a small miss in pace grows.'
     }
+    const trouble = bad ? null : troubleBefore(s.flight.carryYds, probe)
+    if (trouble && verdict !== 'avoid' && !reason) {
+      reason = `Carries the ${SURFACE_NAME[trouble.surface]}: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past it.`
+    }
     return {
       type: s.type,
       launchDeg: CHIP_LAUNCH_DEG[s.type],
       flight: s.flight,
       runYds: s.run,
       landsOn: s.landsOn,
+      carries: trouble ? { surface: trouble.surface, overYds: trouble.end, landsPastYds: s.flight.carryYds - trouble.end } : null,
       verdict,
       reason,
     }

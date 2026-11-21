@@ -1153,9 +1153,12 @@ export default function LiveCaddiePage() {
   })()
   const puttRiseIn = puttMapRiseIn
   const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : null
-  // Chip lab (on unless ?chipLab=off): around the green, the four chip options above the normal card.
+  // Chip lab (on unless ?chipLab=off): around the green, the four chip options in place of the shot card.
+  // Not from sand or deep rough: GSPro's chips were measured from clean lies, and a bunker shot
+  // loses about a quarter of its speed (Brian, 21 Nov: the first card from a bunker planned into it).
+  const chipLie = !/sand|bunker|deep/.test(normalizedCurrentSurface)
   const chipDistanceYds = !isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) : null
-  const chipLab = chipLabOn && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
+  const chipLab = chipLabOn && chipLie && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
     ? (() => {
         const dx = (pinEstimate[0] - ball[0]) / chipDistanceYds
         const dy = (pinEstimate[1] - ball[1]) / chipDistanceYds
@@ -1190,11 +1193,15 @@ export default function LiveCaddiePage() {
         const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[green.courseType]
         const conditions = `${grass} · ${green.greenFirmness} green, ${fairway.fairwayFirmness} fairway`
           + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}`
-        const armedOption = options.find((o) => o.type === armedChip) ?? null
+        // The chip on show: the player's pick, else the one Looper would point to first.
+        const usable = options.filter((o) => o.verdict === 'good' || o.verdict === 'fine')
+        const shown = options.find((o) => o.type === armedChip)
+          ?? usable.find((o) => o.verdict === 'good') ?? usable[0] ?? null
         return {
           options,
           conditions,
-          landingPoint: armedOption ? along(armedOption.flight.carryYds) : null,
+          shown: shown?.type ?? null,
+          landingPoint: shown ? along(shown.flight.carryYds) : null,
           hasGreenMap: Boolean(greenDetail),
         }
       })()
@@ -2493,23 +2500,14 @@ export default function LiveCaddiePage() {
           </section>
         ) : (
           <>
-            {/* Chip lab sits above the normal card, so the club pick, the map and Arm / Auto Aim all stay. */}
-            {chipLab && chipDistanceYds != null ? (
-              <ChipOptionsCard
-                distanceYds={chipDistanceYds}
-                options={chipLab.options}
-                armed={armedChip}
-                onArm={setArmedChip}
-                conditions={chipLab.conditions}
-                hasGreenMap={chipLab.hasGreenMap}
-              />
-            ) : null}
             <section className="live-caddie-main-grid">
               <aside className="live-decision-column">
                 <article className={`live-decision-card${isShotStrategy ? ' strategy-mode' : ''}`}>
                   <div className="live-decision-label-row">
                     <span className="live-recommended-pill">
-                      {evaluationPending
+                      {chipLab
+                        ? 'AROUND THE GREEN'
+                        : evaluationPending
                         ? waitingForConditions ? 'READING WIND & LIE' : 'CALCULATING'
                         : isShotStrategy
                           ? 'SHOT STRATEGY'
@@ -2530,6 +2528,17 @@ export default function LiveCaddiePage() {
                     ) : null}
                   </div>
 
+                  {/* Around the green the chip options take the shot card's place; the map and the club rail stay. */}
+                  {chipLab && chipDistanceYds != null ? (
+                    <ChipOptionsCard
+                      distanceYds={chipDistanceYds}
+                      options={chipLab.options}
+                      shown={chipLab.shown}
+                      onShow={setArmedChip}
+                      conditions={chipLab.conditions}
+                      hasGreenMap={chipLab.hasGreenMap}
+                    />
+                  ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
                     ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
                     : displayedClub ?? '—'}</div>
@@ -2603,6 +2612,7 @@ export default function LiveCaddiePage() {
                     decisionOptions={decisionOptionsJson}
                     altitudeSource={gsproAltitudeFt != null ? 'gspro' : airAltitudeFt != null ? 'map' : null}
                   />
+                  </>)}
 
                   <button
                     type="button"

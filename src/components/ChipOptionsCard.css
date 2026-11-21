@@ -1,145 +1,126 @@
+/* Around the green, inside the shot card (the map stays beside it). */
 .chip-options {
   display: grid;
-  gap: 14px;
-  padding: 20px 22px;
-  border: 1px solid #3b2a1a;
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(249, 115, 22, 0.07), rgba(7, 16, 10, 0.6));
+  gap: 12px;
+  margin: 4px 0 14px;
   color: #e7efe4;
-  margin-bottom: 14px;
 }
 
-.chip-options header h1 {
-  margin: 4px 0 2px;
-}
-
-.chip-options header p {
-  margin: 0;
+.chip-options__head p {
+  margin: 4px 0 0;
   color: #9da99f;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.chip-options__grid {
+.chip-options__rows {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px;
+  gap: 4px;
 }
 
-.chip-option {
+.chip-options__cols,
+.chip-row {
   display: grid;
-  gap: 6px;
-  align-content: start;
-  padding: 12px 12px 10px;
-  border: 1px solid #2a3a2d;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.chip-option.is-good {
-  border-color: #f97316;
-}
-
-.chip-option.is-avoid,
-.chip-option.is-not-needed {
-  opacity: 0.72;
-}
-
-.chip-option.is-armed {
-  border-color: #f97316;
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35);
-}
-
-.chip-option__head {
-  display: flex;
+  grid-template-columns: minmax(0, 1.6fr) 0.7fr 0.7fr minmax(0, 1fr);
   align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
 }
 
-.chip-option__head b {
-  font-size: 16px;
+.chip-options__cols {
+  padding: 0 12px;
+  color: #8e9b90;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.chip-option__tag {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+.chip-options__cols span:nth-child(2),
+.chip-options__cols span:nth-child(3) {
+  text-align: right;
+}
+
+.chip-row {
+  padding: 9px 12px;
+  border: 1px solid #263429;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chip-row:hover {
+  border-color: #5b4126;
+}
+
+.chip-row.is-shown {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.chip-row.is-avoid,
+.chip-row.is-not-needed {
+  opacity: 0.6;
+}
+
+.chip-row.is-shown.is-avoid,
+.chip-row.is-shown.is-not-needed {
+  opacity: 1;
+}
+
+.chip-row__name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.chip-row__name small {
+  margin-left: 6px;
+  color: #8e9b90;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chip-row__num {
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.chip-row__tag {
   color: #cfd8cd;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
+  text-align: right;
   text-transform: uppercase;
 }
 
-.is-good .chip-option__tag {
-  background: #f97316;
-  color: #140b04;
+.chip-row.is-good .chip-row__tag {
+  color: #f97316;
 }
 
-.chip-option dl {
+.chip-options__detail {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 4px;
+}
+
+.chip-options__line,
+.chip-options__reason,
+.chip-options__spec,
+.chip-options__note {
   margin: 0;
+  font-size: 13.5px;
+  line-height: 1.4;
 }
 
-.chip-option dt {
-  color: #9da99f;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.chip-option dd {
-  margin: 0;
-  font-family: Fraunces, Georgia, 'Times New Roman', serif;
-  font-size: 24px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.chip-option__lands,
-.chip-option__spec,
-.chip-option__reason {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.35;
-}
-
-.chip-option__lands {
-  color: #d8e2d6;
-}
-
-.chip-option__spec {
-  color: #8e9b90;
-  font-size: 12px;
-}
-
-.chip-option__reason {
+.chip-options__reason {
   color: #f7d2b0;
 }
 
-.chip-option__arm {
-  margin-top: 4px;
-  padding: 7px 10px;
-  border: 1px solid #f97316;
-  border-radius: 9px;
-  background: transparent;
-  color: #f97316;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.chip-option.is-armed .chip-option__arm {
-  background: #f97316;
-  color: #140b04;
-}
-
+.chip-options__spec,
 .chip-options__note {
-  margin: 0;
   color: #8e9b90;
-  font-size: 13px;
+  font-size: 12.5px;
 }
