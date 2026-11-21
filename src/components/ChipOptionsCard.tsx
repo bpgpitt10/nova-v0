@@ -140,7 +140,7 @@ export default function ChipOptionsCard({
               </p>
             ) : null}
             {edgeUnclear(current)
-              ? <p className="chip-options__reason">Lands short of Looper&rsquo;s green, which may itself be short here. If it lands on GSPro&rsquo;s green, it stops sooner.</p>
+              ? <p className="chip-options__reason">Lands short of Looper&rsquo;s green, which may itself be short here.</p>
               : current.reason ? <p className="chip-options__reason">{current.reason}</p> : null}
           </div>
         ) : (
