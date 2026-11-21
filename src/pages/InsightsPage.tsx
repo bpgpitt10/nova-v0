@@ -1,7 +1,6 @@
 import { useEffect, type CSSProperties, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
 import greensCard from '../assets/insights/insight-01-greens.webp'
-import rangeCard from '../assets/insights/insight-02-range-vs-green.webp'
 import InsightsMethod, { METHOD_HREF } from './InsightsMethod'
 import InsightsReadQuiz from './InsightsReadQuiz'
 import './InsightsPage.css'
@@ -34,16 +33,180 @@ type Part = Readonly<{
 
 const PARTS: readonly Part[] = [
   {
-    id: 'greens',
+    id: 'fairways',
     number: '01',
-    name: 'Greens',
+    name: 'Fairways',
+    colour: '#76d39b',
+    question: 'Same drive, 5 to 36 yards of roll',
+    caddie: 'Looper reads the course type and fairway firmness from GSPro and adds the roll for the course you\u2019re on, not the range.',
+    article: (
+      <>
+        <p className="insights-lead">
+          On a GSPro fairway, the course settings decide how far your ball rolls. My stock drive rolled 5 yards on a
+          soft Bentgrass fairway and 36 on a firm Links one. The carry was the same every time. Only what happened
+          after it landed changed.
+        </p>
+        <h3>How I think about it now</h3>
+        <ul>
+          <li>
+            <strong>Your range is one setting.</strong> GSPro&rsquo;s range plays like a Bermuda medium fairway. On a
+            level course fairway set the same way, the ball rolled what the range showed, within about a yard. Change
+            the course and the range total is wrong: that drive rolls about 20 yards on Bermuda medium, 30 on Links
+            medium and 9 on Bentgrass medium.
+          </li>
+          <li>
+            <strong>Grass type first, again.</strong> Bentgrass to Links at the same firmness added 20 yards of roll to
+            the drive. Soft to firm on Bermuda added 14.
+          </li>
+          <li>
+            <strong>Bentgrass stops irons.</strong> On a Bentgrass course a 7 iron rolled about 3 yards whether the
+            fairway was soft or firm. The driver still went from 5 to 17.
+          </li>
+          <li>
+            <strong>It isn&rsquo;t a flat percentage.</strong> Firm Links gave a driver 1.8 times the roll of Bermuda
+            medium, and a pitching wedge 2.4 times. Short clubs change by the bigger multiple, long clubs by more
+            yards.
+          </li>
+        </ul>
+        <h3>What to do with it</h3>
+        <p>
+          Learn your carries on the range, not your totals. Then add the roll for the course you&rsquo;re on: on
+          Links, about 10 more yards on a drive than the range shows; on Bentgrass, about 10 fewer. Laying up to a
+          firm fairway, leave room for the ball to run.
+        </p>
+        <h3>The catch</h3>
+        <p>
+          All of this is on level ground. Slopes move roll more than any setting here: one drive picked up 46 extra
+          yards running down a long slope, and an upslope took 6 off another. And the rough stops most of it (part
+          02).
+        </p>
+        <p className="insights-limits">
+          Measured in GSPro 4.1.9: each club&rsquo;s stock shot fired onto the range at all nine course type and
+          fairway firmness settings, then checked against shots landing on course fairways. <a href={METHOD_HREF}>How I tested</a>
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'lies',
+    number: '02',
+    name: 'Lies',
+    colour: '#c9a46a',
+    question: 'Your bag stops working in deep rough',
+    caddie: 'Looper reads the lie from GSPro before every shot, and works out each club from there, not from your fairway numbers.',
+    article: (
+      <>
+        <p className="insights-lead">
+          From the fairway, more club means more distance. From GSPro&rsquo;s deep rough it mostly doesn&rsquo;t. Run what I
+          measured through an 8 iron, a 5 iron and a hybrid and all three carry about 105 yards out of the same deep rough, from clean
+          carries of 146, 182 and 198.
+        </p>
+        <h3>How GSPro handles the lie</h3>
+        <p>
+          GSPro doesn&rsquo;t take a flat percentage off. It takes away some of the ball&rsquo;s speed and some of its
+          spin, and how much depends on how the ball comes off the face. The lower the launch, the more the grass
+          grabs it. That is why the longest clubs suffer most.
+        </p>
+        <ul>
+          <li>
+            <strong>Deep rough is a launch-angle problem.</strong> A high-launching wedge keeps about 80% of its ball
+            speed. A low-launching long iron keeps about 65%. Spin is cut roughly in half either way, so whatever does
+            come out runs on landing.
+          </li>
+          <li>
+            <strong>Rough is a flyer, not a penalty.</strong> It costs a few percent of speed but up to a third of the
+            spin. A 5 iron from the rough carried 12 yards less than from the fairway and finished 2 yards further,
+            because it ran out.
+          </li>
+          <li>
+            <strong>Sand is gentler than you think on full swings.</strong> It takes about 7% of ball speed from a full
+            iron and leaves the spin alone. Slower swings lose more of both.
+          </li>
+          <li>
+            <strong>The first cut barely counts.</strong> About 1.5% of speed and 5% of spin.
+          </li>
+          <li>
+            <strong>The cart path is free</strong>, unless you hit a driver-type shot off it, which loses about a
+            quarter of its speed.
+          </li>
+        </ul>
+        <h3>What to do with it</h3>
+        <p>
+          In deep rough, take the club that launches highest and still gets there, not one more than normal: the
+          longer club usually buys nothing. In the rough, plan for the ball to release. The slope under the ball is
+          part 03.
+        </p>
+        <p className="insights-limits">
+          Measured in GSPro 4.1.9 from rough, deep rough, sand, first cut and cart path lies on four courses. <a href={METHOD_HREF}>How I tested</a>
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'slopes',
+    number: '03',
+    name: 'Slopes',
+    colour: '#8bb8ff',
+    question: 'Side slopes hit your driver hardest',
+    caddie: 'Looper reads the slope under the ball from GSPro and turns it into a new launch and start line before it picks the club and the aim.',
+    article: (
+      <>
+        <p className="insights-lead">
+          A slope under the ball changes your shot before it leaves the ground, and in GSPro the club it hurts most is
+          the driver. On a 4&deg; side slope, a drive starts about 15 yards offline. A pitching wedge, about 5.
+        </p>
+        <h3>How I think about it now</h3>
+        <ul>
+          <li>
+            <strong>GSPro tilts the launch, not your swing.</strong> Up or down the slope moves the launch angle.
+            Across it moves the start line, toward the side GSPro&rsquo;s lie readout names. Nothing looks different
+            at address. It only shows in the flight.
+          </li>
+          <li>
+            <strong>Low launch feels it most.</strong> A driver takes about nine-tenths of a side slope as start line,
+            a 7 iron about three-quarters, a sand wedge under half. In real golf it runs the other way, because loft
+            points the face off line. Don&rsquo;t bring that instinct to GSPro.
+          </li>
+          <li>
+            <strong>Side slope is the one that costs you.</strong> About 4 yards offline per degree with a driver, 2
+            with a 7 iron, 1 with a wedge. An 8&deg; side slope started one drive 7&deg; right, and it landed 30 yards
+            right.
+          </li>
+          <li>
+            <strong>Up and down barely move your irons.</strong> Their carry changes by a yard or two. The driver is
+            different: a 4&deg; downslope took about 10 yards off it and an 8&deg; one about 20, because it has little
+            launch to lose. A 4&deg; upslope added about 8.
+          </li>
+        </ul>
+        <h3>What to do with it</h3>
+        <p>
+          Check the side slope before every full shot and aim off first: about 4 yards per degree with a driver, 2 with
+          a mid iron, 1 with a wedge. Off a downslope with a driver, expect it to come up short.
+        </p>
+        <h3>The catch</h3>
+        <p>
+          This is the slope under the ball. Where it lands is a separate question: an upslope where the ball comes
+          down kills its roll, and a downslope adds to it (part 01).
+        </p>
+        <p className="insights-limits">
+          Measured in GSPro 4.1.9: launch angle and start line from shots fired off sloped lies on several courses,
+          read against GSPro&rsquo;s own lie readout. Carries for those launches from Looper&rsquo;s flight model.{' '}
+          <a href={METHOD_HREF}>How I tested</a>
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'approaches',
+    number: '04',
+    name: 'Approaches',
     colour: '#eab308',
     question: 'Read the grass before the firmness',
     card: {
       src: greensCard,
       alt: 'Release in yards for a wedge, 9 iron, 7 iron and 5 iron on Bentgrass, Bermuda and Links greens at soft, medium and firm, each compared with Bermuda soft, at stimp 11.',
     },
-    caddie: 'Looper reads the grass type and firmness from GSPro and adds the release to every club it recommends.',
+    caddie: 'Looper reads the grass type and firmness from GSPro, takes the stimp you set at the start of a round, and adds the release to every club it recommends.',
     article: (
       <>
         <p className="insights-lead">
@@ -69,11 +232,17 @@ const PARTS: readonly Part[] = [
             <strong>Your wedge is safe. Your long irons are not.</strong> A full wedge stopped within 2 yards on all
             nine settings. A 5 iron ran under a yard on soft Bentgrass and nearly 20 on firm Links.
           </li>
+          <li>
+            <strong>Stimp barely matters here.</strong> Going from stimp 8 to stimp 13 moved a full pitching wedge a
+            tenth of a yard. Stimp only changes the roll after the bounce, and a full approach has little roll left.
+            A low-spinning 9 iron felt it most: 5.3 yards of release at stimp 8, 7.1 at stimp 13.
+          </li>
         </ul>
         <h3>What to do with it</h3>
         <p>
           On Bentgrass, fly it to the number. On Bermuda, take a few yards off mid irons and more off long irons. On
-          Links, land anything longer than a 9 iron well short and let it run.
+          Links, land anything longer than a 9 iron well short and let it run. And leave your range total at the
+          range: it includes fairway roll a green won&rsquo;t give you.
         </p>
         <h3>The catch</h3>
         <p>
@@ -81,121 +250,70 @@ const PARTS: readonly Part[] = [
           iron. So the same shot from the rough needs a different number again.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9 at stimp 11 on level greens. Stimp is part 03; the slope of your lie is part 06. <a href={METHOD_HREF}>How I test</a>
+          Measured in GSPro 4.1.9 on level greens at stimp 11, with stimp checked at 8, 11 and 13. Slopes are part 03. <a href={METHOD_HREF}>How I tested</a>
         </p>
       </>
     ),
   },
   {
-    id: 'range-vs-green',
-    number: '02',
-    name: 'Range vs green',
-    colour: '#76d39b',
-    question: 'Stop trusting your range rollout',
-    card: {
-      src: rangeCard,
-      alt: 'How many more yards the same shot rolls on the GSPro range than it releases on a green, for a wedge, 9 iron, 7 iron and 5 iron across nine settings.',
-    },
-    caddie: 'Looper works from your carry and adds the rollout for where the ball will land: fairway, green, rough or sand.',
+    id: 'chipping',
+    number: '05',
+    name: 'Chipping',
+    colour: '#f97316',
+    question: 'Read the fairway before the green',
+    caddie: 'Looper reads the grass and both firmnesses from GSPro, and works out a chip’s release from where it will land.',
     article: (
       <>
         <p className="insights-lead">
-          The GSPro range rolls like a fairway. A green doesn&rsquo;t. I hit the same four shots onto both with
-          identical settings, and the range showed up to 8 yards of rollout that never happens on a green.
+          Land a chip on a GSPro fairway and the fairway decides how far it goes. I hit bump and runs, chips,
+          pitches and flops across every grass type, firmness and stimp. The same chip landing short on a firm fairway ran
+          about half again as far as on a soft one.
         </p>
         <h3>How I think about it now</h3>
         <ul>
           <li>
-            <strong>Carry is the only number that travels.</strong> The total you see on the range includes fairway
-            roll. Into a green, most of that roll isn&rsquo;t coming with you.
+            <strong>A chip is a putt with a bounce.</strong> Almost all of its release is roll, and once it&rsquo;s
+            rolling on the green it follows the same rules as a putt (part 06). That&rsquo;s why stimp hits chips
+            hard: going from stimp 8 to 13 added about 45% to short chips that landed on the green.
           </li>
           <li>
-            <strong>Short clubs lie the most.</strong> A wedge on Bermuda medium rolled 3.9 yards on the range and 0.1
-            on the green.
+            <strong>Land short and the fairway takes over.</strong> A firm fairway added about 50% over a soft one. A
+            Links fairway added 30&ndash;50% over Bermuda. Bentgrass ran a little less than Bermuda.
           </li>
           <li>
-            <strong>Long irons are closer to honest.</strong> A 5 iron on the same setting rolled 12.0 on the range
-            and 9.1 on the green.
+            <strong>The green&rsquo;s firmness matters less.</strong> Soft to firm on the green added a fifth to a
+            quarter, more for a flop, and nothing at all to a chip that stopped short of the green.
           </li>
           <li>
-            <strong>Bentgrass is the exception.</strong> Its range and green numbers stay within a yard or three of
-            each other.
+            <strong>Rough barely matters.</strong> GSPro took about a third of the spin off chips from the rough,
+            and they released only 5&ndash;10% further. A chip doesn&rsquo;t have much spin to lose.
+          </li>
+          <li>
+            <strong>Longer pitches stop.</strong> Spin grows with the swing. A pitch that carried 5 yards released
+            1.3 times its carry. At 30 and 40 yards it released about 7 yards either way.
           </li>
         </ul>
         <h3>What to do with it</h3>
         <p>
-          Build your yardages from carry. Into a green, add the green&rsquo;s release, not the range&rsquo;s. Laying
-          up to a fairway, add the roll back.
+          Before a chip, check where it lands, not just the green. Landing on a firm fairway or on Links, fly it
+          shorter than you think. Landing on the green, check the stimp. From the rough, play it like the fairway.
         </p>
         <h3>The catch</h3>
         <p>
-          This is the best case, with the range and the course on the same settings. Practice on one grass type and
-          play another and the gap is bigger than anything on this card.
+          Chip spin is where launch monitors disagree the most. I used typical numbers, about 2,000 rpm for a
+          10-yard chip. If yours reads less spin, your chips will run further than mine.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9. Range roll: each club&rsquo;s stock shot fired onto the range once on each of the
-          nine settings (GSPro rolls the same shot the same distance every time, to a hundredth of a yard). Green
-          release: the same shots onto level greens at stimp 11. <a href={METHOD_HREF}>How I test</a>
-        </p>
-      </>
-    ),
-  },
-  {
-    id: 'stimp',
-    number: '03',
-    name: 'Stimp',
-    colour: '#8bb8ff',
-    question: 'Stimp barely touches your approaches',
-    caddie: 'Looper takes the stimp you set when you start a round and applies it to the roll after the bounce, not to the bounce itself.',
-    article: (
-      <>
-        <p className="insights-lead">
-          Going from stimp 8 to stimp 13 moved my full pitching wedge a tenth of a yard. I hit the same six approach
-          shots at stimp 8, 11 and 13, a pitching wedge and a 9 iron at three spins each, and the green&rsquo;s speed
-          barely showed up.
-        </p>
-        <h3>How I think about it now</h3>
-        <ul>
-          <li>
-            <strong>Stimp changes the roll, not the bounce.</strong> Every shot split the same way: a hop and skid that
-            didn&rsquo;t change at all, then a roll that grew with the green&rsquo;s speed. A wedge that lands with
-            spin has almost no roll left for the stimp to work on.
-          </li>
-          <li>
-            <strong>Low spin is where it shows.</strong> A 9 iron at 5,500 rpm released 5.3 yards at stimp 8 and 7.1
-            at stimp 13. The same club at 7,800 rpm went from 2.2 to 2.5.
-          </li>
-          <li>
-            <strong>Fast greens spin it back further.</strong> A wedge at 10,800 rpm backed up 0.2 yards at stimp 8
-            and 1.9 at stimp 13. Stimp makes whatever the ball is doing bigger, forward or backward.
-          </li>
-          <li>
-            <strong>A ball that stops dead stays dead.</strong> A 9 iron at 9,800 rpm finished 0.8 yards past its
-            landing spot at all three speeds.
-          </li>
-        </ul>
-        <h3>What to do with it</h3>
-        <p>
-          On full approaches, ignore the stimp and read the grass instead (part 01). Change your number only for a
-          shot that comes in with little spin, or one you know spins back: on a fast green, land it a yard further
-          past the pin than you normally would.
-        </p>
-        <h3>The catch</h3>
-        <p>
-          Stimp barely matters in the air and matters a lot on the ground. The slower the ball arrives, the more of
-          its release is roll, so chips and putts feel the stimp far more. A putt hit to roll 20 feet at stimp 11
-          rolls 15 at stimp 8 and 23 at stimp 13. That&rsquo;s parts 04 and 05.
-        </p>
-        <p className="insights-limits">
-          Measured in GSPro 4.1.9: a pitching wedge and a 9 iron at three spins each, carried about 125 yards onto
-          Briarwood West&rsquo;s Bermuda medium green at stimp 8, 11 and 13. <a href={METHOD_HREF}>How I test</a>
+          Measured in GSPro 4.1.9 at Briarwood West: bump and run (12&deg; launch), chip (20&deg;),
+          pitch (28&deg;) and flop (40&deg;), carrying 5 to 40 yards onto a gently uphill green or landing 2 to 8
+          yards short of it, at stimp 8, 11 and 13. <a href={METHOD_HREF}>How I tested</a>
         </p>
       </>
     ),
   },
   {
     id: 'putting',
-    number: '04',
+    number: '06',
     name: 'Putting',
     colour: '#2ec4e6',
     question: 'Only two settings move a putt',
@@ -240,126 +358,7 @@ const PARTS: readonly Part[] = [
         </p>
         <p className="insights-limits">
           Measured in GSPro 4.1.9 with putts from 2 to 8 mph on four practice greens, at stimp 8 to 13, flat and on
-          slopes from 1.2% to 4.5%. One formula fits every putt that stopped to within 0.05 feet on average. <a href={METHOD_HREF}>How I test</a>
-        </p>
-      </>
-    ),
-  },
-  {
-    id: 'chipping',
-    number: '05',
-    name: 'Chipping',
-    colour: '#f97316',
-    question: 'Read the fairway before the green',
-    caddie: 'Looper reads the grass and both firmnesses from GSPro, and works out a chip’s release from where it will land.',
-    article: (
-      <>
-        <p className="insights-lead">
-          Land a chip on a GSPro fairway and the fairway decides how far it goes. I hit bump and runs, chips,
-          pitches and flops across every grass type, firmness and stimp. The same chip landing short on a firm fairway ran
-          about half again as far as on a soft one.
-        </p>
-        <h3>How I think about it now</h3>
-        <ul>
-          <li>
-            <strong>A chip is a putt with a bounce.</strong> Almost all of its release is roll, and once it&rsquo;s
-            rolling on the green it follows the same rules as a putt (part 04). That&rsquo;s why stimp hits chips
-            hard: going from stimp 8 to 13 added about 45% to short chips that landed on the green.
-          </li>
-          <li>
-            <strong>Land short and the fairway takes over.</strong> A firm fairway added about 50% over a soft one. A
-            Links fairway added 30&ndash;50% over Bermuda. Bentgrass ran a little less than Bermuda.
-          </li>
-          <li>
-            <strong>The green&rsquo;s firmness matters less.</strong> Soft to firm on the green added a fifth to a
-            quarter, more for a flop, and nothing at all to a chip that stopped short of the green.
-          </li>
-          <li>
-            <strong>Rough barely matters.</strong> GSPro took about a third of the spin off chips from the rough,
-            and they released only 5&ndash;10% further. A chip doesn&rsquo;t have much spin to lose.
-          </li>
-          <li>
-            <strong>Longer pitches stop.</strong> Spin grows with the swing. A pitch that carried 5 yards released
-            1.3 times its carry. At 30 and 40 yards it released about 7 yards either way.
-          </li>
-        </ul>
-        <h3>What to do with it</h3>
-        <p>
-          Before a chip, check where it lands, not just the green. Landing on a firm fairway or on Links, fly it
-          shorter than you think. Landing on the green, check the stimp. From the rough, play it like the fairway.
-        </p>
-        <h3>The catch</h3>
-        <p>
-          Chip spin is where launch monitors disagree the most. I used typical numbers, about 2,000 rpm for a
-          10-yard chip. If yours reads less spin, your chips will run further than mine.
-        </p>
-        <p className="insights-limits">
-          Measured in GSPro 4.1.9 at Briarwood West: bump and run (12&deg; launch), chip (20&deg;),
-          pitch (28&deg;) and flop (40&deg;), carrying 5 to 40 yards onto a gently uphill green or landing 2 to 8
-          yards short of it, at stimp 8, 11 and 13. <a href={METHOD_HREF}>How I test</a>
-        </p>
-      </>
-    ),
-  },
-  {
-    id: 'lies',
-    number: '06',
-    name: 'Lies',
-    colour: '#c9a46a',
-    question: 'Your bag stops working in deep rough',
-    caddie: 'Looper reads the lie and its slope from GSPro before every shot, and works out each club from there, not from your fairway numbers.',
-    article: (
-      <>
-        <p className="insights-lead">
-          From the fairway, more club means more distance. From GSPro&rsquo;s deep rough it mostly doesn&rsquo;t. Run what I
-          measured through an 8 iron, a 5 iron and a hybrid and all three carry about 105 yards out of the same deep rough, from clean
-          carries of 146, 182 and 198.
-        </p>
-        <h3>How GSPro handles the lie</h3>
-        <p>
-          GSPro doesn&rsquo;t take a flat percentage off. It takes away some of the ball&rsquo;s speed and some of its
-          spin, and how much depends on how the ball comes off the face. The lower the launch, the more the grass
-          grabs it. That is why the longest clubs suffer most.
-        </p>
-        <ul>
-          <li>
-            <strong>Deep rough is a launch-angle problem.</strong> A high-launching wedge keeps about 80% of its ball
-            speed. A low-launching long iron keeps about 65%. Spin is cut roughly in half either way, so whatever does
-            come out runs on landing.
-          </li>
-          <li>
-            <strong>Rough is a flyer, not a penalty.</strong> It costs a few percent of speed but up to a third of the
-            spin. A 5 iron from the rough carried 12 yards less than from the fairway and finished 2 yards further,
-            because it ran out.
-          </li>
-          <li>
-            <strong>Sand is gentler than you think on full swings.</strong> It takes about 7% of ball speed from a full
-            iron and leaves the spin alone. Slower swings lose more of both.
-          </li>
-          <li>
-            <strong>The first cut barely counts.</strong> About 1.5% of speed and 5% of spin.
-          </li>
-          <li>
-            <strong>The cart path is free</strong>, unless you hit a driver-type shot off it, which loses about a
-            quarter of its speed.
-          </li>
-        </ul>
-        <h3>The slope matters too</h3>
-        <p>
-          A slope under the ball changes the launch, and GSPro shows it only in the flight. Up or down, the launch moves
-          by roughly half to nine-tenths of the slope, more for low-launching clubs, which changes distance by a yard
-          or two. Across, the ball starts toward the low side by a similar share, and that adds up fast: a 6&deg; side
-          slope sends a 5 iron about 16 yards offline. On the sim, it&rsquo;s the side slope that catches people out.
-        </p>
-        <h3>What to do with it</h3>
-        <p>
-          In deep rough, take the club that launches highest and still gets there, not one more than normal: the
-          longer club usually buys nothing. In the rough, plan for the ball to release. On a side slope, aim off
-          before you worry about the distance.
-        </p>
-        <p className="insights-limits">
-          Measured in GSPro 4.1.9 from rough, deep rough, sand, first cut, cart path and sloped lies on four
-          courses. <a href={METHOD_HREF}>How I test</a>
+          slopes from 1.2% to 4.5%. One formula fits every putt that stopped to within 0.05 feet on average. <a href={METHOD_HREF}>How I tested</a>
         </p>
       </>
     ),
@@ -382,7 +381,7 @@ export default function InsightsPage() {
   const onMethod = window.location.pathname.replace(/\/+$/, '') === METHOD_HREF
   useEffect(() => {
     const previous = document.title
-    document.title = onMethod ? 'How I test · GSPro physics, measured · The Looper' : 'GSPro physics, measured · The Looper'
+    document.title = onMethod ? 'How I tested · GSPro physics, measured · The Looper' : 'GSPro physics, measured · The Looper'
     // A post links to one part (/insights#greens): go to it once the page is drawn.
     const id = decodeURIComponent(window.location.hash.replace(/^#/, ''))
     if (id) window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView())
@@ -415,7 +414,7 @@ export default function InsightsPage() {
             <p className="insights-hero__lead">
               A lot of GSPro misses aren&rsquo;t swing misses. They&rsquo;re bad reads. I tested GSPro 4.1.9&rsquo;s
               physics one setting at a time and measured what the ball actually did.{' '}
-              <a className="insights-hero__method" href={METHOD_HREF}>How I test &rarr;</a>
+              <a className="insights-hero__method" href={METHOD_HREF}>How I tested &rarr;</a>
             </p>
           </div>
         </section>
