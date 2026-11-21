@@ -137,7 +137,8 @@ const PARTS: readonly Part[] = [
           </li>
           <li>
             <strong>Sand is gentler than you think on full swings.</strong> It takes about 7% of ball speed from a full
-            iron and leaves the spin alone. Slower swings lose more of both.
+            iron and leaves the spin alone. Slower swings lose more of both: a greenside bunker shot keeps only about
+            76% of its speed.
           </li>
           <li>
             <strong>The first cut barely counts.</strong> About 1% of speed and 5% of spin.

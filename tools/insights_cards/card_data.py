@@ -44,11 +44,11 @@ CARDS = [
              "cols": ["Ball speed", "Spin"], "scale": (45, 100), "ticks": [50, 60, 70, 80, 90, 100],
              "rows": [("First cut", [(99, 99, 99, 99, 99), (95, 95, 95, 95, 95)]),
                       ("Rough", [(91, 93, 94, 96, 98), (60, 68, 77, 81, 81)]),
-                      ("Sand", [(83, 88, 93, 93, 93), (80, 90, 100, 100, 100)]),
+                      ("Sand", [(76, 88, 93, 93, 93), (77, 90, 100, 100, 100)]),
                       ("Deep rough", [(62, 71, 79, 81, 81), (49, 49, 53, 56, 56)]),
                       ("Cart path", [(75, 100, 100, 100, 100), (100, 100, 100, 100, 100)])],
-             "foot": "Dot: the typical shot. Bar: most shots. Line: every shot I measured. It moves with the shot: deep rough with the launch angle, "
-                     "sand with how hard you swing; a driver-type shot off the cart path loses about a quarter."},
+             "foot": "Dot: the typical shot. Bar: most shots. Line: the full range. It moves with the shot: deep rough with the launch angle, "
+                     "sand with how hard you swing (greenside bunkers keep about 76%); a driver-type shot off the cart path loses about a quarter."},
             {"kind": "bars", "title": "Deep rough", "sub": "ball speed kept, by launch", "max": 100,
              "rows": [("9\u00b0 launch", 64, "64%"), ("12\u00b0", 71, "71%"), ("14\u00b0", 72, "69\u201374%"),
                       ("19\u00b0", 77, "77%"), ("24\u00b0", 79, "79%"), ("30\u00b0", 81, "81%")]},
