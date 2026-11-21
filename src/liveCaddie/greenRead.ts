@@ -325,10 +325,19 @@ export const greenReadLine = (
   const d = Math.hypot(pin[0] - ball[0], pin[1] - ball[1]) || 1
   const shot: CoursePointYds = [(pin[0] - ball[0]) / d, (pin[1] - ball[1]) / d]
   const parts: string[] = []
+  // GSPro always cuts the pin on its green. When Looper's green (OpenStreetMap's outline) misses
+  // the pin or puts it on its edge, the outline is off here: say so, and don't steer by its edges
+  // (Brian, 21 Nov: Shinnecock 6 and 9).
+  const edgeRoom = pinKnown
+    ? Math.min(...([[1, 0], [-1, 0], [0, 1], [0, -1]] as CoursePointYds[]).map((dir) => greenRoomYds(a, pin, dir)))
+    : Number.POSITIVE_INFINITY
+  const outlineDoubtful = pinKnown && (!pinOnGreen(a, pin) || edgeRoom < PIN_EDGE_DOUBT_YDS)
+  if (outlineDoubtful) parts.push('Looper’s green outline may not match GSPro’s here: the pin sits at its edge.')
   const tiers = a.features.filter((f) => f.kind === 'tier')
   const spines = a.features.filter((f) => f.kind === 'spine')
   if (a.tiltPercent < FLAT_PERCENT && !tiers.length && !spines.length) {
-    return 'Flat green: nothing to play around. Aim at the pin.'
+    parts.push('Flat green: nothing to play around. Aim at the pin.')
+    return parts.join(' ')
   }
   if (a.tiltPercent >= FLAT_PERCENT && a.tiltDownhill) {
     const where = relative(a.tiltDownhill, shot)
@@ -369,11 +378,22 @@ export const greenReadLine = (
     // the low edge (often next to water or a bunker) leaves no room.
     if (greenRoomYds(a, pin, down) >= MIN_PUTT_SIDE_ROOM_YDS) {
       parts.push(`Leave it ${low === 'past' ? 'past' : `${low} of`} the hole for an uphill putt.`)
-    } else {
+    } else if (!outlineDoubtful) {
       parts.push(`Pin is near the ${low === 'past' ? 'back' : low === 'short' ? 'front' : low} edge: favor the middle of the green.`)
     }
   }
   return parts.join(' ')
+}
+
+/** Looper's green closer than this to the pin on any side: the outline is probably off there. */
+const PIN_EDGE_DOUBT_YDS = 1
+
+/** Whether `point` is on Looper's green (the grid's green cells). */
+const pinOnGreen = (a: GreenReadAnalysis, point: CoursePointYds) => {
+  const { minX, minY, spacingYds, width, height } = a.grid
+  const x = Math.round((point[0] - minX) / spacingYds)
+  const y = Math.round((point[1] - minY) / spacingYds)
+  return x >= 0 && y >= 0 && x < width && y < height && Boolean(a.inside[y * width + x])
 }
 
 /** Green needed on the low side of the pin before "leave it there" is advice. */

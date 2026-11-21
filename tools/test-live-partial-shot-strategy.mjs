@@ -57,6 +57,29 @@ try {
     assert.ok(Math.abs(s.effectiveDistanceYds-(distance+2*(distance/90)))<1e-8)
     assert.equal(s.effectiveLateralChangeYds,1.4*(distance/90))
   }
+  // Carry window: front of the green (2 yd onto it) to the target, in the same playing yards as PLAY.
+  const box = (x0,y0,x1,y1) => [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]
+  const windowShot = (surfaces, distanceYds=60) => buildUnderRangeShotStrategy({
+    evaluations:[evaluation], hole:{...greywolfHole01Geometry, surfaces}, ball,
+    target:[0,distanceYds], pin:[0,distanceYds], greenDetail:null, trustedPin:false,
+  })
+  const provenance = greywolfHole01Geometry.surfaces[0].provenance
+  const greenAt = (from) => ({id:'g',kind:'green',provenance,polygons:[box(-15,from,15,80)]})
+  const open = windowShot([greenAt(40)])
+  const ratio = open.effectiveDistanceYds / 60
+  assert.ok(Math.abs(open.carryWindow.toYds - open.effectiveDistanceYds) < 1e-9, 'window ends at the PLAY number')
+  assert.ok(Math.abs(open.carryWindow.fromYds - 42 * ratio) < 0.6, `front + 2 yd (${open.carryWindow.fromYds})`)
+  assert.equal(open.carryWindow.pastTrouble, null)
+  // A bunker right in front of the green: the window starts past it.
+  const guarded = windowShot([greenAt(40), {id:'b',kind:'bunker',provenance,polygons:[box(-15,33,15,39.9)]}])
+  assert.equal(guarded.carryWindow.pastTrouble, 'bunker')
+  assert.ok(guarded.carryWindow.fromYds >= 42 * ratio - 0.6)
+  // Looper's green starting right at the target: the front can't be trusted, no number.
+  const doubtful = windowShot([greenAt(56)])
+  assert.equal(doubtful.carryWindow.fromYds, null)
+  assert.ok(doubtful.carryWindow.frontDoubtful)
+  // Target not on the green: no window.
+  assert.equal(windowShot([greenAt(70)]).carryWindow, null)
   assert.equal(shot(88),null,'at modeled floor, full shot ranking returns')
   assert.equal(shot(95),null,'above floor, full shot ranking returns')
   assert.equal(buildUnderRangeShotStrategy({

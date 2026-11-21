@@ -365,6 +365,23 @@
   white-space: nowrap;
 }
 
+/* Where the shot can land and be on the green, under PLAY N YDS. */
+.live-carry-window {
+  display: block;
+  margin-top: 10px;
+  color: #cfd8cd;
+  font-size: clamp(15px, 1.2vw, 19px);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+.live-carry-window b {
+  color: #eab308;
+  font-weight: 700;
+}
+
 .live-strategy-read {
   display: grid;
   gap: 9px;
