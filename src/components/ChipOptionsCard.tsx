@@ -41,6 +41,9 @@ const TAG: Readonly<Record<ChipOption['verdict'], string | null>> = {
   good: 'Best here', fine: null, short: 'Lands short', 'not-needed': 'Not needed', avoid: 'Avoid',
 }
 
+/** Under 3 inches of break reads as straight. */
+const BREAK_STRAIGHT_FT = 0.25
+
 const yd = (value: number) => (value < 10 ? value.toFixed(1) : String(Math.round(value)))
 const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs(value) / 3)} yd` : `${Math.max(1, Math.round(Math.abs(value)))} ft`)
 
@@ -175,10 +178,14 @@ export default function ChipOptionsCard({
         </div>
         <div className="chip-conditions__row">
           <span>Break on the green<small>{hasGreenMap ? (breakScaled ? 'green map, scaled to GSPro’s height (estimate)' : 'the run, from the green map (estimate)') : 'no green map here'}</small></span>
-          <b>{breakFt == null ? '—' : Math.abs(breakFt) < 1 ? 'straight' : `${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}</b>
+          {/* Under a foot still says which way and how many inches: "straight" only when it truly is. */}
+          <b>{breakFt == null ? '—' : Math.abs(breakFt) < BREAK_STRAIGHT_FT ? 'straight'
+            : Math.abs(breakFt) < 1 ? `${Math.round(Math.abs(breakFt) * 12)} in ${breakFt > 0 ? 'left' : 'right'}`
+              : `${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}</b>
           <em className={breakFt != null && Math.abs(breakFt) >= 1 ? 'is-off' : ''}>
-            {breakFt == null ? '—' : Math.abs(breakFt) < 1 ? 'no change to the aim'
-              : `runs ${breakFt > 0 ? 'left to right' : 'right to left'}: aim ${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}
+            {breakFt == null ? '—' : Math.abs(breakFt) < BREAK_STRAIGHT_FT ? 'no change to the aim'
+              : Math.abs(breakFt) < 1 ? `runs ${breakFt > 0 ? 'left to right' : 'right to left'}, a little: aim stays at the pin`
+                : `runs ${breakFt > 0 ? 'left to right' : 'right to left'}: aim ${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}
           </em>
         </div>
         <div className="chip-conditions__row">
