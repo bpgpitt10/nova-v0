@@ -848,6 +848,11 @@ STIMP_RELEASE_MPH = 4.09
 #: Putts of one speed that land this close together count as the same: one a speed is then enough.
 PUTT_REPEAT_MATCH_FT = 0.3
 PUTT_SLOPES = {"flat": "flat", "level": "flat", "up": "uphill", "uphill": "uphill", "down": "downhill", "downhill": "downhill"}
+#: GSPro's Course Type as typed (Brian, 20 Nov: confirm it, with the green firmness, every set).
+#: Stored as the range test does: soft = Bentgrass, medium = Bermuda, firm = Links.
+PUTT_GRASS = {"bentgrass": "soft", "bent": "soft", "bermuda": "medium", "links": "firm"}
+PUTT_FIRMNESS = ("soft", "medium", "firm")
+GRASS_NAME = {"soft": "Bentgrass", "medium": "Bermuda", "firm": "Links"}
 
 
 def read_putt_line(typed: str, state: dict[str, Any]) -> list[str]:
@@ -884,6 +889,12 @@ def read_putt_line(typed: str, state: dict[str, Any]) -> list[str]:
                 unknown.append("speeds")
         elif word in ("twice", "once"):
             state["repeats"] = 2 if word == "twice" else 1
+            index += 1
+        elif word in PUTT_GRASS:
+            state["course_type"] = PUTT_GRASS[word]
+            index += 1
+        elif word in PUTT_FIRMNESS:
+            state["green_firmness"] = word
             index += 1
         else:
             unknown.append(word)
@@ -922,11 +933,26 @@ def putt_set_summary(rows: list[dict[str, Any]], slope: str) -> list[str]:
     return lines
 
 
+def putt_settings_check(rows: list[dict[str, Any]], course_type: str | None, green_firmness: str | None) -> list[str]:
+    """GSPro's own physics line, when a putt wrote one, against the grass and firmness typed."""
+    codes = {"0": "soft", "1": "medium", "2": "firm"}
+    logged = {(codes.get(str(row.get("log_course_type"))), codes.get(str(row.get("log_green_firmness")))) for row in rows
+              if row.get("log_course_type") not in (None, "") and row.get("log_green_firmness") not in (None, "")}
+    if not logged:
+        return ["  (GSPro's log had no settings line for these putts: what you typed is what's recorded.)"]
+    if logged == {(course_type, green_firmness)}:
+        return [f"  GSPro's log agrees: {GRASS_NAME.get(course_type or '', '?')} {green_firmness} greens."]
+    seen = ", ".join(f"{GRASS_NAME.get(t or '', '?')} {f}" for t, f in sorted(logged, key=str))
+    return [f"  CHECK GSPRO: its log says {seen}, you typed {GRASS_NAME.get(course_type or '', '?')} {green_firmness}. "
+            "Both are in the file; fix the setting or what you typed and roll the set again."]
+
+
 def putt_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, Any], round_file: Path, log_file: Path, db_path: Path,
                  notes_file: Path, gap: float, record_wait: float, first_set: int = 1, sleep=time.sleep) -> list[dict[str, Any]]:
     """Set after set of putts from wherever the ball is. One typed line changes what the next set is."""
     rows: list[dict[str, Any]] = []
-    state: dict[str, Any] = {"stimp": None, "slope": "flat", "slope_deg": None, "hla": 3.0, "speeds": PUTT_SET_SPEEDS_MPH, "repeats": 2}
+    state: dict[str, Any] = {"stimp": None, "slope": "flat", "slope_deg": None, "hla": 3.0, "speeds": PUTT_SET_SPEEDS_MPH, "repeats": 1,
+                             "course_type": None, "green_firmness": None}
     number = first_set
     while True:
         speeds = state["speeds"]
@@ -934,10 +960,13 @@ def putt_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, 
             speeds = speeds[:-1]  # the fastest would run off most greens downhill
         count = len(speeds) * state["repeats"]
         slope_text = state["slope"] + (f" {state['slope_deg']:g} deg" if state["slope_deg"] else "")
-        have = f"stimp {state['stimp']:g}, {slope_text}" if state["stimp"] else f"NO STIMP YET, {slope_text}"
+        green_text = (f"{GRASS_NAME[state['course_type']]} {state['green_firmness']} greens" if state["course_type"] and state["green_firmness"]
+                      else "NO GRASS / FIRMNESS YET")
+        have = (f"stimp {state['stimp']:g}" if state["stimp"] else "NO STIMP YET") + f", {green_text}, {slope_text}"
         try:
             typed = read_line(f"\nPutt set {number} ({have}): Enter to roll {count} putts, {speeds[0]:g} to {speeds[-1]:g} mph. "
-                              "Type what changed first: stimp 11, then flat, up or down (up 2 if you know the degrees). "
+                              "Type what changed first: grass and green firmness (bermuda medium), stimp 11, "
+                              "flat, up or down (up 2 if you know the degrees). "
                               "q to finish. ").strip()
         except EOFError:
             break
@@ -945,12 +974,16 @@ def putt_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, 
             break
         unknown = read_putt_line(typed, state) if typed else []
         if unknown:
-            print(f"  Did not understand: {' '.join(unknown)}. Use: stimp 11 / flat / up / down / up 2 / off 5 / speeds 2 4 6 / twice / once.")
+            print(f"  Did not understand: {' '.join(unknown)}. Use: bentgrass / bermuda / links, soft / medium / firm, "
+                  "stimp 11 / flat / up / down / up 2 / off 5 / speeds 2 4 6 / twice / once.")
             continue
         if typed:
             continue  # show the new settings in the prompt; Enter alone rolls the set
         if not state["stimp"]:
             print("  Type the stimp GSPro is set to first (stimp 11). GSPro does not write it anywhere.")
+            continue
+        if not (state["course_type"] and state["green_firmness"]):
+            print("  Type the grass and green firmness GSPro is set to first (bermuda medium).")
             continue
         speeds = state["speeds"][:-1] if state["slope"] == "downhill" and state["speeds"] == PUTT_SET_SPEEDS_MPH else state["speeds"]
         set_rows: list[dict[str, Any]] = []
@@ -979,7 +1012,8 @@ def putt_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, 
                                 "gspro_speed_mph": _num(found[1].get("BallSpeed"))}
             log_text = read_log_since(log_file, before_log)
             from_log = {key: value for key, value in lie_from_log(log_text).items() if key.startswith("log_")}
-            row = {"test": "putt", **labels, "stimp": state["stimp"], "slope": state["slope"], "slope_deg_typed": state["slope_deg"],
+            row = {"test": "putt", **labels, "stimp": state["stimp"], "course_type": state["course_type"],
+                   "green_firmness": state["green_firmness"], "slope": state["slope"], "slope_deg_typed": state["slope_deg"],
                    "spot": number, "note": slope_text, "club": f"{speed:g} mph", "n": index, "status": status,
                    "sent_speed_mph": speed, "sent_vla_deg": 0.0, "sent_spin_rpm": 0.0, "sent_hla_deg": state["hla"], "sent_at": sent_at,
                    **measured, **from_log}
@@ -1002,6 +1036,8 @@ def putt_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, 
             sleep(gap)
         rows.extend(set_rows)
         for line in putt_set_summary(set_rows, state["slope"]):
+            print(line)
+        for line in putt_settings_check(set_rows, state["course_type"], state["green_firmness"]):
             print(line)
         if state["repeats"] == 2:
             matched = [max(r) - min(r) for r in ([row["putt_roll_ft"] for row in set_rows if row["sent_speed_mph"] == speed
@@ -1346,9 +1382,9 @@ def guided(read_line=input, db_path: Path | None = None, round_file: Path | None
                 if test == "putt":
                     print("\nGSPro should be in On Course practice with the ball on a green, and room for a putt to roll out.")
                     print("Each set rolls putts from 2 to 8 mph, started a little off line so they miss the hole.")
-                    print("Type the stimp once (stimp 11). Type flat, up or down when you move. Then Enter rolls the set.")
-                    print("To change the stimp: change it in GSPro, type the new one here, Enter.")
-                    print("The first set rolls each speed twice to check GSPro repeats itself; after that, once.")
+                    print("Type the grass, green firmness and stimp GSPro is set to (bermuda medium stimp 11), and flat, up or")
+                    print("down when you move. Then Enter rolls the set: one putt a speed (GSPro repeats itself exactly).")
+                    print("To change a setting: change it in GSPro, type the new one here, Enter.")
                     notes_file = out.with_name(out.stem + "_log.txt")
                     rows = putt_session(path, read_line, writer, handle.flush, labels=labels, round_file=round_file, log_file=log_file,
                                         db_path=db_path, notes_file=notes_file, gap=1.0, record_wait=8.0, first_set=putt_sets + 1, sleep=sleep)
