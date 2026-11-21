@@ -293,7 +293,7 @@ const PARTS: readonly Part[] = [
       width: 1600,
       height: 1964,
     },
-    caddie: 'Looper already reads the grass and both firmnesses from GSPro. Chip options sized from where each shot lands are in testing now.',
+    caddie: 'Looper reads the grass and both firmnesses from GSPro, and works out a chip’s release from where it will land.',
     article: (
       <>
         <p className="insights-lead">
