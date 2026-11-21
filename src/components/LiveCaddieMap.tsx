@@ -137,6 +137,7 @@ export default function LiveCaddieMap({
   provisionalTeeRadiusYds,
   greenRead = null,
   overlay = null,
+  landingPoint = null,
 }: {
   hole: CourseHoleGeometry
   ball: CoursePointYds
@@ -152,6 +153,8 @@ export default function LiveCaddieMap({
   greenRead?: GreenReadAnalysis | null
   /** Controls drawn over the map (the aim line pills). */
   overlay?: ReactNode
+  /** An armed chip's landing spot: "fly it to here". */
+  landingPoint?: CoursePointYds | null
 }) {
   const viewSize = 100
   const pad = 4
@@ -275,6 +278,7 @@ export default function LiveCaddieMap({
   const meanSvg = candidate ? project(candidate.meanLanding) : null
   const carrySvg = candidate?.meanCarryLanding ? project(candidate.meanCarryLanding) : null
   const strategyAimSvg = strategyAimPoint ? project(strategyAimPoint) : null
+  const landingSvg = landingPoint ? project(landingPoint) : null
   const shotDx = (aimSvg?.[0] ?? targetSvg[0]) - ballSvg[0]
   const shotDy = (aimSvg?.[1] ?? targetSvg[1]) - ballSvg[1]
   const shotAngle = (Math.atan2(shotDy, shotDx) * 180) / Math.PI + 90
@@ -437,6 +441,14 @@ export default function LiveCaddieMap({
               x2={strategyAimSvg[0]} y2={strategyAimSvg[1]} />
             <circle className="live-aim-marker" cx={strategyAimSvg[0]} cy={strategyAimSvg[1]} r="0.9" />
           </>
+        ) : null}
+        {landingSvg ? (
+          <g className="live-chip-landing">
+            <line className="live-aim-line" x1={ballSvg[0]} y1={ballSvg[1]} x2={landingSvg[0]} y2={landingSvg[1]} />
+            <circle cx={landingSvg[0]} cy={landingSvg[1]} r="1.4" fill="none" stroke="#f97316" strokeWidth="0.45" />
+            <circle cx={landingSvg[0]} cy={landingSvg[1]} r="0.45" fill="#f97316" />
+            <text x={landingSvg[0] + 2} y={landingSvg[1] + 0.8} fill="#f97316" fontSize="2.4" fontWeight="700">Land here</text>
+          </g>
         ) : null}
         {yardageLabels.map((label) => (
           <text key={label.key} className={`live-map-yardage yardage-${label.kind}`}
