@@ -87,6 +87,20 @@ class AimClickTests(unittest.TestCase):
         result, _ = run([frame_with(ball_bgr=purple), frame_with(ball_bgr=purple)])
         self.assertEqual(result["verified"], "marker-not-seen", result)
 
+    def test_clicks_on_an_angled_map_when_the_ball_colour_is_known(self):
+        # A par 3 drawn at an angle: found by colour and shape, clicked, then checked against the marker.
+        def angled(marker=None):
+            frame = frame_with(ball_px=(90, 420), pin_px=(190, 80), marker=marker)
+            cv2.rectangle(frame, (4, 22), (int(W * 0.2), 58), (0, 0, 235), -1)   # red player banner
+            return frame
+        before = angled()
+        preview = aim_click.native_aim.aim_preview(before, ball_world=BALL, pin_world=PIN, target_world=PIN)
+        result, clicks = run([before, angled(marker=preview["minimap"]["target"])], target=PIN)
+        self.assertEqual(result["status"], "clicked")
+        self.assertEqual(result["pairing"], "free")
+        self.assertEqual(len(clicks), 1)
+        self.assertEqual(result["verified"], "match")
+
     def test_never_clicks_when_a_check_fails(self):
         cases = [
             ({"window": {**WINDOW, "status": "waiting"}}, "gspro-not-connected"),
