@@ -5,7 +5,7 @@ import { createServer } from 'vite'
 
 const server = await createServer({ appType: 'custom', logLevel: 'silent', server: { middlewareMode: true } })
 try {
-  const { readPutt, puttRollFt, puttSpeedFor, runawayGrade, puttFriction, feetInches } = await server.ssrLoadModule('/src/liveCaddie/puttRead.ts')
+  const { readPutt, puttRollFt, puttSpeedFor, runawayGrade, puttFriction, feetInches, rollOnGreen, aimPutt } = await server.ssrLoadModule('/src/liveCaddie/puttRead.ts')
   const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`)
 
   near(puttFriction(11), 0.0320, 0.0002, 'c0 at stimp 11')
@@ -44,6 +44,22 @@ try {
   assert.equal(readPutt(10, 0, 40).stimp, 11)
   assert.equal(feetInches(-59), '4 ft 11 in')
   assert.equal(feetInches(7.4), '7 in')
+  // Break on a plane: rolling across the slope matches the 1-D model along it, and a side slope bends it downhill.
+  const flatGreen = () => [0, 0]
+  const flatRoll = rollOnGreen(flatGreen, [0, 0], 0, puttSpeedFor(20, 11), 11)
+  near(flatRoll.end[1] * 3, 20, 0.15, 'flat roll on the slope field')
+  near(flatRoll.end[0], 0, 1e-6, 'flat roll stays straight')
+  const downhill = () => [0, -0.02]
+  near(rollOnGreen(downhill, [0, 0], 0, puttSpeedFor(10, 11), 11).end[1] * 3, 13.9, 0.2, 'down 2% on the field')
+  // Green falls to the right (+x lower): a straight putt bends right, so the aim is left.
+  const fallsRight = () => [-0.02, 0]
+  const bent = rollOnGreen(fallsRight, [0, 0], 0, puttSpeedFor(15, 11), 11)
+  assert.ok(bent.end[0] > 0.1, `side slope bends it downhill: ${bent.end[0]}`)
+  const aim = aimPutt(fallsRight, [0, 0], [0, 5], 11)
+  assert.ok(aim && aim.aimOffsetFt < -0.3, `aim left of the hole: ${aim?.aimOffsetFt}`)
+  assert.ok(aim.roll.closestToHoleYds < 0.05, `the aimed putt goes over the hole: ${aim.roll.closestToHoleYds}`)
+  const noBreak = aimPutt(flatGreen, [0, 0], [0, 5], 11)
+  near(noBreak.aimOffsetFt, 0, 0.05, 'flat green, aim at the hole')
   console.log('putt read ok')
 } finally {
   await server.close()
