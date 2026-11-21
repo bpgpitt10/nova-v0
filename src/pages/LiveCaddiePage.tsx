@@ -115,7 +115,7 @@ import ConditionsMathPanel from './ConditionsMathPanel'
 import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
 import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
-import ChipOptionsCard from '../components/ChipOptionsCard'
+import ChipOptionsCard, { type ChipAimState } from '../components/ChipOptionsCard'
 import { CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
@@ -367,7 +367,7 @@ export default function LiveCaddiePage() {
   const [armedClub, setArmedClub] = useState<string | null>(null)
   const [chipLabOn] = useState(() => isChipLabEnabled())
   const [armedChip, setArmedChip] = useState<{ shot: string; type: ChipType } | null>(null)
-  const [chipAim, setChipAim] = useState<{ shot: string; type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null>(null)
+  const [chipAim, setChipAim] = useState<{ shot: string; type: ChipType; state: ChipAimState; message: string } | null>(null)
   // Clicking a club only previews it; Arm commits (fills, then aims in GSPro).
   const [previewClub, setPreviewClub] = useState<string | null>(null)
   const [armPhase, setArmPhase] = useState<'idle' | 'filling' | 'aiming' | 'armed'>('idle')
@@ -1771,7 +1771,8 @@ export default function LiveCaddiePage() {
       shotKey: shotConditionsKey ?? `${courseId}|${holeNumber}`,
     }).then((result) => setChipAim({
       shot: chipShotKey, type,
-      state: result.outcome === 'not-sent' ? 'not-aimed' : 'aimed',
+      state: result.outcome === 'aimed' ? 'aimed' : result.outcome === 'clicked-unverified' ? 'unconfirmed'
+        : result.outcome === 'clicked-mismatch' ? 'mismatch' : 'not-aimed',
       message: result.message,
     }))
   }
@@ -2009,10 +2010,16 @@ export default function LiveCaddiePage() {
       : voiceStatus.state === 'unavailable' ? 'Voice unavailable'
         : 'Voice starting'
 
-  const aimShort = aimResult?.outcome === 'aimed' ? 'AIMED IN GSPRO'
-    : aimResult?.outcome === 'clicked-unverified' ? 'AIM SENT TO GSPRO'
-      : aimResult?.outcome === 'clicked-mismatch' ? 'CHECK AIM IN GSPRO'
+  const aimShort = aimResult?.outcome === 'aimed' ? 'AIMED'
+    : aimResult?.outcome === 'clicked-unverified' ? 'CHECK THE AIM'
+      : aimResult?.outcome === 'clicked-mismatch' ? 'AIM IS OFF · CHECK IT'
         : 'AIM BY HAND'
+  // The armed button's colour says how the aim went (Brian, 21 Nov): solid gold = GSPro's aim marker
+  // seen where Looper clicked; gold outline = clicked, not seen; red = the player has to do something.
+  const aimStateClass = !aimResult ? ''
+    : aimResult.outcome === 'aimed' ? ''
+      : aimResult.outcome === 'clicked-unverified' ? ' aim-unconfirmed'
+        : ' aim-failed'
   const aimDescriptor = !isShotStrategy && hole && viewedEvaluation && inspectedCandidate
     ? buildAimDescriptor({
         hole,
@@ -2773,7 +2780,7 @@ export default function LiveCaddiePage() {
                   {chipLab ? null : (
                   <button
                     type="button"
-                    className={`live-arm-recommendation${inTrees ? ' no-auto-aim' : ''}${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
+                    className={`live-arm-recommendation${inTrees ? ' no-auto-aim' : ''}${armedHere && !aimChanged ? ` armed${inTrees ? '' : aimStateClass}` : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
                     style={{ '--arm-fill-ms': `${ARM_FILL_MS}ms` } as CSSProperties}
                     disabled={isShotStrategy || !displayedClub}
                     onClick={pressArm}
@@ -2802,7 +2809,7 @@ export default function LiveCaddiePage() {
                   </button>
                   )}
                   {armedHere && aimResult && aimResult.outcome !== 'aimed' ? (
-                    <p className="live-arm-note">{aimResult.message}</p>
+                    <p className={`live-arm-note${aimResult.outcome === 'not-sent' || aimResult.outcome === 'clicked-mismatch' ? ' is-failed' : ''}`}>{aimResult.message}</p>
                   ) : null}
                   {safePick && !armedHere ? (
                     // One line, two states. Before the tap it offers the safe play; after

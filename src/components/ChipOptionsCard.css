@@ -388,6 +388,24 @@
   color: #140b04;
 }
 
+/* Clicked, but GSPro's aim marker wasn't seen: a bold outline, not filled. */
+.chip-options__arm.is-unconfirmed {
+  border: 2px solid #f97316;
+  background: #0d130e;
+  color: #fdba74;
+}
+
+/* Couldn't aim, or the marker is somewhere else: the player has to do something. */
+.chip-options__arm.is-failed {
+  border-color: #e5484d;
+  background: #e5484d;
+  color: #ffffff;
+}
+
+.chip-options__arm-note.is-failed {
+  color: #f2a6a0;
+}
+
 .chip-options__arm:disabled {
   opacity: 0.5;
   cursor: default;
