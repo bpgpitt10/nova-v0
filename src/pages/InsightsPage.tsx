@@ -2,6 +2,7 @@ import { useEffect, type CSSProperties, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
 import greensCard from '../assets/insights/insight-01-greens.webp'
 import rangeCard from '../assets/insights/insight-02-range-vs-green.webp'
+import InsightsMethod, { METHOD_HREF } from './InsightsMethod'
 import InsightsReadQuiz from './InsightsReadQuiz'
 import './InsightsPage.css'
 
@@ -80,7 +81,7 @@ const PARTS: readonly Part[] = [
           iron. So the same shot from the rough needs a different number again.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9 from 131 landings at stimp 11 on level greens. Stimp is part 03; the slope of your lie is part 06.
+          Measured in GSPro 4.1.9 at stimp 11 on level greens. Stimp is part 03; the slope of your lie is part 06. <a href={METHOD_HREF}>How I test</a>
         </p>
       </>
     ),
@@ -134,7 +135,7 @@ const PARTS: readonly Part[] = [
         <p className="insights-limits">
           Measured in GSPro 4.1.9. Range roll: each club&rsquo;s stock shot fired onto the range once on each of the
           nine settings (GSPro rolls the same shot the same distance every time, to a hundredth of a yard). Green
-          release: 131 landings at stimp 11 on level greens.
+          release: the same shots onto level greens at stimp 11. <a href={METHOD_HREF}>How I test</a>
         </p>
       </>
     ),
@@ -186,8 +187,8 @@ const PARTS: readonly Part[] = [
           rolls 15 at stimp 8 and 23 at stimp 13. That&rsquo;s parts 04 and 05.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9 from 18 shots: a pitching wedge and a 9 iron at three spins each, carried about 125
-          yards onto Briarwood West&rsquo;s Bermuda medium green at stimp 8, 11 and 13.
+          Measured in GSPro 4.1.9: a pitching wedge and a 9 iron at three spins each, carried about 125 yards onto
+          Briarwood West&rsquo;s Bermuda medium green at stimp 8, 11 and 13. <a href={METHOD_HREF}>How I test</a>
         </p>
       </>
     ),
@@ -202,8 +203,8 @@ const PARTS: readonly Part[] = [
     article: (
       <>
         <p className="insights-lead">
-          On a GSPro green, the grass type and firmness don&rsquo;t change a putt at all. I rolled 174 putts at stimp
-          8 to 13, flat, uphill and downhill. On five different grass and firmness settings, the same putt finished
+          On a GSPro green, the grass type and firmness don&rsquo;t change a putt at all. I rolled the same putts at
+          every stimp from 8 to 13, flat, uphill and downhill. On five different grass and firmness settings, the same putt finished
           within a hundredth of a foot. Only the stimp and the slope move it.
         </p>
         <h3>How I think about it now</h3>
@@ -238,8 +239,8 @@ const PARTS: readonly Part[] = [
           These are straight putts. How far a side slope turns the ball is the next thing I&rsquo;m measuring.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9 from 174 putts at 2 to 8 mph on four practice greens, at stimp 8 to 13, flat and
-          on slopes from 1.2% to 4.5%. One formula fits every putt that stopped to within 0.05 feet on average.
+          Measured in GSPro 4.1.9 with putts from 2 to 8 mph on four practice greens, at stimp 8 to 13, flat and on
+          slopes from 1.2% to 4.5%. One formula fits every putt that stopped to within 0.05 feet on average. <a href={METHOD_HREF}>How I test</a>
         </p>
       </>
     ),
@@ -254,8 +255,8 @@ const PARTS: readonly Part[] = [
     article: (
       <>
         <p className="insights-lead">
-          Land a chip on a GSPro fairway and the fairway decides how far it goes. I hit 152 chips, from bump and runs
-          to flops, across the grass types, firmnesses and stimps. The same chip landing short on a firm fairway ran
+          Land a chip on a GSPro fairway and the fairway decides how far it goes. I hit bump and runs, chips,
+          pitches and flops across every grass type, firmness and stimp. The same chip landing short on a firm fairway ran
           about half again as far as on a soft one.
         </p>
         <h3>How I think about it now</h3>
@@ -293,9 +294,9 @@ const PARTS: readonly Part[] = [
           10-yard chip. If yours reads less spin, your chips will run further than mine.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9 from 152 chips at Briarwood West: bump and run (12&deg; launch), chip (20&deg;),
+          Measured in GSPro 4.1.9 at Briarwood West: bump and run (12&deg; launch), chip (20&deg;),
           pitch (28&deg;) and flop (40&deg;), carrying 5 to 40 yards onto a gently uphill green or landing 2 to 8
-          yards short of it, at stimp 8, 11 and 13.
+          yards short of it, at stimp 8, 11 and 13. <a href={METHOD_HREF}>How I test</a>
         </p>
       </>
     ),
@@ -357,8 +358,8 @@ const PARTS: readonly Part[] = [
           before you worry about the distance.
         </p>
         <p className="insights-limits">
-          Measured in GSPro 4.1.9 from about 330 shots fired from rough, deep rough, sand, first cut, cart path and
-          sloped lies on four courses.
+          Measured in GSPro 4.1.9 from rough, deep rough, sand, first cut, cart path and sloped lies on four
+          courses. <a href={METHOD_HREF}>How I test</a>
         </p>
       </>
     ),
@@ -378,22 +379,23 @@ function AccountButton({ colour, children = 'Create a free account' }: { colour?
 }
 
 export default function InsightsPage() {
+  const onMethod = window.location.pathname.replace(/\/+$/, '') === METHOD_HREF
   useEffect(() => {
     const previous = document.title
-    document.title = 'GSPro physics, measured · The Looper'
+    document.title = onMethod ? 'How I test · GSPro physics, measured · The Looper' : 'GSPro physics, measured · The Looper'
     // A post links to one part (/insights#greens): go to it once the page is drawn.
     const id = decodeURIComponent(window.location.hash.replace(/^#/, ''))
     if (id) window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView())
     return () => {
       document.title = previous
     }
-  }, [])
+  }, [onMethod])
 
   return (
     <div className="insights-page" id="top">
       <header className="insights-top">
         <div className="insights-wrap insights-top__row">
-          <a className="insights-top__logo" href="#top" aria-label="Back to the top">
+          <a className="insights-top__logo" href={onMethod ? '/insights' : '#top'} aria-label={onMethod ? 'The series' : 'Back to the top'}>
             <img src={looperLogo} alt="The Looper" />
           </a>
           <nav className="insights-top__nav" aria-label="Account">
@@ -403,78 +405,93 @@ export default function InsightsPage() {
         </div>
       </header>
 
-      <section className="insights-hero">
-        <div className="insights-wrap">
-          <h1>
-            GSPro physics, <em>measured</em>
-          </h1>
-          <p className="insights-hero__lead">
-            A lot of GSPro misses aren&rsquo;t swing misses. They&rsquo;re bad reads. I test GSPro&rsquo;s physics one
-            setting at a time and measure what the ball actually does.
-          </p>
-        </div>
-      </section>
-
-      <InsightsReadQuiz />
-
-      <nav className="insights-tabs" aria-label="Parts of the series">
-        <div className="insights-wrap insights-tabs__row">
-          <a className="insights-tab is-open" href="#overview" style={colourVar(OVERVIEW_COLOUR)}>
-            <span>Overview</span>
-            The whole picture
-          </a>
-          {PARTS.map((part) => (
-            <a
-              className={`insights-tab ${part.article ? 'is-ready' : 'is-open'}`}
-              href={`#${part.id}`}
-              key={part.id}
-              style={colourVar(part.colour)}
-            >
-              <span>{part.article ? part.number : `${part.number} · testing`}</span>
-              {part.name}
-            </a>
-          ))}
-        </div>
-      </nav>
-
-      <section className="insights-part insights-part--open" id="overview" style={colourVar(OVERVIEW_COLOUR)}>
-        <div className="insights-wrap">
-          <p className="insights-eyebrow">Overview</p>
-          <h2>The whole picture</h2>
-          <div className="insights-open-slot">
-            <strong>Written once every part is measured.</strong>
-            <p>
-              Grass type, firmness, stimp, slope, lie and spin each move the number, and they all move it at once.
-              This piece will add them up and show why it can&rsquo;t be done as mental math.
+      {onMethod ? <InsightsMethod /> : (
+        <>
+        <section className="insights-hero">
+          <div className="insights-wrap">
+            <h1>
+              GSPro physics, <em>measured</em>
+            </h1>
+            <p className="insights-hero__lead">
+              A lot of GSPro misses aren&rsquo;t swing misses. They&rsquo;re bad reads. I test GSPro&rsquo;s physics one
+              setting at a time and measure what the ball actually does.
+            </p>
+            <p className="insights-hero__method">
+              <a href={METHOD_HREF}>How I test, and why it doesn&rsquo;t take thousands of shots</a>
             </p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {PARTS.map((part) => (
-        <section
-          className={`insights-part ${part.article ? '' : 'insights-part--open'}`}
-          id={part.id}
-          key={part.id}
-          style={colourVar(part.colour)}
-        >
+        <InsightsReadQuiz />
+
+        <nav className="insights-tabs" aria-label="Parts of the series">
+          <div className="insights-wrap insights-tabs__row">
+            <a className="insights-tab is-open" href="#overview" style={colourVar(OVERVIEW_COLOUR)}>
+              <span>Overview</span>
+              The whole picture
+            </a>
+            {PARTS.map((part) => (
+              <a
+                className={`insights-tab ${part.article ? 'is-ready' : 'is-open'}`}
+                href={`#${part.id}`}
+                key={part.id}
+                style={colourVar(part.colour)}
+              >
+                <span>{part.article ? part.number : `${part.number} · testing`}</span>
+                {part.name}
+              </a>
+            ))}
+          </div>
+        </nav>
+
+        <section className="insights-part insights-part--open" id="overview" style={colourVar(OVERVIEW_COLOUR)}>
           <div className="insights-wrap">
-            {part.article && part.card ? (
-              /* The card floats right from the very top, beside the heading too. */
-              <figure className="insights-entry__card">
-                <a href={part.card.src} rel="noreferrer" target="_blank">
-                  <img alt={part.card.alt} loading="lazy" src={part.card.src} width={1600} height={1723} />
-                </a>
-                <figcaption>Open the card full size to save or share it.</figcaption>
-              </figure>
-            ) : null}
-            <p className="insights-eyebrow">
-              {part.number} · {part.name}
-            </p>
-            <h2>{part.question}</h2>
-            {part.article && part.card ? (
-              <div className="insights-entry">
-                <article className="insights-entry__text">
+            <p className="insights-eyebrow">Overview</p>
+            <h2>The whole picture</h2>
+            <div className="insights-open-slot">
+              <strong>Written once every part is measured.</strong>
+              <p>
+                Grass type, firmness, stimp, slope, lie and spin each move the number, and they all move it at once.
+                This piece will add them up and show why it can&rsquo;t be done as mental math.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {PARTS.map((part) => (
+          <section
+            className={`insights-part ${part.article ? '' : 'insights-part--open'}`}
+            id={part.id}
+            key={part.id}
+            style={colourVar(part.colour)}
+          >
+            <div className="insights-wrap">
+              {part.article && part.card ? (
+                /* The card floats right from the very top, beside the heading too. */
+                <figure className="insights-entry__card">
+                  <a href={part.card.src} rel="noreferrer" target="_blank">
+                    <img alt={part.card.alt} loading="lazy" src={part.card.src} width={1600} height={1723} />
+                  </a>
+                  <figcaption>Open the card full size to save or share it.</figcaption>
+                </figure>
+              ) : null}
+              <p className="insights-eyebrow">
+                {part.number} · {part.name}
+              </p>
+              <h2>{part.question}</h2>
+              {part.article && part.card ? (
+                <div className="insights-entry">
+                  <article className="insights-entry__text">
+                    {part.article}
+                    <aside className="insights-caddie">
+                      <p>
+                        <strong>In the live caddie:</strong> {part.caddie}
+                      </p>
+                    </aside>
+                  </article>
+                </div>
+              ) : part.article ? (
+                <article className="insights-entry__text insights-entry__text--wide">
                   {part.article}
                   <aside className="insights-caddie">
                     <p>
@@ -482,25 +499,17 @@ export default function InsightsPage() {
                     </p>
                   </aside>
                 </article>
-              </div>
-            ) : part.article ? (
-              <article className="insights-entry__text insights-entry__text--wide">
-                {part.article}
-                <aside className="insights-caddie">
-                  <p>
-                    <strong>In the live caddie:</strong> {part.caddie}
-                  </p>
-                </aside>
-              </article>
-            ) : (
-              <div className="insights-open-slot">
-                <strong>In testing.</strong>
-                <p>{part.coming}</p>
-              </div>
-            )}
-          </div>
-        </section>
-      ))}
+              ) : (
+                <div className="insights-open-slot">
+                  <strong>In testing.</strong>
+                  <p>{part.coming}</p>
+                </div>
+              )}
+            </div>
+          </section>
+        ))}
+        </>
+      )}
 
       <section className="insights-close">
         <div className="insights-wrap">

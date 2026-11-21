@@ -903,3 +903,70 @@
   color: #9da99f;
   font-size: 14px;
 }
+
+/* ---- How I test (/insights/method) ---- */
+
+.insights-hero__method {
+  margin: 14px 0 0;
+  font-size: 16px;
+}
+
+.insights-hero__method a,
+.insights-limits a,
+.insights-method a {
+  color: #eab308;
+  text-underline-offset: 3px;
+}
+
+.insights-method {
+  padding: clamp(32px, 6vh, 64px) 0 clamp(32px, 5vh, 56px);
+  background: rgba(7, 16, 10, 0.94);
+}
+
+.insights-method h1 {
+  margin: 6px 0 0;
+  color: #f2e2b8;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 600;
+  line-height: 1.05;
+}
+
+.insights-method__body {
+  max-width: 760px;
+  margin-top: 28px;
+  color: #d8e2d6;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.insights-method__body h2 {
+  margin: 34px 0 8px;
+  color: #f2e2b8;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-size: clamp(22px, 2.6vw, 27px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.insights-method__body p {
+  margin: 0 0 12px;
+}
+
+.insights-method__body ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.insights-method__body li {
+  margin-bottom: 8px;
+}
+
+.insights-method__body strong {
+  color: #ffffff;
+}
+
+.insights-method__back {
+  margin: 34px 0 0;
+  font-size: 16px;
+}
