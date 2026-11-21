@@ -8,13 +8,15 @@ export type AimInGsproResult = Readonly<{
   /** 'aimed': GSPro's aim reticle seen where Looper clicked. */
   outcome: 'aimed' | 'clicked-unverified' | 'clicked-mismatch' | 'not-sent'
   message: string
+  /** The companion's own account of what went wrong, for diagnosis. Not shown to the player. */
+  detail?: string
 }>
 
 const REASONS: Record<string, string> = {
   'gspro-not-connected': 'GSPro is not running',
   'gspro-minimized': 'GSPro is minimized',
   'target-off-map': "the aim is outside GSPro's minimap",
-  'minimap-not-read': "couldn't find the ball and pin on GSPro's minimap",
+  'minimap-not-read': "couldn't read GSPro's minimap",
   'minimap-not-aligned': "GSPro's minimap isn't showing ball below pin",
   'preflight-failed': 'GSPro window check failed',
   'click-failed': "couldn't click GSPro",
@@ -49,7 +51,9 @@ export const aimInGspro = async ({
       { ball: points.ball, pin: points.pin, target: points.target }, shotKey)
     if (result.status !== 'clicked') {
       const why = REASONS[result.reason ?? ''] ?? result.reason ?? 'unknown reason'
-      return { outcome: 'not-sent', message: `Aim by hand: ${why}${result.detail ? ` (${result.detail})` : ''}.` }
+      // One short line for the player; the companion's detail is long and technical (Brian, 21 Nov).
+      if (result.detail) console.info('[Looper] Auto Aim not sent:', result.reason, result.detail)
+      return { outcome: 'not-sent', message: `Aim by hand: ${why}.`, ...(result.detail ? { detail: result.detail } : {}) }
     }
     if (result.verified === 'match') return { outcome: 'aimed', message: 'Aimed in GSPro.' }
     if (result.verified === 'mismatch') {
