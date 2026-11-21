@@ -64,6 +64,10 @@
   opacity: 0.6;
 }
 
+.chip-row.is-short {
+  opacity: 0.85;
+}
+
 .chip-row.is-shown.is-avoid,
 .chip-row.is-shown.is-not-needed {
   opacity: 1;

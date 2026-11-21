@@ -1184,9 +1184,19 @@ export default function LiveCaddiePage() {
         const green = { courseType: greenConditions?.courseType ?? 'medium', greenFirmness: greenConditions?.greenFirmness ?? 'medium', stimp: greenConditions?.stimp ?? null }
         const fairway = { courseType: fairwayConditions?.courseType ?? green.courseType, fairwayFirmness: fairwayConditions?.fairwayFirmness ?? 'medium' }
         const fromRough = normalizedCurrentSurface.includes('rough')
+        // Sand or water within 3 yd either side of a landing spot: a short landing there is a gamble.
+        const sideTrouble = (carry: number): LandingSurface | null => {
+          const [x, y] = along(carry)
+          for (const offset of [-3, -1.5, 1.5, 3]) {
+            const kind = classifyPoint(hole, [x - dy * offset, y + dx * offset]).kind
+            if (kind === 'bunker') return 'bunker'
+            if (kind === 'water' || kind === 'penalty') return 'water'
+          }
+          return null
+        }
         const options = chipOptions(
           chipDistanceYds,
-          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry) }),
+          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry) }),
           { green, fairway, fromRough },
           greenStarts == null ? null : chipDistanceYds - greenStarts,
         )
@@ -1194,9 +1204,9 @@ export default function LiveCaddiePage() {
         const conditions = `${grass} · ${green.greenFirmness} green, ${fairway.fairwayFirmness} fairway`
           + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}`
         // The chip on show: the player's pick, else the one Looper would point to first.
-        const usable = options.filter((o) => o.verdict === 'good' || o.verdict === 'fine')
         const shown = options.find((o) => o.type === armedChip)
-          ?? usable.find((o) => o.verdict === 'good') ?? usable[0] ?? null
+          ?? options.find((o) => o.verdict === 'good')
+          ?? options.find((o) => o.verdict === 'short') ?? null
         return {
           options,
           conditions,

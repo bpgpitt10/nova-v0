@@ -69,7 +69,7 @@ export default function ChipLabPreviewPage() {
       <ChipOptionsCard
         distanceYds={distance}
         options={options}
-        shown={armed ?? options.find((o) => o.verdict === 'good')?.type ?? options.find((o) => o.verdict === 'fine')?.type ?? null}
+        shown={armed ?? options.find((o) => o.verdict === 'good')?.type ?? options.find((o) => o.verdict === 'short')?.type ?? null}
         onShow={setArmed}
         conditions={`${grass} · ${greenFirmness} green, ${fairwayFirmness} fairway · stimp ${stimp}${fromRough ? ' · from the rough' : ''}`}
         hasGreenMap

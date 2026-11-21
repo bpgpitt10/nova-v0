@@ -14,20 +14,33 @@ try {
   assert.ok(Math.abs(chipFlight('pitch', 31.71).ballSpeedMph - 43.0) < 0.05)
   assert.ok(Math.abs(chipFlight('bump', 10.98).landing.descentDeg - 11.27) < 0.05)
 
-  // Open green, gentle upslope (Briarwood): every option finishes at the hole; the flop isn't needed.
+  // Open green, gentle upslope (Briarwood): every option finishes at the hole. Landing on the green
+  // comes first (Brian, 21 Nov): the chip is the lowest shot that lands on it and stops; the bump would
+  // land on the edge; the flop isn't needed.
   const open = byType(chipOptions(18, line(4, 'fairway', 0.015), setting, 14))
   for (const o of Object.values(open)) assert.ok(Math.abs(o.flight.carryYds + o.runYds - 18) < 0.3, `${o.type} sized to 18`)
+  assert.equal(open.chip.verdict, 'good')
+  assert.equal(open.bump.verdict, 'short')
+  assert.equal(open.pitch.verdict, 'fine')
   assert.equal(open.flop.verdict, 'not-needed')
-  assert.equal(open.chip.verdict, 'fine')
   assert.ok(open.bump.flight.carryYds < open.chip.flight.carryYds && open.chip.flight.carryYds < open.pitch.flight.carryYds)
-  // Steep downhill to the hole: the lower shots run past even landed short; the flop is the shot.
+  // Steep downhill to the hole: nothing stops landed on the green; the low shots run past even landed short.
   const downhill = byType(chipOptions(18, line(4, 'fairway', -0.03), setting, 14))
-  assert.equal(downhill.flop.verdict, 'good')
   assert.equal(downhill.bump.verdict, 'avoid')
-  // Rough up to the green: a bump would land in it or run past; chips that carry it are fine.
+  assert.ok(!Object.values(downhill).some((o) => o.verdict === 'good'))
+  // Rough up to the green: the bump and chip land on the green but run past; the pitch carries the rough and stops.
   const rough = byType(chipOptions(25, line(10, 'rough', 0.01), setting, 15))
   assert.equal(rough.bump.verdict, 'avoid')
-  assert.equal(rough.chip.landsOn, 'green')
+  assert.equal(rough.pitch.verdict, 'good')
+  assert.match(rough.pitch.reason, /Carries the rough/)
+  // 31 yd, green from 15 (Brian's FarmLinks chip, 21 Nov): the pick lands on the green, not the apron.
+  const farm = byType(chipOptions(31, line(15, 'fairway', 0.01), { ...setting, green: { ...setting.green, greenFirmness: 'soft' }, fairway: { courseType: 'medium', fairwayFirmness: 'soft' } }, 16))
+  const pick = Object.values(farm).find((o) => o.verdict === 'good')
+  assert.equal(pick?.landsOn, 'green')
+  assert.ok(pick.flight.carryYds >= 15 + 2 - 0.25)
+  // Bunker beside a short landing: avoid, not "short".
+  const side = byType(chipOptions(31, (c) => ({ surface: c < 15 ? 'fairway' : 'green', gradeToHole: 0.01, sideTrouble: c < 15 ? 'bunker' : null }), setting, 16))
+  assert.equal(side.bump.verdict, 'avoid')
   // Firm, Links fairway runs further: the bump flies shorter to finish at the same hole.
   const links = byType(chipOptions(18, line(12, 'fairway', 0), { ...setting, fairway: { courseType: 'firm', fairwayFirmness: 'firm' } }, 6))
   const bermuda = byType(chipOptions(18, line(12, 'fairway', 0), setting, 6))

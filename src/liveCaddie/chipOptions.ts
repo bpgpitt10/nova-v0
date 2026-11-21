@@ -73,6 +73,8 @@ export type LandingProbe = (carryYds: number) => Readonly<{
   surface: LandingSurface
   /** Rise over run from the landing spot to the hole (+ uphill), when the green map has it. */
   gradeToHole: number | null
+  /** Sand or water within a few yards either side of the landing spot, when there is any. */
+  sideTrouble?: LandingSurface | null
 }>
 
 export type ChipSetting = Readonly<{
@@ -93,7 +95,12 @@ export type ChipOption = Readonly<{
   landsOn: LandingSurface
   /** The trouble it flies over on the way, and how far past it the ball lands. */
   carries: Readonly<{ surface: LandingSurface; overYds: number; landsPastYds: number }> | null
-  verdict: 'good' | 'fine' | 'not-needed' | 'avoid'
+  /**
+   * good: Looper's pick (the lowest shot that lands on the green and stops at the hole);
+   * fine: also lands on the green; short: lands short of the green and runs on (the bank and the
+   * apron decide it); not-needed: the flop when a lower shot lands on the green; avoid: trouble.
+   */
+  verdict: 'good' | 'fine' | 'short' | 'not-needed' | 'avoid'
   reason: string | null
 }>
 
@@ -174,9 +181,19 @@ export const sizeChip = (type: ChipType, distanceYds: number, probe: LandingProb
   return { ...at, short: false, tooHot: false }
 }
 
+/** A chip that lands on the green lands at least this far onto it (Brian, 21 Nov: land on the green first). */
+export const ONTO_GREEN_YDS = 2
+
 /**
- * The four options for a chip of `distanceYds`. `greenToWorkWithYds` is green between where the ball first
- * reaches the green and the hole, along the line (short-sided when small).
+ * The four options for a chip of `distanceYds`, each sized to finish at the hole.
+ *
+ * Landing on the green comes first (Brian, 21 Nov): the apron, the bank and the bunkers beside it
+ * are what make a chip hard to judge, and the green is the one surface measured for release. So
+ * Looper's pick is the lowest shot that lands at least ONTO_GREEN_YDS onto the green and still stops
+ * at the hole. A low shot that would have to land short to stop is offered as "short", never the pick.
+ * The flop is the pick only when nothing lower lands on the green and stops.
+ *
+ * `greenToWorkWithYds` is green between where the line first reaches the green and the hole.
  */
 export const chipOptions = (
   distanceYds: number,
@@ -185,15 +202,14 @@ export const chipOptions = (
   greenToWorkWithYds: number | null,
 ): ChipOption[] => {
   const sized = CHIP_TYPES.map((type) => ({ type, ...sizeChip(type, distanceYds, probe, setting) }))
-  const holeGrade = probe(distanceYds).gradeToHole
-  const lastGrade = sized.map((s) => s.grade).find((g) => g != null) ?? holeGrade
-  const downhill = lastGrade != null && lastGrade < -0.02
-  const shortSided = greenToWorkWithYds != null && greenToWorkWithYds < 6
-  const othersBlocked = sized.filter((s) => s.type !== 'flop').every((s) => BAD_LANDING[s.landsOn] || s.tooHot)
-  const tight = downhill || shortSided || othersBlocked
-  return sized.map((s) => {
+  const greenStarts = greenToWorkWithYds == null ? null : distanceYds - greenToWorkWithYds
+  const finish = (s: (typeof sized)[number]) => s.flight.carryYds + s.run
+
+  const judged = sized.map((s) => {
     const bad = BAD_LANDING[s.landsOn]
-    let verdict: ChipOption['verdict'] = 'fine'
+    const side = probe(s.flight.carryYds).sideTrouble ?? null
+    const onGreen = s.landsOn === 'green' && (greenStarts == null || s.flight.carryYds - greenStarts >= ONTO_GREEN_YDS - 0.25)
+    let verdict: ChipOption['verdict']
     let reason: string | null = null
     if (bad) {
       verdict = 'avoid'
@@ -201,27 +217,45 @@ export const chipOptions = (
     } else if (s.short) {
       verdict = 'avoid'
       reason = 'Can’t get there with this shot.'
-    } else if (s.flight.carryYds + s.run > distanceYds + 1) {
-      verdict = 'avoid'
-      reason = `Has to carry onto the green and runs about ${Math.round(s.flight.carryYds + s.run - distanceYds)} yd past.`
     } else if (s.tooHot) {
       verdict = 'avoid'
-      reason = `Runs past even landed just over: about ${Math.round(s.flight.carryYds + s.run - distanceYds)} yd by.`
-    } else if (s.type === 'flop') {
-      if (tight) {
-        verdict = 'good'
-        reason = shortSided ? 'Short-sided: it stops quickest.' : downhill ? 'Downhill to the hole: it stops quickest.' : 'The only shot that lands on short grass.'
-      } else {
-        verdict = 'not-needed'
-        reason = 'Not needed here: the hardest distance to judge.'
-      }
-    } else if (tight && downhill && s.run > 2 * s.flight.carryYds) {
-      reason = 'Runs a long way downhill: a small miss in pace grows.'
+      reason = `Runs past even landed as short as it can: about ${Math.round(finish(s) - distanceYds)} yd by.`
+    } else if (finish(s) > distanceYds + 1) {
+      verdict = 'avoid'
+      reason = `Lands on the ${SURFACE_NAME[s.landsOn]} and runs about ${Math.round(finish(s) - distanceYds)} yd past.`
+    } else if (onGreen) {
+      verdict = 'fine'
+    } else if (side && s.landsOn !== 'green') {
+      verdict = 'avoid'
+      reason = `Lands short of the green with the ${SURFACE_NAME[side]} right beside it.`
+    } else {
+      verdict = 'short'
+      reason = s.landsOn === 'green'
+        ? 'Lands on the front edge of the green: a yard short and the apron decides it.'
+        : greenStarts != null
+          ? `Lands ${Math.max(1, Math.round(greenStarts - s.flight.carryYds))} yd short of the green and runs on: the bank decides it.`
+          : 'Lands short of the green and runs on: the bank decides it.'
     }
-    const trouble = bad ? null : troubleBefore(s.flight.carryYds, probe)
-    if (trouble && verdict !== 'avoid' && !reason) {
-      reason = `Carries the ${SURFACE_NAME[trouble.surface]}: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past it.`
-    }
+    return { s, verdict: verdict as ChipOption['verdict'], reason }
+  })
+
+  // Looper's pick: the lowest shot that lands on the green and stops.
+  const pick = judged.find((j) => j.verdict === 'fine')
+  if (pick) {
+    pick.verdict = 'good'
+    pick.reason = pick.s.type === 'flop'
+      ? 'The only shot that lands on the green and stops.'
+      : 'Lands on the green and stops: the lowest shot that does.'
+  }
+  const flop = judged.find((j) => j.s.type === 'flop')
+  if (flop && pick && pick !== flop && flop.verdict === 'fine') {
+    flop.verdict = 'not-needed'
+    flop.reason = 'Not needed here: a lower shot lands on the green too.'
+  }
+
+  return judged.map(({ s, verdict, reason }) => {
+    const trouble = verdict === 'avoid' && BAD_LANDING[s.landsOn] ? null : troubleBefore(s.flight.carryYds, probe)
+    const carryNote = trouble ? `Carries the ${SURFACE_NAME[trouble.surface]}: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past it.` : null
     return {
       type: s.type,
       launchDeg: CHIP_LAUNCH_DEG[s.type],
@@ -230,7 +264,7 @@ export const chipOptions = (
       landsOn: s.landsOn,
       carries: trouble ? { surface: trouble.surface, overYds: trouble.end, landsPastYds: s.flight.carryYds - trouble.end } : null,
       verdict,
-      reason,
+      reason: carryNote && verdict !== 'avoid' ? (reason ? `${reason} ${carryNote}` : carryNote) : reason,
     }
   })
 }

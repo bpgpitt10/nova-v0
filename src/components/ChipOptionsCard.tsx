@@ -18,7 +18,7 @@ const SURFACE: Readonly<Record<LandingSurface, string>> = {
 }
 
 const TAG: Readonly<Record<ChipOption['verdict'], string | null>> = {
-  good: 'Best here', fine: null, 'not-needed': 'Not needed', avoid: 'Avoid',
+  good: 'Best here', fine: null, short: 'Lands short', 'not-needed': 'Not needed', avoid: 'Avoid',
 }
 
 const yd = (value: number) => (value < 10 ? value.toFixed(1) : String(Math.round(value)))
@@ -30,7 +30,6 @@ const yd = (value: number) => (value < 10 ? value.toFixed(1) : String(Math.round
 export default function ChipOptionsCard({ distanceYds, options, shown, onShow, conditions, hasGreenMap }: Props) {
   const current = options.find((o) => o.type === shown) ?? null
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
-    && !options.some((o) => o.verdict === 'good')
   return (
     <section className="chip-options" aria-label="Chip options">
       <div className="chip-options__head">
@@ -72,7 +71,8 @@ export default function ChipOptionsCard({ distanceYds, options, shown, onShow, c
         <p className="chip-options__reason">None of the four finishes at the hole cleanly from here.</p>
       )}
       <p className="chip-options__note">
-        {comfortable ? 'More than one works: pick the one you’re most comfortable with. ' : ''}
+        {options.some((o) => o.verdict === 'good') ? '' : 'Nothing here lands on the green and stops: every option runs on from short of it. '}
+        {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with. ' : ''}
         Typical spin; yours may differ.{hasGreenMap ? '' : ' No green map here, so no break.'}
       </p>
     </section>
