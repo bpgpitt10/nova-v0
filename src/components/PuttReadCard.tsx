@@ -64,7 +64,7 @@ export default function PuttReadCard({ distanceFt, riseIn, stimp }: Props) {
             )}
       </div>
 
-      <p className="putt-read__note">Pace only. You own the aim.</p>
+      <p className="putt-read__note">Pace only. You own the read.</p>
     </section>
   )
 }
