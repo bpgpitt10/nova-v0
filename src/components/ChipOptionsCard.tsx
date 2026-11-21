@@ -160,13 +160,14 @@ export default function ChipOptionsCard({
           <span>What’s moving this chip</span>
           <b>{current ? CHIP_LABEL[current.type] : '—'}</b>
         </div>
+        {/* Under the ball first (up/down then side, as GSPro lists them), then the green, then the strike. */}
         <div className="chip-conditions__row">
-          <span>To the hole<small>{riseSource ? `from ${riseSource === 'GSPro' ? 'GSPro’s pin height' : 'the green map'}` : 'height not read yet'}</small></span>
-          <b>{riseText ?? '—'}</b>
+          <span>Up or down slope<small>under the ball</small></span>
+          <b>{upText}</b>
           <em>
-            {riseFt == null ? '—'
-              : Math.abs(riseFt) < 0.25 ? 'no change'
-                : `${(Math.abs(riseFt) / (distanceYds * 3) * 100).toFixed(1)}% ${riseFt > 0 ? 'uphill: runs less' : 'downhill: runs more'}${hasGreenMap ? ', in the run already' : riseSource === 'GSPro' ? ', in the run as one even slope' : ''}`}
+            {lie && Math.abs(lie.launchDeltaDeg) >= 0.75
+              ? `launches ${Math.abs(lie.launchDeltaDeg).toFixed(0)}° ${lie.launchDeltaDeg > 0 ? 'higher: lands softer, runs less' : 'lower: comes in hotter, runs more'} (in the numbers)`
+              : lieUpDownDeg == null ? '—' : 'no change'}
           </em>
         </div>
         <div className="chip-conditions__row">
@@ -174,6 +175,23 @@ export default function ChipOptionsCard({
           <b>{sideText}</b>
           <em className={lieAimOff ? 'is-off' : ''}>
             {lieAimOff && lieOnly ? `starts it ${lieOnly.aimLeftFt > 0 ? 'right' : 'left'}: ${feet(lieOnly.aimLeftFt)} ${lieOnly.aimLeftFt > 0 ? 'left' : 'right'}` : lieLeftRightDeg == null ? '—' : 'no change to the aim'}
+          </em>
+        </div>
+        <div className="chip-conditions__row">
+          <span>Lie<small>{surface || 'surface'}</small></span>
+          <b>{fromSand ? 'sand' : /rough/.test(surface) ? 'rough' : 'clean'}</b>
+          <em>
+            {fromSand ? 'about a quarter of the speed gone: bigger swing, pitch or flop only'
+              : /rough/.test(surface) ? 'about a third less spin: runs a little more' : 'no change'}
+          </em>
+        </div>
+        <div className="chip-conditions__row">
+          <span>To the hole<small>{riseSource ? `from ${riseSource === 'GSPro' ? 'GSPro’s pin height' : 'the green map'}` : 'height not read yet'}</small></span>
+          <b>{riseText ?? '—'}</b>
+          <em>
+            {riseFt == null ? '—'
+              : Math.abs(riseFt) < 0.25 ? 'no change'
+                : `${(Math.abs(riseFt) / (distanceYds * 3) * 100).toFixed(1)}% ${riseFt > 0 ? 'uphill: runs less' : 'downhill: runs more'}${hasGreenMap ? ', in the run already' : riseSource === 'GSPro' ? ', in the run as one even slope' : ''}`}
           </em>
         </div>
         <div className="chip-conditions__row">
@@ -188,34 +206,17 @@ export default function ChipOptionsCard({
                 : `runs ${breakFt > 0 ? 'left to right' : 'right to left'}: aim ${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}
           </em>
         </div>
-        <div className="chip-conditions__row">
-          <span>Up or down slope<small>under the ball</small></span>
-          <b>{upText}</b>
-          <em>
-            {lie && Math.abs(lie.launchDeltaDeg) >= 0.75
-              ? `launches ${Math.abs(lie.launchDeltaDeg).toFixed(0)}° ${lie.launchDeltaDeg > 0 ? 'higher: lands softer, runs less' : 'lower: comes in hotter, runs more'} (in the numbers)`
-              : lieUpDownDeg == null ? '—' : 'no change'}
-          </em>
-        </div>
-        <div className="chip-conditions__row">
-          <span>Lie<small>{surface || 'surface'}</small></span>
-          <b>{fromSand ? 'sand' : /rough/.test(surface) ? 'rough' : 'clean'}</b>
-          <em>
-            {fromSand ? 'about a quarter of the speed gone: bigger swing, pitch or flop only'
-              : /rough/.test(surface) ? 'about a third less spin: runs a little more' : 'no change'}
-          </em>
-        </div>
+        {terrain ? (
+          <div className="chip-conditions__row">
+            <span>Around the pin<small>Looper’s read of the area at the hole</small></span><b />
+            <em>{terrain}{hazard ? ` ${hazard}` : ''}{safeMiss ? ` ${safeMiss}` : ''}</em>
+          </div>
+        ) : null}
         <div className="chip-conditions__row">
           <span>Ball data<small>to hit this chip</small></span>
           <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
           <em>{current ? `${Math.round(current.flight.ballSpeedMph)} mph · ${Math.round(current.flight.spinRpm / 50) * 50} rpm (typical spin; yours may differ)` : '—'}</em>
         </div>
-        {terrain ? (
-          <div className="chip-conditions__row">
-            <span>On the green<small>at the hole</small></span><b />
-            <em>{terrain}{hazard ? ` ${hazard}` : ''}{safeMiss ? ` ${safeMiss}` : ''}</em>
-          </div>
-        ) : null}
         <p className="chip-conditions__foot">
           {conditions}.{hasGreenMap ? ' The run uses the green’s slope to the hole.' : ' No green map here, so the run is for a level green and there’s no break.'}
           {' '}Ground short of the green isn’t mapped for slope.
