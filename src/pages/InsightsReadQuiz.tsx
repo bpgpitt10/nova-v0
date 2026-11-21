@@ -457,18 +457,16 @@ export default function InsightsReadQuiz() {
                   ) : null}
                   <button className="insights-button insights-quiz__play" onClick={next} type="button">Play again</button>
                 </div>
+                <aside className="insights-quiz__looper">
+                  <p className="insights-eyebrow">The Looper does this every shot</p>
+                  <p>
+                    That sum was seven numbers. Looper does it before every shot you hit in GSPro, and then keeps going:
+                    it adds <strong>your own shot shape and how your mishits fly</strong>, then plays the odds against
+                    <strong> this hole&rsquo;s hazards</strong> to pick the club and the line that save you the most strokes.
+                  </p>
+                </aside>
               </div>
 
-              <aside className="insights-quiz__looper">
-                <div>
-                <p className="insights-eyebrow">The Looper does this every shot</p>
-                <p>
-                  That sum was seven numbers. Looper does it before every shot you hit in GSPro, and then keeps going:
-                  it adds <strong>your own shot shape and how your mishits fly</strong>, then plays the odds against
-                  <strong> this hole&rsquo;s hazards</strong> to pick the club and the line that save you the most strokes.
-                </p>
-                </div>
-              </aside>
             </>
           ) : (
             <p className="insights-quiz__hint">
