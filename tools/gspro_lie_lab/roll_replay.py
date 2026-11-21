@@ -595,19 +595,21 @@ def green_speed(shot: dict[str, float], plays: float | None) -> dict[str, float]
 # --------------------------------------------------------------------------
 # Chip sets (Brian, 20 Nov): from just off a green (Briarwood West hole 1), each chip type to a few
 # carries, one shot each. Change green firmness and stimp in GSPro between sets: 3 firmnesses x 3 stimps.
-#: Each chip type's launch and spin, and the ball speed that carries it CHIP_REF_CARRY_YD on the flat.
-#: PLACEHOLDERS until Brian's own numbers: speeds are the engine's flight model for a 10 yd carry.
-#: Put his in chips.json next to this file ({"bump": {"speed": .., "vla": .., "spin": .., "carry": ..}, ...})
-#: and it is used instead, no code change.
+#: Each chip type's launch, and its ball speed and spin for a 10 yd carry. From TrackMan's chip study
+#: ("The Chip Shot Code": launch 6-14 deg ~1,500 rpm, 15-20 ~2,000, 21-26 ~2,500, 27-35 ~3,000; about
+#: 500 rpm per 5 mph of club speed), so spin scales with ball speed for the other carries, and the flop
+#: stops by its landing angle, not by spin. Speeds are the engine's flight model for a 10 yd carry.
+#: A player's own numbers go in chips.json next to this file
+#: ({"bump": {"speed": .., "vla": .., "spin": .., "carry": ..}, ...}) and are used instead.
 CHIP_TYPES: dict[str, dict[str, float]] = {
-    "bump": {"speed": 31.5, "vla": 14.0, "spin": 3000.0, "carry": 10.0},
-    "chip": {"speed": 26.2, "vla": 22.0, "spin": 4500.0, "carry": 10.0},
-    "pitch": {"speed": 23.6, "vla": 30.0, "spin": 6000.0, "carry": 10.0},
-    "flop": {"speed": 22.1, "vla": 42.0, "spin": 7000.0, "carry": 10.0},
+    "bump": {"speed": 34.0, "vla": 12.0, "spin": 1300.0, "carry": 10.0},
+    "chip": {"speed": 27.2, "vla": 20.0, "spin": 2000.0, "carry": 10.0},
+    "pitch": {"speed": 24.1, "vla": 28.0, "spin": 3000.0, "carry": 10.0},
+    "flop": {"speed": 22.2, "vla": 40.0, "spin": 2600.0, "carry": 10.0},
 }
 CHIP_CARRIES_YD = (5.0, 10.0, 16.0)
 #: At chip speeds carry grows about as speed^1.9 (the engine: 1.86 to 2.02 across the four types).
-CHIP_SPEED_POWER = 1.9
+CHIP_SPEED_POWER = 1.9  # engine, with spin scaling with speed: 1.87 to 1.94
 CHIP_FILE = "chips.json"
 
 
@@ -634,16 +636,18 @@ def read_chip_carries(typed: str) -> tuple[float, ...]:
 def chip_set(types: dict[str, dict[str, float]], carries: tuple[float, ...] = CHIP_CARRIES_YD) -> list[tuple[str, dict[str, float]]]:
     """Every type to every carry, one shot each, grouped by type so each type's first chip corrects the rest."""
     return [(f"{name} {carry:g} yd", {"speed": ref["speed"], "vla": ref["vla"], "hla": 0.0, "spin": ref["spin"], "axis": 0.0,
-                                      "_chip": name, "_ref_speed": ref["speed"], "_ref_carry": ref["carry"], "_target": carry})
+                                      "_chip": name, "_ref_speed": ref["speed"], "_ref_spin": ref["spin"],
+                                      "_ref_carry": ref["carry"], "_target": carry})
             for name, ref in types.items() for carry in carries]
 
 
 def chip_speed(shot: dict[str, float], plays: float | None) -> dict[str, float]:
     """Ball speed for the carry wanted. `plays` = what this type actually carried over what the scale said (None at first)."""
     plays = plays if plays and 0.3 < plays < 3.0 else 1.0
-    scale = (shot["_target"] / (shot["_ref_carry"] * plays)) ** (1.0 / CHIP_SPEED_POWER)
-    return {"speed": round(shot["_ref_speed"] * min(2.5, max(0.3, scale)), 1), "vla": shot["vla"], "hla": 0.0,
-            "spin": shot["spin"], "axis": 0.0}
+    scale = min(2.5, max(0.3, (shot["_target"] / (shot["_ref_carry"] * plays)) ** (1.0 / CHIP_SPEED_POWER)))
+    # A shorter chip is a slower swing: less spin too (TrackMan: ~500 rpm per 5 mph of club speed).
+    return {"speed": round(shot["_ref_speed"] * scale, 1), "vla": shot["vla"], "hla": 0.0,
+            "spin": round(shot.get("_ref_spin", shot["spin"]) * scale), "axis": 0.0}
 
 
 def chip_expected_carry(shot: dict[str, float], sent_speed: float) -> float:

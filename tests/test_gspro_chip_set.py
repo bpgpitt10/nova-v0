@@ -35,7 +35,8 @@ class ChipSetTests(unittest.TestCase):
         _, shot = rr.chip_set(rr.CHIP_TYPES)[0]  # bump to 5 yd; reference carries 10 yd
         sent = rr.chip_speed(shot, None)
         self.assertAlmostEqual(rr.chip_expected_carry(shot, sent["speed"]), 5.0, delta=0.1)
-        self.assertEqual(sent["vla"], 14.0)
+        self.assertEqual(sent["vla"], 12.0)
+        self.assertLess(sent["spin"], rr.CHIP_TYPES["bump"]["spin"])  # a shorter chip spins less
         # The type carried 20% further than the scale said: the next one is sent softer.
         self.assertLess(rr.chip_speed(shot, 1.2)["speed"], sent["speed"])
 
