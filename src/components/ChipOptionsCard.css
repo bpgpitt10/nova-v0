@@ -350,18 +350,21 @@
   align-self: stretch;
 }
 
-/* Wide card: the table runs the card's full height (the map's height), never scrolls, and the
-   card grows instead if a long read still doesn't fit. */
+/* Wide card: the table never scrolls; the card grows instead if a long read doesn't fit. */
 @media (min-width: 1260px) {
   .live-decision-card:has(> .chip-conditions) {
     height: auto !important;
     min-height: clamp(620px, calc(100vh - 128px), 760px);
   }
 
+  /* Like the net adjustment table: sits at the bottom of the card, as tall as its rows need (never
+     shorter than the baseline, so it doesn't jump from chip to chip), up to the card's full height. */
   .live-decision-card > .chip-conditions {
     grid-area: auto;
     grid-column: 2;
     grid-row: 1 / -1;
+    align-self: end;
+    min-height: 470px;
     overflow: visible;
   }
 }
