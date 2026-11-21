@@ -302,6 +302,22 @@
   align-self: stretch;
 }
 
+/* Wide card: the table runs the card's full height (the map's height), never scrolls, and the
+   card grows instead if a long read still doesn't fit. */
+@media (min-width: 1260px) {
+  .live-decision-card:has(> .chip-conditions) {
+    height: auto !important;
+    min-height: clamp(620px, calc(100vh - 128px), 760px);
+  }
+
+  .live-decision-card > .chip-conditions {
+    grid-area: auto;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    overflow: visible;
+  }
+}
+
 .chip-options__arm {
   width: 100%;
   min-height: 43px;
