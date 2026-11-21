@@ -30,6 +30,7 @@ class ChipSetTests(unittest.TestCase):
         self.assertEqual(rr.read_chip_carries("chip"), (5.0, 10.0, 16.0))
         self.assertEqual(rr.read_chip_carries("chip 4 8 12 stimp 11"), (4.0, 8.0, 12.0))
         self.assertEqual(rr.read_chip_carries("chip 0 99"), (5.0, 10.0, 16.0))
+        self.assertEqual(rr.read_chip_carries("chip 30 45 60"), (30.0, 45.0, 60.0))
 
     def test_speed_scales_to_the_carry(self):
         _, shot = rr.chip_set(rr.CHIP_TYPES)[0]  # bump to 5 yd; reference carries 10 yd

@@ -627,10 +627,10 @@ def chip_types(folder: Path = HERE) -> dict[str, dict[str, float]]:
 
 
 def read_chip_carries(typed: str) -> tuple[float, ...]:
-    """'chip' -> the stock carries; 'chip 4 8 12' -> those (1 to 40 yd)."""
+    """'chip' -> the stock carries; 'chip 4 8 12' -> those; 'chip 30 45 60' for pitches (1 to 70 yd)."""
     found = re.search(r"\bchip\b((?:\s+\d{1,2}(?:\.\d)?)+)", typed, re.I)
     carries = tuple(float(x) for x in found[1].split()) if found else ()
-    return carries if carries and all(1 <= c <= 40 for c in carries) else CHIP_CARRIES_YD
+    return carries if carries and all(1 <= c <= 70 for c in carries) else CHIP_CARRIES_YD
 
 
 def chip_set(types: dict[str, dict[str, float]], carries: tuple[float, ...] = CHIP_CARRIES_YD) -> list[tuple[str, dict[str, float]]]:
@@ -644,7 +644,7 @@ def chip_set(types: dict[str, dict[str, float]], carries: tuple[float, ...] = CH
 def chip_speed(shot: dict[str, float], plays: float | None) -> dict[str, float]:
     """Ball speed for the carry wanted. `plays` = what this type actually carried over what the scale said (None at first)."""
     plays = plays if plays and 0.3 < plays < 3.0 else 1.0
-    scale = min(2.5, max(0.3, (shot["_target"] / (shot["_ref_carry"] * plays)) ** (1.0 / CHIP_SPEED_POWER)))
+    scale = min(3.2, max(0.3, (shot["_target"] / (shot["_ref_carry"] * plays)) ** (1.0 / CHIP_SPEED_POWER)))
     # A shorter chip is a slower swing: less spin too (TrackMan: ~500 rpm per 5 mph of club speed).
     return {"speed": round(shot["_ref_speed"] * scale, 1), "vla": shot["vla"], "hla": 0.0,
             "spin": round(shot.get("_ref_spin", shot["spin"]) * scale), "axis": 0.0}
@@ -780,7 +780,7 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
                               "Add g and the yards to the pin (g 145) to also hit 2 of your clubs at the green; "
                               "gg 145 hits only the green, 6 shots. Type stimp 11 once to record the stimp. "
                               "Start with the word all to hit all 25 designed shots from here. "
-                              "chip hits the chip set (4 types to 5, 10 and 16 yd). q to finish. ").strip()
+                              "chip hits the chip set (4 types to 5, 10 and 16 yd; chip 30 45 60 for pitches). q to finish. ").strip()
         except EOFError:
             break
         if typed.lower() in ("q", "quit"):
