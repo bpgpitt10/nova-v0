@@ -19,11 +19,12 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   work:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 300
     steps:
       - name: Anything queued?
         id: queue
@@ -64,4 +65,23 @@ jobs:
         env:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           PUBLISH_BRANCH: web-alpha-mishits
+          # A dozen courses a run (about 7 minutes each); the step below starts the next run.
+          MAX_LOADS_PER_RUN: '12'
         run: python tools/course_model/course_load_worker.py
+
+      # A long queue (a bulk load, or several players clicking Load) used to wait for the next
+      # manual start or the 6-hourly backstop. Only when this run finished cleanly and the queue
+      # got shorter, so a broken run can never restart itself forever.
+      - name: More queued? Start the next run
+        if: success() && steps.queue.outputs.count != '0'
+        env:
+          KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ steps.queue.outputs.count }}
+        run: |
+          left=$(curl -sf "https://kdjfdchzfemjpmaqpobn.supabase.co/rest/v1/course_load_requests?status=eq.queued&select=id" \
+            -H "apikey: $KEY" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))" || echo 0)
+          echo "still queued: $left (was $BEFORE)"
+          if [ "$left" -gt 0 ] && [ "$left" -lt "$BEFORE" ]; then
+            gh workflow run course-load-worker.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+          fi
