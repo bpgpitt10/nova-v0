@@ -31,6 +31,8 @@ type Props = {
   terrain?: string | null
   hazard?: string | null
   safeMiss?: string | null
+  /** Looper's green outline ends close to the pin (or misses it): where GSPro's green starts is unsure. */
+  greenEdgeUncertain?: boolean
 }
 
 const SURFACE: Readonly<Record<LandingSurface, string>> = {
@@ -55,11 +57,16 @@ const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs
 export default function ChipOptionsCard({
   distanceYds, options, shown, onShow, conditions, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
-  terrain = null, hazard = null, safeMiss = null, riseFt = null, riseSource = null, breakLeftFt = null, breakScaled = false,
+  terrain = null, hazard = null, safeMiss = null, greenEdgeUncertain = false, riseFt = null, riseSource = null, breakLeftFt = null, breakScaled = false,
 }: Props) {
   const riseText = riseFt == null ? null
     : Math.abs(riseFt) < 0.25 ? 'level'
       : `${riseFt > 0 ? '▲' : '▼'} ${Math.floor(Math.abs(riseFt))} ft ${Math.round((Math.abs(riseFt) % 1) * 12)} in`
+  // A shot "landing short" of an outline we doubt may well land on GSPro's green: don't call it short.
+  // Sand and water short of the green are still real.
+  const edgeUnclear = (option: ChipOption) => greenEdgeUncertain && option.verdict === 'short'
+    && option.landsOn !== 'bunker' && option.landsOn !== 'water'
+  const tagFor = (option: ChipOption) => (edgeUnclear(option) ? 'Edge unclear' : TAG[option.verdict] ?? '')
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
@@ -95,6 +102,11 @@ export default function ChipOptionsCard({
               : 'at the pin'}
             {fromSand ? <em>Sand adjusted</em> : null}
           </div>
+          {greenEdgeUncertain ? (
+            <p className="chip-options__edge">
+              Looper&rsquo;s green may be short here: check where GSPro&rsquo;s green starts.
+            </p>
+          ) : null}
         </div>
         <div className="chip-options__rows" role="radiogroup" aria-label="Chips">
           <div className="chip-options__cols" aria-hidden="true">
@@ -106,13 +118,13 @@ export default function ChipOptionsCard({
               type="button"
               role="radio"
               aria-checked={option.type === shown}
-              className={`chip-row is-${option.verdict}${option.type === shown ? ' is-shown' : ''}`}
+              className={`chip-row is-${option.verdict}${edgeUnclear(option) ? ' is-edge-unclear' : ''}${option.type === shown ? ' is-shown' : ''}`}
               onClick={() => onShow(option.type)}
             >
               <span className="chip-row__name">{CHIP_LABEL[option.type]}<small>{option.launchDeg}&deg;</small></span>
               <span className="chip-row__num">{yd(option.flight.carryYds)}</span>
               <span className="chip-row__num">{yd(option.runYds)}</span>
-              <span className="chip-row__tag">{TAG[option.verdict] ?? ''}</span>
+              <span className="chip-row__tag">{tagFor(option)}</span>
             </button>
           ))}
         </div>
@@ -127,13 +139,15 @@ export default function ChipOptionsCard({
                 From sand: make the swing of a clean {Math.round(current.swingLikeYds)} yd carry {CHIP_LABEL[current.type].toLowerCase()}. The sand takes it down to {yd(current.flight.carryYds)}.
               </p>
             ) : null}
-            {current.reason ? <p className="chip-options__reason">{current.reason}</p> : null}
+            {edgeUnclear(current)
+              ? <p className="chip-options__reason">Lands short of Looper&rsquo;s green, which may itself be short here. If it lands on GSPro&rsquo;s green, it stops sooner.</p>
+              : current.reason ? <p className="chip-options__reason">{current.reason}</p> : null}
           </div>
         ) : (
           <p className="chip-options__reason">None of the four finishes at the hole cleanly from here.</p>
         )}
         <p className="chip-options__note">
-          {options.some((o) => o.verdict === 'good') ? '' : 'Nothing here lands on the green and stops: every option runs on from short of it. '}
+          {options.some((o) => o.verdict === 'good') || greenEdgeUncertain ? '' : 'Nothing here lands on the green and stops: every option runs on from short of it. '}
           {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with.' : ''}
         </p>
       </section>

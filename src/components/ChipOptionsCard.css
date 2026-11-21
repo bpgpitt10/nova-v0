@@ -77,6 +77,24 @@
   text-transform: uppercase;
 }
 
+.chip-options__edge {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-left: 3px solid #eab308;
+  background: rgba(234, 179, 8, 0.08);
+  color: #f3d97a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chip-row.is-edge-unclear {
+  opacity: 1;
+}
+
+.chip-row.is-edge-unclear .chip-row__tag {
+  color: #eab308;
+}
+
 .chip-options__rows {
   display: grid;
   gap: 4px;

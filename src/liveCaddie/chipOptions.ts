@@ -26,6 +26,8 @@ export const CHIP_LAUNCH_DEG: Readonly<Record<ChipType, number>> = { bump: 12, c
 export const CHIP_LABEL: Readonly<Record<ChipType, string>> = { bump: 'Bump and run', chip: 'Chip', pitch: 'Pitch', flop: 'Flop' }
 /** Chip cards take over from the club recommendation inside this distance, off the green. */
 export const CHIP_ZONE_YDS = 40
+/** Looper's green ending closer than this to the pin, on the ball's side, is probably a short outline. */
+export const GREEN_EDGE_DOUBT_YDS = 5
 
 /** GSPro, 20 Nov: [ball speed mph, launch spin rpm, carry yd, landing speed mph, descent deg, landing spin rpm]. */
 const FLIGHT: Readonly<Record<ChipType, readonly (readonly number[])[]>> = {

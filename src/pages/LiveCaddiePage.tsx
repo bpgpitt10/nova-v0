@@ -115,7 +115,7 @@ import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
 import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
 import ChipOptionsCard from '../components/ChipOptionsCard'
-import { CHIP_ZONE_YDS, chipBreakAimFt, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
@@ -1245,6 +1245,10 @@ export default function LiveCaddiePage() {
         return {
           options,
           conditions,
+          // The pin is always on GSPro's green. When Looper's green (OpenStreetMap's outline) ends within
+          // a few yards of it on the ball's side, or misses it, the outline is likely short (Shinnecock 6,
+          // 21 Nov: GSPro's green starts 13 yd in front of the pin, Looper's 3 to 5).
+          greenEdgeUncertain: greenStarts == null || chipDistanceYds - greenStarts < GREEN_EDGE_DOUBT_YDS,
           shown: shown?.type ?? null,
           landingPoint: shown ? along(shown.flight.carryYds) : null,
           hasGreenMap: Boolean(greenDetail),
@@ -2657,6 +2661,7 @@ export default function LiveCaddiePage() {
                       terrain={shotStrategy?.terrain ?? null}
                       hazard={shotStrategy?.hazard ?? null}
                       safeMiss={shotStrategy?.safeMiss ?? null}
+                      greenEdgeUncertain={chipLab.greenEdgeUncertain}
                     />
                   ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
