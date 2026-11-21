@@ -88,6 +88,9 @@ jobs:
       - name: Map-area courses (GSPro's holes on an unnumbered map area)
         run: node tools/test-area-course.mjs
 
+      - name: Admin course installs (most-installed courses to load)
+        run: node tools/test-course-installs.mjs
+
       - name: GSPro penalty log learning
         run: node tools/test-gspro-penalty-log.mjs
 
