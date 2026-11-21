@@ -9,6 +9,7 @@ import LiveCaddiePage from './pages/LiveCaddiePage.tsx'
 import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import LoadCoursePage from './pages/LoadCoursePage.tsx'
 import FaqPage, { LooperFooter } from './pages/FaqPage'
+import InsightsPage from './pages/InsightsPage.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import QuickBagPage from './pages/QuickBagPage.tsx'
@@ -316,6 +317,8 @@ function RootRouter() {
   const showPuttReadPreview = pathname === '/dev/putt-read'
   const showChipLabPreview = pathname === '/dev/chip-lab'
   const showFaq = pathname === '/faq' || pathname === '/help'
+  // Public: GSPro physics, measured. No account, so it sits outside the sign-in gate.
+  const showInsights = pathname === '/insights' || pathname.startsWith('/insights/')
   const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest || showPuttReadPreview || showChipLabPreview
 
   useEffect(() => {
@@ -417,6 +420,8 @@ function RootRouter() {
       {!showLiveCaddie ? view : null}
     </>
   )
+
+  if (showInsights) return <InsightsPage />
 
   return (
     <LooperAuthGate>
