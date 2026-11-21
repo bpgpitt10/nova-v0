@@ -114,7 +114,7 @@ import ConditionsMathPanel from './ConditionsMathPanel'
 import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
 import ChipOptionsCard from '../components/ChipOptionsCard'
-import { CHIP_ZONE_YDS, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_ZONE_YDS, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
@@ -363,7 +363,8 @@ export default function LiveCaddiePage() {
   const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [armedClub, setArmedClub] = useState<string | null>(null)
   const [chipLabOn] = useState(() => isChipLabEnabled())
-  const [armedChip, setArmedChip] = useState<ChipType | null>(null)
+  const [armedChip, setArmedChip] = useState<{ shot: string; type: ChipType } | null>(null)
+  const [chipAim, setChipAim] = useState<{ shot: string; type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null>(null)
   // Clicking a club only previews it; Arm commits (fills, then aims in GSPro).
   const [previewClub, setPreviewClub] = useState<string | null>(null)
   const [armPhase, setArmPhase] = useState<'idle' | 'filling' | 'aiming' | 'armed'>('idle')
@@ -1154,10 +1155,13 @@ export default function LiveCaddiePage() {
   const puttRiseIn = puttMapRiseIn
   const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : null
   // Chip lab (on unless ?chipLab=off): around the green, the four chip options in place of the shot card.
-  // Not from sand or deep rough: GSPro's chips were measured from clean lies, and a bunker shot
-  // loses about a quarter of its speed (Brian, 21 Nov: the first card from a bunker planned into it).
-  const chipLie = !/sand|bunker|deep/.test(normalizedCurrentSurface)
+  // Not from deep rough (GSPro's chips were measured from clean lies). From sand only the pitch and
+  // flop are offered, sized for what GSPro's sand takes off (Brian, 21 Nov).
+  const chipLie = !/deep/.test(normalizedCurrentSurface)
+  const chipFromSand = /sand|bunker/.test(normalizedCurrentSurface)
   const chipDistanceYds = !isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) : null
+  // A tapped chip belongs to one ball position; the next shot starts on Looper's pick again.
+  const chipShotKey = `${holeNumber}|${Math.round(ball[0])}|${Math.round(ball[1])}`
   const chipLab = chipLabOn && chipLie && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
     ? (() => {
         const dx = (pinEstimate[0] - ball[0]) / chipDistanceYds
@@ -1183,7 +1187,7 @@ export default function LiveCaddiePage() {
         }
         const green = { courseType: greenConditions?.courseType ?? 'medium', greenFirmness: greenConditions?.greenFirmness ?? 'medium', stimp: greenConditions?.stimp ?? null }
         const fairway = { courseType: fairwayConditions?.courseType ?? green.courseType, fairwayFirmness: fairwayConditions?.fairwayFirmness ?? 'medium' }
-        const fromRough = normalizedCurrentSurface.includes('rough')
+        const fromRough = !chipFromSand && normalizedCurrentSurface.includes('rough')
         // Sand or water within 3 yd either side of a landing spot: a short landing there is a gamble.
         const sideTrouble = (carry: number): LandingSurface | null => {
           const [x, y] = along(carry)
@@ -1197,14 +1201,14 @@ export default function LiveCaddiePage() {
         const options = chipOptions(
           chipDistanceYds,
           (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry) }),
-          { green, fairway, fromRough },
+          { green, fairway, fromRough, fromSand: chipFromSand },
           greenStarts == null ? null : chipDistanceYds - greenStarts,
         )
         const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[green.courseType]
         const conditions = `${grass} · ${green.greenFirmness} green, ${fairway.fairwayFirmness} fairway`
-          + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}`
+          + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}${chipFromSand ? ' · from sand' : ''}`
         // The chip on show: the player's pick, else the one Looper would point to first.
-        const shown = options.find((o) => o.type === armedChip)
+        const shown = options.find((o) => armedChip?.shot === chipShotKey && o.type === armedChip.type)
           ?? options.find((o) => o.verdict === 'good')
           ?? options.find((o) => o.verdict === 'short') ?? null
         return {
@@ -1668,6 +1672,35 @@ export default function LiveCaddiePage() {
           : result,
       ))
     }, ARM_FILL_MS)
+  }
+
+  // Chip lab: aim GSPro for the chip on show. The line is the pin, moved to cancel a side slope
+  // under the ball. Break on the green isn't in it yet.
+  const aimChip = (type: ChipType) => {
+    const option = chipLab?.options.find((o) => o.type === type)
+    if (!option || !pinEstimate || chipDistanceYds == null) return
+    const fail = (message: string) => setChipAim({ shot: chipShotKey, type, state: 'not-aimed', message })
+    if (!trustedLivePin) return fail("Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot).")
+    if (!companionCanAim) {
+      return fail(companionStatus?.gspro.status === 'connected'
+        ? 'Aim by hand: update the Looper Companion so Looper can aim for you.'
+        : 'Aim by hand: Looper Companion or GSPro not connected.')
+    }
+    const read = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
+    const fx = (trustedLivePin[0] - ball[0]) / chipDistanceYds
+    const fy = (trustedLivePin[1] - ball[1]) / chipDistanceYds
+    const rightYds = -read.aimLeftFt / 3
+    const target: CoursePointYds = [trustedLivePin[0] + fy * rightYds, trustedLivePin[1] - fx * rightYds]
+    setChipAim({ shot: chipShotKey, type, state: 'aiming', message: 'Aiming in GSPro…' })
+    void aimInGspro({
+      courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber,
+      ball, pin: trustedLivePin, target,
+      shotKey: shotConditionsKey ?? `${courseId}|${holeNumber}`,
+    }).then((result) => setChipAim({
+      shot: chipShotKey, type,
+      state: result.outcome === 'not-sent' ? 'not-aimed' : 'aimed',
+      message: result.message,
+    }))
   }
 
   const pickClub = (club: string) => {
@@ -2544,9 +2577,18 @@ export default function LiveCaddiePage() {
                       distanceYds={chipDistanceYds}
                       options={chipLab.options}
                       shown={chipLab.shown}
-                      onShow={setArmedChip}
+                      onShow={(type) => setArmedChip({ shot: chipShotKey, type })}
                       conditions={chipLab.conditions}
                       hasGreenMap={chipLab.hasGreenMap}
+                      fromSand={chipFromSand}
+                      lieLeftRightDeg={hasLiveLie ? lieLeftRightDeg : null}
+                      lieUpDownDeg={hasLiveLie ? lieUpDownDeg : null}
+                      surface={normalizedCurrentSurface}
+                      onAim={aimChip}
+                      aim={chipAim && chipAim.shot === chipShotKey ? chipAim : null}
+                      terrain={shotStrategy?.terrain ?? null}
+                      hazard={shotStrategy?.hazard ?? null}
+                      safeMiss={shotStrategy?.safeMiss ?? null}
                     />
                   ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
@@ -2624,6 +2666,7 @@ export default function LiveCaddiePage() {
                   />
                   </>)}
 
+                  {chipLab ? null : (
                   <button
                     type="button"
                     className={`live-arm-recommendation${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
@@ -2649,6 +2692,7 @@ export default function LiveCaddiePage() {
                                     : 'WAITING FOR RECOMMENDATION'}
                     </span>
                   </button>
+                  )}
                   {armedHere && aimResult && aimResult.outcome !== 'aimed' ? (
                     <p className="live-arm-note">{aimResult.message}</p>
                   ) : null}

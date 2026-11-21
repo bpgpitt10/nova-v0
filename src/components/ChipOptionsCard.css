@@ -1,15 +1,52 @@
-/* Around the green, inside the shot card (the map stays beside it). */
+/* Around the green, inside the shot card: chips on the left, what moves them on the right. */
 .chip-options {
   display: grid;
+  align-content: start;
   gap: 12px;
-  margin: 4px 0 14px;
+  margin: 10px 0 12px;
   color: #e7efe4;
 }
 
-.chip-options__head p {
-  margin: 4px 0 0;
-  color: #9da99f;
-  font-size: 13px;
+.chip-options__distance {
+  color: #ffffff;
+  font-size: clamp(44px, 4vw, 64px);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.chip-options__aim {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 8px;
+  color: #cfd8cd;
+  font-size: clamp(19px, 1.6vw, 25px);
+  font-weight: 600;
+}
+
+.chip-options__aim span {
+  color: #eab308;
+  font-size: 0.6em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.chip-options__aim.is-off {
+  color: #eab308;
+}
+
+.chip-options__aim em {
+  padding: 2px 8px;
+  border: 1px solid #c9a46a;
+  border-radius: 999px;
+  color: #e3c18c;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .chip-options__rows {
@@ -20,7 +57,7 @@
 .chip-options__cols,
 .chip-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 0.7fr 0.7fr minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.7fr) 0.6fr 0.6fr minmax(0, 1.1fr);
   align-items: baseline;
   gap: 8px;
 }
@@ -40,7 +77,7 @@
 }
 
 .chip-row {
-  padding: 9px 12px;
+  padding: 8px 12px;
   border: 1px solid #263429;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
@@ -61,7 +98,7 @@
 
 .chip-row.is-avoid,
 .chip-row.is-not-needed {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .chip-row.is-short {
@@ -69,7 +106,8 @@
 }
 
 .chip-row.is-shown.is-avoid,
-.chip-row.is-shown.is-not-needed {
+.chip-row.is-shown.is-not-needed,
+.chip-row.is-shown.is-short {
   opacity: 1;
 }
 
@@ -94,11 +132,12 @@
 
 .chip-row__tag {
   color: #cfd8cd;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-align: right;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .chip-row.is-good .chip-row__tag {
@@ -112,7 +151,6 @@
 
 .chip-options__line,
 .chip-options__reason,
-.chip-options__spec,
 .chip-options__note {
   margin: 0;
   font-size: 13.5px;
@@ -123,8 +161,122 @@
   color: #f7d2b0;
 }
 
-.chip-options__spec,
 .chip-options__note {
   color: #8e9b90;
   font-size: 12.5px;
+}
+
+/* The right half of the card: the chip's version of the adjustments table. */
+.chip-conditions {
+  display: grid;
+  align-content: start;
+  gap: 0;
+  border: 1px solid rgba(49, 66, 51, 0.82);
+  border-radius: 12px;
+  background: rgba(7, 16, 10, 0.5);
+  color: #e7efe4;
+  overflow: hidden;
+}
+
+.chip-conditions__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.chip-conditions__title span {
+  color: #f9a15c;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chip-conditions__title b {
+  font-size: 17px;
+}
+
+.chip-conditions__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 11px 14px;
+  border-top: 1px solid rgba(49, 66, 51, 0.6);
+}
+
+.chip-conditions__row span {
+  display: grid;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.chip-conditions__row small {
+  color: #8e9b90;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.chip-conditions__row b {
+  font-size: 16px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.chip-conditions__row em {
+  grid-column: 1 / -1;
+  color: #cfd8cd;
+  font-size: 13px;
+  font-style: normal;
+}
+
+.chip-conditions__row em.is-off {
+  color: #eab308;
+  font-weight: 700;
+}
+
+.chip-conditions__foot {
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(49, 66, 51, 0.6);
+  color: #8e9b90;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* On the wide two-column card the chips fill the left column and the table takes the right. */
+.live-decision-card > .chip-options {
+  grid-column: 1;
+  grid-row: 2 / span 4;
+}
+
+.live-decision-card > .chip-conditions {
+  grid-area: conditions;
+  align-self: stretch;
+}
+
+.chip-options__arm {
+  width: 100%;
+  min-height: 43px;
+  border: 1px solid rgba(249, 115, 22, 0.6);
+  border-radius: 10px;
+  background: rgba(249, 115, 22, 0.12);
+  color: #fdba74;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.chip-options__arm.is-aimed {
+  background: #f97316;
+  color: #140b04;
+}
+
+.chip-options__arm:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

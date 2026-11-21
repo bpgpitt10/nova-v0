@@ -16,6 +16,8 @@ import {
   greenReleaseShape,
   type GreenConditions,
 } from './greenReleaseModel'
+import { sidehillLieShare, upDownLieShare } from './lieResponse'
+import { sandSpeedFactor, sandSpinFactor } from './surfaceResponse'
 
 export type ChipType = 'bump' | 'chip' | 'pitch' | 'flop'
 export const CHIP_TYPES: readonly ChipType[] = ['bump', 'chip', 'pitch', 'flop']
@@ -82,6 +84,11 @@ export type ChipSetting = Readonly<{
   fairway: Readonly<{ courseType: GreenConditions['courseType']; fairwayFirmness: GreenConditions['greenFirmness'] }>
   /** Hit from the rough: about a third less spin (GSPro's rough), so a little more run. */
   fromRough: boolean
+  /**
+   * Hit from sand: only the pitch and flop are offered. GSPro takes about a quarter of a short
+   * shot's speed, so the card says how big a swing it takes; spin is scaled by GSPro's sand numbers.
+   */
+  fromSand?: boolean
 }>
 
 const ROUGH = { speed: 0.97, spin: 0.68 }
@@ -102,7 +109,49 @@ export type ChipOption = Readonly<{
    */
   verdict: 'good' | 'fine' | 'short' | 'not-needed' | 'avoid'
   reason: string | null
+  /** From sand: the clean-lie carry of the swing this takes ("swing it like a 27 yd pitch"). */
+  swingLikeYds: number | null
 }>
+
+/** The raw (before the sand) ball speed that leaves the sand at `afterMph`. */
+const rawSpeedFromSand = (afterMph: number) => {
+  let raw = afterMph / 0.8
+  for (let i = 0; i < 8; i += 1) raw = afterMph / sandSpeedFactor(raw)
+  return raw
+}
+
+/** The clean-lie carry of a chip hit at `ballSpeedMph`. */
+const carryForSpeed = (type: ChipType, ballSpeedMph: number) => {
+  const rows = FLIGHT[type]
+  if (ballSpeedMph <= rows[0][0]) return rows[0][2] * (ballSpeedMph / rows[0][0]) ** (1 / 0.53)
+  for (let i = 1; i < rows.length; i += 1) {
+    if (ballSpeedMph <= rows[i][0]) {
+      const t = (ballSpeedMph - rows[i - 1][0]) / (rows[i][0] - rows[i - 1][0])
+      return rows[i - 1][2] + (rows[i][2] - rows[i - 1][2]) * t
+    }
+  }
+  return rows[rows.length - 1][2]
+}
+
+/**
+ * What the lie does to a chip. Side slope starts the ball off line (more for the low shots), so the
+ * aim moves the other way; an up or down slope changes the launch.
+ * `lieLeftRightDeg` is + when the ball will start left; `lieUpDownDeg` is + uphill.
+ */
+export const chipLieRead = (
+  option: Pick<ChipOption, 'launchDeg'>,
+  distanceYds: number,
+  lieLeftRightDeg: number | null,
+  lieUpDownDeg: number | null,
+) => {
+  const startLeftDeg = lieLeftRightDeg == null ? 0 : lieLeftRightDeg * sidehillLieShare(option.launchDeg)
+  return {
+    /** Feet to aim left (+) or right (-) of the pin to cancel the lie. */
+    aimLeftFt: -distanceYds * 3 * Math.sin((startLeftDeg * Math.PI) / 180),
+    /** Degrees the ball launches higher (+) or lower (-) than the card's launch. */
+    launchDeltaDeg: lieUpDownDeg == null ? 0 : lieUpDownDeg * upDownLieShare(option.launchDeg),
+  }
+}
 
 const SURFACE_NAME: Readonly<Record<LandingSurface, string>> = {
   green: 'green', fairway: 'fairway', fringe: 'fringe', rough: 'rough', 'deep-rough': 'deep rough', bunker: 'bunker', water: 'water', other: 'trouble',
@@ -134,9 +183,15 @@ const troubleBefore = (carry: number, probe: LandingProbe) => {
 
 const releaseFor = (type: ChipType, carry: number, probe: LandingProbe, setting: ChipSetting) => {
   const flight = chipFlight(type, carry)
-  const landing = setting.fromRough
-    ? { speedMph: flight.landing.speedMph * ROUGH.speed, descentDeg: flight.landing.descentDeg, spinRpm: flight.landing.spinRpm * ROUGH.spin }
-    : flight.landing
+  // From sand the flight is the ball as it leaves the sand; its spin is GSPro's sand share of the bigger swing's.
+  const sandSpin = setting.fromSand
+    ? (() => { const raw = rawSpeedFromSand(flight.ballSpeedMph); return sandSpinFactor(raw) / sandSpeedFactor(raw) })()
+    : 1
+  const landing = setting.fromSand
+    ? { ...flight.landing, spinRpm: flight.landing.spinRpm * sandSpin }
+    : setting.fromRough
+      ? { speedMph: flight.landing.speedMph * ROUGH.speed, descentDeg: flight.landing.descentDeg, spinRpm: flight.landing.spinRpm * ROUGH.spin }
+      : flight.landing
   const at = probe(carry)
   // Rough, sand and water landings weren't measured; take them as stopping where they land, so sizing
   // carries the ball over them onto short grass where it can. Landing just past them counts as in them.
@@ -211,7 +266,10 @@ export const chipOptions = (
     const onGreen = s.landsOn === 'green' && (greenStarts == null || s.flight.carryYds - greenStarts >= ONTO_GREEN_YDS - 0.25)
     let verdict: ChipOption['verdict']
     let reason: string | null = null
-    if (bad) {
+    if (setting.fromSand && (s.type === 'bump' || s.type === 'chip')) {
+      verdict = 'avoid'
+      reason = 'Not from sand: it takes loft to get out.'
+    } else if (bad) {
       verdict = 'avoid'
       reason = `${bad} or too close to it to trust.`
     } else if (s.short) {
@@ -255,7 +313,11 @@ export const chipOptions = (
 
   return judged.map(({ s, verdict, reason }) => {
     const trouble = verdict === 'avoid' && BAD_LANDING[s.landsOn] ? null : troubleBefore(s.flight.carryYds, probe)
-    const carryNote = trouble ? `Carries the ${SURFACE_NAME[trouble.surface]}: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past it.` : null
+    const carryNote = trouble
+      ? setting.fromSand && trouble.surface === 'bunker'
+        ? `Out of the bunker: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past its edge.`
+        : `Carries the ${SURFACE_NAME[trouble.surface]}: lands ${Math.round(s.flight.carryYds - trouble.end)} yd past it.`
+      : null
     return {
       type: s.type,
       launchDeg: CHIP_LAUNCH_DEG[s.type],
@@ -265,6 +327,8 @@ export const chipOptions = (
       carries: trouble ? { surface: trouble.surface, overYds: trouble.end, landsPastYds: s.flight.carryYds - trouble.end } : null,
       verdict,
       reason: carryNote && verdict !== 'avoid' ? (reason ? `${reason} ${carryNote}` : carryNote) : reason,
+      swingLikeYds: setting.fromSand && verdict !== 'avoid'
+        ? carryForSpeed(s.type, rawSpeedFromSand(s.flight.ballSpeedMph)) : null,
     }
   })
 }

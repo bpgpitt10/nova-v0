@@ -1,4 +1,4 @@
-import { CHIP_LABEL, type ChipOption, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_LABEL, chipLieRead, type ChipOption, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import './ChipOptionsCard.css'
 
 type Props = {
@@ -7,10 +7,23 @@ type Props = {
   /** The chip whose landing is on the map. */
   shown: ChipType | null
   onShow: (type: ChipType) => void
-  /** e.g. "Bermuda · medium green, firm fairway · stimp 12 · from the rough" */
+  /** e.g. "Bermuda · medium green, firm fairway · stimp 12" */
   conditions: string
   /** False: no green map here, so no break. */
   hasGreenMap: boolean
+  fromSand?: boolean
+  /** GSPro's lie: + starts the ball left, + uphill. Null when it hasn't been read. */
+  lieLeftRightDeg?: number | null
+  lieUpDownDeg?: number | null
+  /** What the ball is sitting on, in plain words. */
+  surface?: string
+  /** Aim GSPro for this chip (Auto Aim). */
+  onAim?: (type: ChipType) => void
+  aim?: { type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null
+  /** Looper's read of the green at the target, the trouble near it and the safe miss. */
+  terrain?: string | null
+  hazard?: string | null
+  safeMiss?: string | null
 }
 
 const SURFACE: Readonly<Record<LandingSurface, string>> = {
@@ -22,59 +35,143 @@ const TAG: Readonly<Record<ChipOption['verdict'], string | null>> = {
 }
 
 const yd = (value: number) => (value < 10 ? value.toFixed(1) : String(Math.round(value)))
+const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs(value) / 3)} yd` : `${Math.max(1, Math.round(Math.abs(value)))} ft`)
 
 /**
- * Around the green, in the shot card's place: the four chips as rows, each sized to finish at the
- * hole. Tap a row to put its landing on the map; the map beside it stays in view.
+ * Around the green, in the shot card's place. Left: the four chips as rows, each sized to finish at
+ * the hole, and where to aim. Right: what is moving this chip (lie, surface, slope to the hole).
+ * Tap a row to put its landing on the map.
  */
-export default function ChipOptionsCard({ distanceYds, options, shown, onShow, conditions, hasGreenMap }: Props) {
+export default function ChipOptionsCard({
+  distanceYds, options, shown, onShow, conditions, hasGreenMap, fromSand = false,
+  lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
+  terrain = null, hazard = null, safeMiss = null,
+}: Props) {
+  const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
+  const lie = current ? chipLieRead(current, distanceYds, lieLeftRightDeg, lieUpDownDeg) : null
+  const aimOff = lie && Math.abs(lie.aimLeftFt) >= 1
+  const lieKnown = lieLeftRightDeg != null || lieUpDownDeg != null
+  const sideText = lieLeftRightDeg == null ? 'not read' : Math.abs(lieLeftRightDeg) < 0.25 ? 'level'
+    : `${Math.abs(lieLeftRightDeg).toFixed(1)}° ${lieLeftRightDeg > 0 ? 'left' : 'right'}`
+  const upText = lieUpDownDeg == null ? 'not read' : Math.abs(lieUpDownDeg) < 0.25 ? 'level'
+    : `${Math.abs(lieUpDownDeg).toFixed(1)}° ${lieUpDownDeg > 0 ? 'up' : 'down'}`
   return (
-    <section className="chip-options" aria-label="Chip options">
-      <div className="chip-options__head">
-        <div className="live-club-hero chip-options__distance">{Math.round(distanceYds)} YDS</div>
-        <p>{conditions}</p>
-      </div>
-      <div className="chip-options__rows" role="radiogroup" aria-label="Chips">
-        <div className="chip-options__cols" aria-hidden="true">
-          <span>Shot</span><span>Fly</span><span>Run</span><span />
+    <>
+      <section className="chip-options" aria-label="Chip options">
+        <div className="chip-options__head">
+          <div className="chip-options__distance">{Math.round(distanceYds)} YDS</div>
+          <div className={`chip-options__aim${aimOff ? ' is-off' : ''}`}>
+            <span>AIM</span>
+            {aimOff && lie
+              ? `${feet(lie.aimLeftFt)} ${lie.aimLeftFt > 0 ? 'left' : 'right'} of the pin`
+              : 'at the pin'}
+            {fromSand ? <em>Sand adjusted</em> : null}
+          </div>
         </div>
-        {options.map((option) => (
-          <button
-            key={option.type}
-            type="button"
-            role="radio"
-            aria-checked={option.type === shown}
-            className={`chip-row is-${option.verdict}${option.type === shown ? ' is-shown' : ''}`}
-            onClick={() => onShow(option.type)}
-          >
-            <span className="chip-row__name">{CHIP_LABEL[option.type]}<small>{option.launchDeg}&deg;</small></span>
-            <span className="chip-row__num">{yd(option.flight.carryYds)}</span>
-            <span className="chip-row__num">{yd(option.runYds)}</span>
-            <span className="chip-row__tag">{TAG[option.verdict] ?? ''}</span>
-          </button>
-        ))}
-      </div>
-      {current ? (
-        <div className="chip-options__detail">
-          <p className="chip-options__line">
-            <strong>{CHIP_LABEL[current.type]}:</strong> fly {yd(current.flight.carryYds)} yd, lands on the {SURFACE[current.landsOn]},
-            runs {yd(current.runYds)}.
-          </p>
-          {current.reason ? <p className="chip-options__reason">{current.reason}</p> : null}
-          <p className="chip-options__spec">
-            {current.launchDeg}&deg; launch &middot; {Math.round(current.flight.spinRpm / 50) * 50} rpm &middot; {Math.round(current.flight.ballSpeedMph)} mph
-          </p>
+        <div className="chip-options__rows" role="radiogroup" aria-label="Chips">
+          <div className="chip-options__cols" aria-hidden="true">
+            <span>Shot</span><span>Fly</span><span>Run</span><span />
+          </div>
+          {options.map((option) => (
+            <button
+              key={option.type}
+              type="button"
+              role="radio"
+              aria-checked={option.type === shown}
+              className={`chip-row is-${option.verdict}${option.type === shown ? ' is-shown' : ''}`}
+              onClick={() => onShow(option.type)}
+            >
+              <span className="chip-row__name">{CHIP_LABEL[option.type]}<small>{option.launchDeg}&deg;</small></span>
+              <span className="chip-row__num">{yd(option.flight.carryYds)}</span>
+              <span className="chip-row__num">{yd(option.runYds)}</span>
+              <span className="chip-row__tag">{TAG[option.verdict] ?? ''}</span>
+            </button>
+          ))}
         </div>
-      ) : (
-        <p className="chip-options__reason">None of the four finishes at the hole cleanly from here.</p>
-      )}
-      <p className="chip-options__note">
-        {options.some((o) => o.verdict === 'good') ? '' : 'Nothing here lands on the green and stops: every option runs on from short of it. '}
-        {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with. ' : ''}
-        Typical spin; yours may differ.{hasGreenMap ? '' : ' No green map here, so no break.'}
-      </p>
-    </section>
+        {current ? (
+          <div className="chip-options__detail">
+            <p className="chip-options__line">
+              <strong>{CHIP_LABEL[current.type]}:</strong> fly {yd(current.flight.carryYds)} yd, lands on the {SURFACE[current.landsOn]},
+              runs {yd(current.runYds)}.
+            </p>
+            {current.swingLikeYds != null ? (
+              <p className="chip-options__reason">
+                From sand: swing it like a {Math.round(current.swingLikeYds)} yd {CHIP_LABEL[current.type].toLowerCase()}. The sand takes the rest.
+              </p>
+            ) : null}
+            {current.reason ? <p className="chip-options__reason">{current.reason}</p> : null}
+          </div>
+        ) : (
+          <p className="chip-options__reason">None of the four finishes at the hole cleanly from here.</p>
+        )}
+        {onAim && current ? (
+          <>
+            <button
+              type="button"
+              className={`chip-options__arm${aimedThis && aim?.state === 'aimed' ? ' is-aimed' : ''}`}
+              disabled={current.verdict === 'avoid' || (aimedThis && aim?.state === 'aiming')}
+              onClick={() => onAim(current.type)}
+            >
+              {aimedThis && aim?.state === 'aiming' ? 'AIMING IN GSPRO…'
+                : aimedThis && aim?.state === 'aimed' ? `${CHIP_LABEL[current.type].toUpperCase()} · AIMED · TAP TO RE-AIM`
+                  : `HITTING THE ${CHIP_LABEL[current.type].toUpperCase()} · TAP TO AIM`}
+            </button>
+            {aimedThis && aim && aim.state !== 'aiming' ? <p className="chip-options__note">{aim.message}</p> : null}
+          </>
+        ) : null}
+        <p className="chip-options__note">
+          {options.some((o) => o.verdict === 'good') ? '' : 'Nothing here lands on the green and stops: every option runs on from short of it. '}
+          {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with.' : ''}
+        </p>
+      </section>
+
+      <aside className="chip-conditions" aria-label="What is moving this chip">
+        <div className="chip-conditions__title">
+          <span>What’s moving this chip</span>
+          <b>{current ? CHIP_LABEL[current.type] : '—'}</b>
+        </div>
+        <div className="chip-conditions__row">
+          <span>Side slope<small>{lieKnown ? 'GSPro lie' : 'lie not read yet'}</small></span>
+          <b>{sideText}</b>
+          <em className={aimOff ? 'is-off' : ''}>
+            {aimOff && lie ? `aim ${feet(lie.aimLeftFt)} ${lie.aimLeftFt > 0 ? 'left' : 'right'}` : lieLeftRightDeg == null ? '—' : 'aim at the pin'}
+          </em>
+        </div>
+        <div className="chip-conditions__row">
+          <span>Up or down slope<small>under the ball</small></span>
+          <b>{upText}</b>
+          <em>
+            {lie && Math.abs(lie.launchDeltaDeg) >= 0.75
+              ? `launches ${Math.abs(lie.launchDeltaDeg).toFixed(0)}° ${lie.launchDeltaDeg > 0 ? 'higher: flies a touch more, runs less' : 'lower: flies a touch less, runs more'}`
+              : lieUpDownDeg == null ? '—' : 'no change'}
+          </em>
+        </div>
+        <div className="chip-conditions__row">
+          <span>Lie<small>{surface || 'surface'}</small></span>
+          <b>{fromSand ? 'sand' : /rough/.test(surface) ? 'rough' : 'clean'}</b>
+          <em>
+            {fromSand ? 'about a quarter of the speed gone: bigger swing, pitch or flop only'
+              : /rough/.test(surface) ? 'about a third less spin: runs a little more' : 'no change'}
+          </em>
+        </div>
+        <div className="chip-conditions__row">
+          <span>Ball data<small>to hit this chip</small></span>
+          <b>{current ? `${current.launchDeg}° launch` : '—'}</b>
+          <em>{current ? `${Math.round(current.flight.ballSpeedMph)} mph · ${Math.round(current.flight.spinRpm / 50) * 50} rpm (typical spin; yours may differ)` : '—'}</em>
+        </div>
+        {terrain ? (
+          <div className="chip-conditions__row">
+            <span>On the green<small>at the hole</small></span><b />
+            <em>{terrain}{hazard ? ` ${hazard}` : ''}{safeMiss ? ` ${safeMiss}` : ''}</em>
+          </div>
+        ) : null}
+        <p className="chip-conditions__foot">
+          {conditions}.{hasGreenMap ? ' The run uses the green’s slope to the hole.' : ' No green map here, so the run is for a level green and there’s no break.'}
+          {' '}Ground short of the green isn’t mapped for slope, and the aim doesn’t include break yet.
+        </p>
+      </aside>
+    </>
   )
 }

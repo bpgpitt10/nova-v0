@@ -17,6 +17,9 @@ export default function ChipLabPreviewPage() {
   const [greenFirmness, setGreenFirmness] = useState<Firmness>('medium')
   const [fairwayFirmness, setFairwayFirmness] = useState<Firmness>('medium')
   const [fromRough, setFromRough] = useState(false)
+  const [fromSand, setFromSand] = useState(false)
+  const [side, setSide] = useState(0)
+  const [upDown, setUpDown] = useState(0)
   const [armed, setArmed] = useState<ChipType | null>(null)
 
   const options = useMemo(() => chipOptions(
@@ -25,10 +28,11 @@ export default function ChipLabPreviewPage() {
     {
       green: { courseType, greenFirmness, stimp },
       fairway: { courseType, fairwayFirmness },
-      fromRough,
+      fromRough: fromRough && !fromSand,
+      fromSand,
     },
     Math.max(0, distance - greenStarts),
-  ), [distance, greenStarts, beforeGreen, slopePct, stimp, courseType, greenFirmness, fairwayFirmness, fromRough])
+  ), [distance, greenStarts, beforeGreen, slopePct, stimp, courseType, greenFirmness, fairwayFirmness, fromRough, fromSand])
 
   const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[courseType]
   const slider = (label: string, value: number, set: (v: number) => void, min: number, max: number, step: number, unit: string) => (
@@ -47,7 +51,7 @@ export default function ChipLabPreviewPage() {
   )
   const firmness: readonly [Firmness, string][] = [['soft', 'Soft'], ['medium', 'Medium'], ['firm', 'Firm']]
   return (
-    <main style={{ maxWidth: 560, margin: '0 auto', padding: '32px 16px', color: '#e7efe4' }}>
+    <main style={{ maxWidth: 900, margin: '0 auto', padding: '32px 16px', color: '#e7efe4' }}>
       <h2 style={{ marginTop: 0 }}>Chip lab preview</h2>
       <p style={{ color: '#9da99f' }}>
         Around the green, inside 40 yards. Set up a chip and see how far to fly each shot. Flight is from GSPro&rsquo;s
@@ -62,18 +66,29 @@ export default function ChipLabPreviewPage() {
         {pick('Course type', courseType, setCourseType, [['soft', 'Bentgrass'], ['medium', 'Bermuda'], ['firm', 'Links']])}
         {pick('Green firmness', greenFirmness, setGreenFirmness, firmness)}
         {pick('Fairway firmness', fairwayFirmness, setFairwayFirmness, firmness)}
+        {slider('Side slope (+ starts it left)', side, setSide, -8, 8, 0.5, '°')}
+        {slider('Up or down slope (+ up)', upDown, setUpDown, -8, 8, 0.5, '°')}
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: '#9da99f' }}>
+          <input type="checkbox" checked={fromSand} onChange={(e) => setFromSand(e.target.checked)} /> Hitting from sand
+        </label>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: '#9da99f' }}>
           <input type="checkbox" checked={fromRough} onChange={(e) => setFromRough(e.target.checked)} /> Hitting from the rough
         </label>
       </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
       <ChipOptionsCard
         distanceYds={distance}
         options={options}
         shown={armed ?? options.find((o) => o.verdict === 'good')?.type ?? options.find((o) => o.verdict === 'short')?.type ?? null}
         onShow={setArmed}
-        conditions={`${grass} · ${greenFirmness} green, ${fairwayFirmness} fairway · stimp ${stimp}${fromRough ? ' · from the rough' : ''}`}
+        conditions={`${grass} · ${greenFirmness} green, ${fairwayFirmness} fairway · stimp ${stimp}`}
         hasGreenMap
+        fromSand={fromSand}
+        lieLeftRightDeg={side}
+        lieUpDownDeg={upDown}
+        surface={fromSand ? 'sand' : fromRough ? 'rough' : 'fairway'}
       />
+      </div>
     </main>
   )
 }

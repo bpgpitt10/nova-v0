@@ -55,6 +55,20 @@ try {
     assert.equal(o.carries?.surface, 'bunker')
     assert.match(o.reason ?? '', /Carries the bunker/)
   }
+  // From sand (Brian, 21 Nov): pitch or flop only, and the card says how big a swing it takes.
+  const fromSand = byType(chipOptions(20, (c) => ({ surface: c < 4 ? 'bunker' : 'green', gradeToHole: 0.01 }), { ...setting, fromSand: true }, 16))
+  assert.equal(fromSand.bump.verdict, 'avoid')
+  assert.equal(fromSand.chip.verdict, 'avoid')
+  assert.match(fromSand.chip.reason, /Not from sand/)
+  const sandPick = Object.values(fromSand).find((o) => o.verdict === 'good')
+  assert.ok(sandPick && (sandPick.type === 'pitch' || sandPick.type === 'flop'))
+  assert.ok(sandPick.swingLikeYds > sandPick.flight.carryYds * 1.3, 'a bigger swing than the carry')
+  // A side slope moves the aim the other way, more for the low shots.
+  const { chipLieRead } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')
+  const bumpAim = chipLieRead({ launchDeg: 12 }, 20, 4, -3)
+  const flopAim = chipLieRead({ launchDeg: 40 }, 20, 4, -3)
+  assert.ok(bumpAim.aimLeftFt < flopAim.aimLeftFt && flopAim.aimLeftFt < 0, 'starts left, so aim right; the bump most')
+  assert.ok(bumpAim.launchDeltaDeg < 0)
   console.log('chip options ok')
 } finally {
   await server.close()
