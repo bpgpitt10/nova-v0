@@ -90,9 +90,11 @@ const terrainRead = (
     }
     if ((rise6 != null && rise6 >= 1.1) || (rise12 != null && rise12 >= 2)) {
       return {
-        text: 'Target area rises into the pin. Short leaves the more difficult uphill recovery.',
-        shortIsCostly: true,
-        longIsCostly: false,
+        // A steady rise (not a shelf): short of the hole is the uphill putt, the one players want.
+        // Past it is the quick downhill putt back (Brian, 21 Nov).
+        text: 'Green rises into the pin. Below the hole leaves an uphill putt; past it leaves a quick downhill one.',
+        shortIsCostly: false,
+        longIsCostly: true,
       }
     }
     if ((rise6 != null && rise6 <= -2.2) || (rise12 != null && rise12 <= -3.5)) {
