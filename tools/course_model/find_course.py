@@ -115,21 +115,14 @@ def utm_crs(zone: int, lat: float, lon: float) -> str:
     return f'EPSG:{(32600 if lat >= 0 else 32700) + zone}'
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--name-regex', required=True)
-    ap.add_argument('--lat', type=float, required=True)
-    ap.add_argument('--lon', type=float, required=True)
-    ap.add_argument('--radius-m', type=float, default=8000)
-    ap.add_argument('--margin-m', type=float, default=150)
-    ap.add_argument('--out', required=True)
-    ap.add_argument('--osm-id', type=int, help='prefer this OSM way/relation id (from the search UI)')
-    args = ap.parse_args()
+#: When nothing named right is within --radius-m, look this far before giving up: the crosswalk's
+#: coordinates come from the GSPro course listing and can be 4 to 17 km off (Dunes West 15 km,
+#: Sand Hills 17 km, Palm Beach Gardens and Carlton Woods 4 km).
+WIDE_RADIUS_M = 30000
 
-    q = (f'[out:json][timeout:180];(way["leisure"="golf_course"](around:{args.radius_m},{args.lat},{args.lon});'
-         f'relation["leisure"="golf_course"](around:{args.radius_m},{args.lat},{args.lon}););out body geom;')
-    payload = overpass(q)
-    rx = re.compile(args.name_regex, re.I)
+
+def parse_candidates(payload: dict, rx: re.Pattern) -> list[dict]:
+    """leisure=golf_course ways and relations with their outer rings, area and whether the name matches."""
     candidates = []
     for el in payload.get('elements', []):
         name = (el.get('tags') or {}).get('name', '')
@@ -144,17 +137,86 @@ def main() -> int:
         area = sum(ring_area_m2(r) for r in rings)
         candidates.append({'type': el['type'], 'id': el['id'], 'name': name, 'areaHa': round(area / 1e4, 1),
                            'nameMatch': bool(rx.search(name)), 'rings': rings})
-    print(json.dumps([{k: c[k] for k in ('type', 'id', 'name', 'areaHa', 'nameMatch')} for c in candidates]))
-    if args.osm_id:
+    return candidates
+
+
+def distance_m(lat: float, lon: float, candidate: dict) -> float:
+    """From the given point to the middle of the candidate's outline."""
+    pts = [p for r in candidate['rings'] for p in r]
+    clon, clat = sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)
+    dy = (clat - lat) * 110_540.0
+    dx = (clon - lon) * 111_320.0 * math.cos(math.radians(lat))
+    return math.hypot(dx, dy)
+
+
+def pick_course(candidates: list[dict], osm_id: int | None, lat: float, lon: float, *, wide: bool = False) -> dict | None:
+    """The asked-for id if it is there; else, near the point, the largest outline whose name matches;
+    in a wide search, the nearest one (a same-named course 25 km off is less likely the one)."""
+    if osm_id:
         for c in candidates:
-            if c['id'] == args.osm_id:
-                c['nameMatch'] = True
+            if c['id'] == osm_id:
+                return c
     matched = [c for c in candidates if c['nameMatch']]
     if not matched:
-        print(f'no leisure=golf_course matching /{args.name_regex}/ near {args.lat},{args.lon}', file=sys.stderr)
+        return None
+    if wide:
+        return min(matched, key=lambda c: distance_m(lat, lon, c))
+    return max(matched, key=lambda c: c['areaHa'])
+
+
+def find(args: argparse.Namespace, rx: re.Pattern, query=None) -> tuple[dict | None, str]:
+    """(course, how it was found). `query` is overpass(), swappable in tests."""
+    query = query or overpass
+    near = parse_candidates(query(
+        f'[out:json][timeout:180];(way["leisure"="golf_course"](around:{args.radius_m},{args.lat},{args.lon});'
+        f'relation["leisure"="golf_course"](around:{args.radius_m},{args.lat},{args.lon}););out body geom;'), rx)
+    print(json.dumps([{k: c[k] for k in ('type', 'id', 'name', 'areaHa', 'nameMatch')} for c in near]))
+    best = pick_course(near, args.osm_id, args.lat, args.lon)
+    if best and (not args.osm_id or best['id'] == args.osm_id):
+        return best, 'near'
+    if args.osm_id:
+        # The outline the request names, wherever it is: the coordinates may be the ones that are off.
+        types = [args.osm_type] if args.osm_type in ('way', 'relation') else ['way', 'relation']
+        by_id = parse_candidates(query('[out:json][timeout:180];(' + ''.join(f'{t}({args.osm_id});' for t in types)
+                                       + ');out body geom;'), rx)
+        by_id = [c for c in by_id if c['id'] == args.osm_id]
+        if by_id:
+            off = distance_m(args.lat, args.lon, by_id[0])
+            print(f'took {by_id[0]["type"]} {args.osm_id} ({by_id[0]["name"] or "no name"}) by its id, '
+                  f'{off / 1000:.1f} km from the given point')
+            return by_id[0], 'by id'
+        if best:
+            return best, 'near'
+    # Nothing named right nearby: look wider, by name.
+    wide = parse_candidates(query(
+        f'[out:json][timeout:180];(way["leisure"="golf_course"]["name"~"{args.name_regex}",i](around:{WIDE_RADIUS_M},{args.lat},{args.lon});'
+        f'relation["leisure"="golf_course"]["name"~"{args.name_regex}",i](around:{WIDE_RADIUS_M},{args.lat},{args.lon}););out body geom;'), rx)
+    best = pick_course(wide, None, args.lat, args.lon, wide=True)
+    if best:
+        print(f'nothing named /{args.name_regex}/ within {args.radius_m / 1000:g} km; took {best["name"]} '
+              f'{distance_m(args.lat, args.lon, best) / 1000:.1f} km away')
+        return best, 'wide'
+    return None, ''
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--name-regex', required=True)
+    ap.add_argument('--lat', type=float, required=True)
+    ap.add_argument('--lon', type=float, required=True)
+    ap.add_argument('--radius-m', type=float, default=8000)
+    ap.add_argument('--margin-m', type=float, default=150)
+    ap.add_argument('--out', required=True)
+    ap.add_argument('--osm-id', type=int, help='prefer this OSM way/relation id (from the search UI)')
+    ap.add_argument('--osm-type', choices=('way', 'relation'), help='what --osm-id is (both are tried without it)')
+    args = ap.parse_args()
+
+    rx = re.compile(args.name_regex, re.I)
+    best, how = find(args, rx)
+    if not best:
+        print(f'no leisure=golf_course matching /{args.name_regex}/ within {WIDE_RADIUS_M / 1000:g} km of '
+              f'{args.lat},{args.lon}', file=sys.stderr)
         return 1
-    by_id = [c for c in matched if args.osm_id and c['id'] == args.osm_id]
-    best = by_id[0] if by_id else max(matched, key=lambda c: c['areaHa'])
     lons = [p[0] for r in best['rings'] for p in r]
     lats = [p[1] for r in best['rings'] for p in r]
     # OSM course outlines are often incomplete (Muirfield Village's covers
@@ -248,7 +310,7 @@ def main() -> int:
         'bboxLonLat': [w, s, e, n],
         'crs': utm_crs(zone, (s + n) / 2, (w + e) / 2),
         'utmZone': zone,
-        'osm': {k: best[k] for k in ('type', 'id', 'name', 'areaHa')},
+        'osm': {**{k: best[k] for k in ('type', 'id', 'name', 'areaHa')}, 'found': how},
         'ept': {'url': hits[0]['url'] if hits else None,
                 'chosen': hits[0] if hits else None,
                 'rule': 'newest year in dataset name, then most points',
