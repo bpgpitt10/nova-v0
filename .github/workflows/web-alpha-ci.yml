@@ -245,6 +245,8 @@ jobs:
         run: node tools/test-fairway-roll.mjs
       - name: Green release by course type and green firmness (measured model)
         run: node tools/test-green-release.mjs
+      - name: Wind, elevation and roll follow the ball the lie sends
+        run: node tools/test-lie-flight.mjs
       - name: Slope of the lie (GSPro's measured launch and start line)
         run: node tools/test-lie-slope.mjs
       - name: GSPro's carry for a launch (measured model)
