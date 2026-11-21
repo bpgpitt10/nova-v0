@@ -116,8 +116,7 @@ import PuttReadCard from '../components/PuttReadCard'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
-import { ballInTrees, nearestFairway, punchOutClub, PUNCH_OUT_AIM_NOTE } from '../liveCaddie/punchOut'
-import PunchOutCard from '../components/PunchOutCard'
+import { ballInTrees, punchOutClub, PUNCH_OUT_AIM_NOTE, PUNCH_OUT_MAX_YDS } from '../liveCaddie/punchOut'
 import { BLEND_RULES } from '../lib/quickBag'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import { ERROR_TEXT, courseStatusView, ocrLetter, supportLine } from '../lib/supportCodes'
@@ -2498,17 +2497,6 @@ export default function LiveCaddiePage() {
                     ) : null}
                   </div>
 
-                  {/* In the trees the whole shot card gives way: no club pick, no odds, no aim, no Auto Aim. */}
-                  {inTrees ? (
-                    <PunchOutCard
-                      club={punchOutClub(bagClubs as string[])}
-                      chosenClub={eligibleArmedClub ?? null}
-                      escape={nearestFairway(hole, ball, aimPin)}
-                      pinYds={aimPin ? pointDistance(ball, aimPin) : null}
-                      lie={authoritativeGsproSurface ?? null}
-                      guess={inspectedCandidate ? playerFacingAim : null}
-                    />
-                  ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
                     ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
                     : displayedClub ?? '—'}</div>
@@ -2536,6 +2524,20 @@ export default function LiveCaddiePage() {
                     </div>
                   ) : (
                   <p className="live-decision-reason">
+                    {inTrees ? (
+                    <span className="live-punch-out" role="status">
+                      <strong>PUNCH OUT</strong>
+                      <span>You pick the line: Looper can&rsquo;t see the gaps between the trees. Auto Aim is off.</span>
+                      <small>
+                        {(() => {
+                          const low = punchOutClub(bagClubs as string[])
+                          return low && low !== displayedClub
+                            ? `Consider a lower-lofted club (your ${low}) to keep it under the branches, and no more than about ${PUNCH_OUT_MAX_YDS} yd.`
+                            : `Keep it low, under the branches, and no more than about ${PUNCH_OUT_MAX_YDS} yd.`
+                        })()}
+                      </small>
+                    </span>
+                    ) : null}
                     {greenReadText ? (
                       <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
                     ) : null}
@@ -2585,7 +2587,7 @@ export default function LiveCaddiePage() {
 
                   <button
                     type="button"
-                    className={`live-arm-recommendation${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
+                    className={`live-arm-recommendation${inTrees ? ' no-auto-aim' : ''}${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
                     style={{ '--arm-fill-ms': `${ARM_FILL_MS}ms` } as CSSProperties}
                     disabled={isShotStrategy || !displayedClub}
                     onClick={pressArm}
@@ -2599,8 +2601,12 @@ export default function LiveCaddiePage() {
                             ? `${displayedClub} ARMED · AIMING IN GSPRO…`
                             : aimChanged
                               ? `${displayedClub} ARMED · AIM CHANGED, TAP TO RE-AIM`
+                              : armedHere && inTrees
+                                ? `${displayedClub} RECORDED · AIM IT YOURSELF`
                               : armedHere
                                 ? `${displayedClub} ARMED · ${aimShort}`
+                                : displayedClub && inTrees
+                                  ? `HITTING ${displayedClub} · AUTO AIM OFF · TAP TO RECORD`
                                 : displayedClub
                                   ? `HITTING ${displayedClub} · TAP TO ARM`
                                   : evaluationPending
@@ -2652,10 +2658,9 @@ export default function LiveCaddiePage() {
                       )}
                     </button>
                   ) : null}
-                  </>)}
                 </article>
 
-                {!isShotStrategy && !inTrees ? <article className="live-outcomes-card">
+                {!isShotStrategy ? <article className="live-outcomes-card">
                   <div className="live-section-heading">
                     <div>
                       <span className="live-kicker">OUTCOMES</span>
@@ -2711,7 +2716,7 @@ export default function LiveCaddiePage() {
                   showPracticeShots={showPracticeShots}
                   provisionalTeeRadiusYds={provisionalPositionRadiusYds ?? provisionalTeeRadiusYds}
                   greenRead={shownGreenRead}
-                  overlay={aimLineOptions.length > 1 && !inTrees ? (
+                  overlay={aimLineOptions.length > 1 ? (
                     <div className="live-aim-lines" role="group" aria-label="Aim lines for this club">
                       <span className="live-aim-lines-title">AIM LINE</span>
                       {aimLineOptions.map((option) => {
