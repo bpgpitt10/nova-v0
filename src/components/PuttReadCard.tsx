@@ -1,7 +1,7 @@
 import { BASELINE_STIMP, feetInches, readPutt } from '../liveCaddie/puttRead'
 import './PuttReadCard.css'
 
-export type PuttElevationSource = 'green map' | 'GSPro HUD'
+export type PuttElevationSource = 'green map' | 'GSPro' | 'GSPro HUD'
 
 type Props = {
   distanceFt: number | null
@@ -9,6 +9,8 @@ type Props = {
   riseIn: number | null
   stimp: number | null
   elevationSource?: PuttElevationSource | null
+  /** While the two sources are being compared on the sim: GSPro's files' rise when the map's is shown. */
+  checkRiseIn?: number | null
 }
 
 const ft = (value: number) => (value >= 10 ? `${Math.round(value)} ft` : `${value.toFixed(1)} ft`)
@@ -16,7 +18,7 @@ const ft = (value: number) => (value >= 10 ? `${Math.round(value)} ft` : `${valu
 /**
  * The green-side card: how hard to hit this putt. Pace only; break isn't measured yet, so no aim line.
  */
-export default function PuttReadCard({ distanceFt, riseIn, stimp }: Props) {
+export default function PuttReadCard({ distanceFt, riseIn, stimp, checkRiseIn = null }: Props) {
   if (distanceFt == null || !(distanceFt > 0)) {
     return (
       <section className="putt-read" data-state="waiting">
@@ -65,6 +67,11 @@ export default function PuttReadCard({ distanceFt, riseIn, stimp }: Props) {
       </div>
 
       <p className="putt-read__note">Pace only. You own the aim.</p>
+      {checkRiseIn != null ? (
+        <p className="putt-read__note">
+          Check: GSPro&rsquo;s files say {Math.abs(checkRiseIn) < 0.5 ? 'flat' : `${feetInches(checkRiseIn)} ${checkRiseIn > 0 ? 'up' : 'down'}`}.
+        </p>
+      ) : null}
     </section>
   )
 }
