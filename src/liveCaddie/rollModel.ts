@@ -159,6 +159,8 @@ export const makeRollLandingTransform = (
    * (or spins back) this far, shaped by the slope there, instead of its range rollout.
    */
   greenReleaseYds: number | null = null,
+  /** The round's stimp, for how the slope changes that release (null: stimp 11). */
+  greenStimp: number | null = null,
 ): LandingTransform => {
   const resolve = (carryLanding: CoursePointYds, baselineLanding: CoursePointYds): LandingResolution => {
     const rx = baselineLanding[0] - carryLanding[0]
@@ -174,7 +176,7 @@ export const makeRollLandingTransform = (
     const { surface, surfaceFactor, slopeFactor, grade } = rollFactorAt(hole, start, dir)
     const conditions = surface === 'green' ? 1 : fairwayRollScale
     const roll = surface === 'green' && greenReleaseYds != null && Number.isFinite(greenReleaseYds)
-      ? greenReleaseOnSlope(greenReleaseYds, grade)
+      ? greenReleaseOnSlope(greenReleaseYds, grade, greenStimp)
       : stockRoll * conditions * surfaceFactor * (touchdown.intoSlope ? INTO_SLOPE_ROLL : slopeFactor)
     const scaled: CoursePointYds = [start[0] + dir[0] * roll, start[1] + dir[1] * roll]
     return { touchdown: start, rest: inner ? inner(start, scaled) : scaled }

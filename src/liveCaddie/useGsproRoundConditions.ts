@@ -9,7 +9,7 @@ import { applyGsproConditionsToActiveRound, loadActiveLiveCaddieRound } from './
 
 export type RoundPhysicsConditions = Readonly<{
   fairwayConditions: { courseType: Firmness; fairwayFirmness: Firmness } | null
-  greenConditions: { courseType: Firmness; greenFirmness: Firmness } | null
+  greenConditions: { courseType: Firmness; greenFirmness: Firmness; stimp: number | null } | null
   /** GSPro's own altitude for the round, once a shot has landed. */
   gsproAltitudeFt: number | null
   /** True when the settings are GSPro's own rather than picked at Start a Round. */
@@ -23,7 +23,7 @@ const fromActiveRound = (): RoundPhysicsConditions => {
     fairwayConditions: picked?.courseType && picked.fairwayFirmness
       ? { courseType: picked.courseType, fairwayFirmness: picked.fairwayFirmness } : null,
     greenConditions: picked?.courseType && picked.greenFirmness
-      ? { courseType: picked.courseType, greenFirmness: picked.greenFirmness } : null,
+      ? { courseType: picked.courseType, greenFirmness: picked.greenFirmness, stimp: picked.stimp ?? null } : null,
     gsproAltitudeFt: round?.gsproAltitudeFt ?? null,
     fromGspro: round?.conditionsFromGspro === true,
   }
@@ -35,6 +35,7 @@ const sameConditions = (a: RoundPhysicsConditions, b: RoundPhysicsConditions) =>
     && a.fairwayConditions?.fairwayFirmness === b.fairwayConditions?.fairwayFirmness
     && a.greenConditions?.courseType === b.greenConditions?.courseType
     && a.greenConditions?.greenFirmness === b.greenConditions?.greenFirmness
+    && a.greenConditions?.stimp === b.greenConditions?.stimp
 
 /**
  * The round's course type, firmness and altitude for the roll, green and
