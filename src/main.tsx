@@ -30,6 +30,7 @@ import DecisionReplayDevPage from './dev/DecisionReplayDevPage.tsx'
 import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
 import OcrTestPage from './dev/OcrTestPage.tsx'
 import PuttReadPreviewPage from './dev/PuttReadPreviewPage.tsx'
+import ChipLabPreviewPage from './dev/ChipLabPreviewPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
@@ -313,8 +314,9 @@ function RootRouter() {
   const showDecisionAudit = pathname === '/dev/decision-audit'
   const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
   const showPuttReadPreview = pathname === '/dev/putt-read'
+  const showChipLabPreview = pathname === '/dev/chip-lab'
   const showFaq = pathname === '/faq' || pathname === '/help'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest || showPuttReadPreview
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest || showPuttReadPreview || showChipLabPreview
 
   useEffect(() => {
     if (showLiveCaddie) {
@@ -351,6 +353,7 @@ function RootRouter() {
     if (showDecisionAudit) return <DecisionAuditDevPage />
     if (showOcrTest) return <OcrTestPage />
     if (showPuttReadPreview) return <PuttReadPreviewPage />
+    if (showChipLabPreview) return <ChipLabPreviewPage />
     if (showFaq) return <FaqPage />
     if (showSignOut) return <SignOutPage />
     if (showAdminUsers) return <AdminUsersPage />
@@ -397,6 +400,7 @@ function RootRouter() {
     showLiveCaddie,
     showOcrTest,
     showPuttReadPreview,
+    showChipLabPreview,
     showRoundSetup,
     updateError,
     updateStatus,
