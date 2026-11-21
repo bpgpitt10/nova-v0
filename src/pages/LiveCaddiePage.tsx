@@ -1153,7 +1153,7 @@ export default function LiveCaddiePage() {
   })()
   const puttRiseIn = puttMapRiseIn
   const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : null
-  // Chip lab (experimental, ?chipLab=on): around the green, the four chip options in place of the club pick.
+  // Chip lab (on unless ?chipLab=off): around the green, the four chip options in place of the club pick.
   const chipDistanceYds = !isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) : null
   const chipLab = chipLabOn && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
     ? (() => {
