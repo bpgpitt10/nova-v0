@@ -1136,19 +1136,18 @@ export default function LiveCaddiePage() {
   const authoritativeGsproSurface = liveMatchesHole ? liveSnapshot?.surface ?? null : null
   const normalizedCurrentSurface = (authoritativeGsproSurface ?? surface).trim().toLowerCase()
   const isGreenSurface = normalizedCurrentSurface === 'green'
-  // On the green: the putt's length and rise or fall for the putt card. GSPro's own HUD height
-  // (▲/▼ ft in, for the shot in play) first; the green map's LiDAR where the HUD hasn't read it.
+  // On the green: the putt's length and its rise or fall, ball to hole, for the putt card. This is
+  // never the tee read: the HUD's tee-to-pin height says nothing about a putt. Until GSPro's putting
+  // HUD (or the sign over the pin) is confirmed to give ball-to-hole height, only the green map does.
   const puttDistanceFt = isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) * 3 : null
-  const puttHudRiseIn = isGreenSurface && hudReading && hudReading.shotNumber === nextShotNumber
-    && Number.isFinite(hudReading.elevationFt) ? hudReading.elevationFt! * 12 : null
   const puttMapRiseIn = (() => {
     if (!isGreenSurface || !greenDetail || !pinEstimate) return null
     const at = sampleCourseGreenElevation(greenDetail, ball)
     const hole = sampleCourseGreenElevation(greenDetail, pinEstimate)
     return at != null && hole != null ? (hole - at) * 12 : null
   })()
-  const puttRiseIn = puttHudRiseIn ?? puttMapRiseIn
-  const puttElevationSource = puttHudRiseIn != null ? 'GSPro HUD' as const : puttMapRiseIn != null ? 'green map' as const : null
+  const puttRiseIn = puttMapRiseIn
+  const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : null
   const greenGuidance = !isGreenSurface && hole && greenDetail && trustedLivePin
     && liveMatchesHole && liveSnapshot?.ballSource !== 'world-provisional'
     && Math.hypot(ball[0] - trustedLivePin[0], ball[1] - trustedLivePin[1]) <= 260
