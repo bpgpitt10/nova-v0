@@ -112,26 +112,28 @@ export default function ChipOptionsCard({
         ) : (
           <p className="chip-options__reason">None of the four finishes at the hole cleanly from here.</p>
         )}
-        {onAim && current ? (
-          <>
-            <button
-              type="button"
-              className={`chip-options__arm${aimedThis && aim?.state === 'aimed' ? ' is-aimed' : ''}`}
-              disabled={current.verdict === 'avoid' || (aimedThis && aim?.state === 'aiming')}
-              onClick={() => onAim(current.type)}
-            >
-              {aimedThis && aim?.state === 'aiming' ? 'AIMING IN GSPRO…'
-                : aimedThis && aim?.state === 'aimed' ? `${CHIP_LABEL[current.type].toUpperCase()} · AIMED · TAP TO RE-AIM`
-                  : `HITTING THE ${CHIP_LABEL[current.type].toUpperCase()} · TAP TO AIM`}
-            </button>
-            {aimedThis && aim && aim.state !== 'aiming' ? <p className="chip-options__note">{aim.message}</p> : null}
-          </>
-        ) : null}
         <p className="chip-options__note">
           {options.some((o) => o.verdict === 'good') ? '' : 'Nothing here lands on the green and stops: every option runs on from short of it. '}
           {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with.' : ''}
         </p>
       </section>
+
+      {onAim && current ? (
+        <>
+          <button
+            type="button"
+            className={`chip-options__arm${aimedThis && aim?.state === 'aimed' ? ' is-aimed' : ''}`}
+            disabled={current.verdict === 'avoid' || (aimedThis && aim?.state === 'aiming')}
+            onClick={() => onAim(current.type)}
+          >
+            {aimedThis && aim?.state === 'aiming' ? 'AIMING IN GSPRO…'
+              : aimedThis && aim?.state === 'aimed' ? `${CHIP_LABEL[current.type].toUpperCase()} · AIMED · TAP TO RE-AIM`
+                : `HITTING THE ${CHIP_LABEL[current.type].toUpperCase()} · TAP TO AIM`}
+          </button>
+          {/* Always there, so a message never moves the button. */}
+          <p className="chip-options__arm-note">{aimedThis && aim && aim.state !== 'aiming' ? aim.message : ''}</p>
+        </>
+      ) : null}
 
       <aside className="chip-conditions" aria-label="What is moving this chip">
         <div className="chip-conditions__title">

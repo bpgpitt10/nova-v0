@@ -280,3 +280,22 @@
   opacity: 0.5;
   cursor: default;
 }
+
+.chip-options__arm-note {
+  min-height: 54px;
+  margin: 6px 0 0;
+  color: #8e9b90;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* Same spot as the normal card's arm button: bottom of the left column, never moving. */
+.live-decision-card > .chip-options__arm {
+  grid-area: arm;
+  align-self: end;
+}
+
+.live-decision-card > .chip-options__arm-note {
+  grid-area: note;
+  align-self: start;
+}

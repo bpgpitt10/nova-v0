@@ -1692,13 +1692,19 @@ export default function LiveCaddiePage() {
     const option = chipLab?.options.find((o) => o.type === type)
     if (!option || !pinEstimate || chipDistanceYds == null) return
     const fail = (message: string) => setChipAim({ shot: chipShotKey, type, state: 'not-aimed', message })
+    const lieRead = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
+    // Straight at the pin is where GSPro already points on a new shot: nothing to click.
+    if (Math.abs(lieRead.aimLeftFt) < 1) {
+      setChipAim({ shot: chipShotKey, type, state: 'aimed', message: 'Aim is straight at the pin, where GSPro already points. Nothing to move (reset GSPro’s aim if you changed it).' })
+      return
+    }
     if (!trustedLivePin) return fail("Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot).")
     if (!companionCanAim) {
       return fail(companionStatus?.gspro.status === 'connected'
         ? 'Aim by hand: update the Looper Companion so Looper can aim for you.'
         : 'Aim by hand: Looper Companion or GSPro not connected.')
     }
-    const read = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
+    const read = lieRead
     const fx = (trustedLivePin[0] - ball[0]) / chipDistanceYds
     const fy = (trustedLivePin[1] - ball[1]) / chipDistanceYds
     const rightYds = -read.aimLeftFt / 3
