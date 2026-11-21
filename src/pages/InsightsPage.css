@@ -952,7 +952,6 @@
 }
 
 .insights-method__body {
-  max-width: 760px;
   margin-top: 28px;
   color: #d8e2d6;
   font-size: 17px;
@@ -993,7 +992,6 @@
 /* ---- Overview: the cheat sheet ---- */
 
 .insights-overview {
-  max-width: 1000px;
   margin-top: 18px;
 }
 
