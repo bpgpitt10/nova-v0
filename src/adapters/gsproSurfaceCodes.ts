@@ -34,6 +34,8 @@ export const GSProSurfaceCodeEvidenceLibrary: readonly GsproSurfaceCodeEvidence[
     notes: 'R269: 3 shots ending on mapped greens (H1 S3, H2 S2, H3 S7).' },
   { rawCode: 11, operationalLabel: 'sand', state: 'paired-confirmed',
     notes: 'R269 H3 shot 6: HUD "Sand", ball inside the mapped greenside bunker. Earlier sandbox/woods reading was wrong.' },
+  { rawCode: 16, operationalLabel: 'rough', state: 'paired-confirmed',
+    notes: 'Pine straw. Georgia Golf Club H2 shot 2 (21 Nov 2026): Live Caddie showed "GSPro code 16" while GSPro\'s HUD and minimap said "Pine", ball under the pines. Played as rough: the lab\'s pine straw shots kept about 94% of ball speed and 77% of spin, the same as rough.' },
   { rawCode: 18, operationalLabel: 'tee', state: 'paired-confirmed',
     notes: 'StartingSurface on every FarmLinks tee shot (R255, R269), StartingPOS on the GKD tee.' },
 ] as const

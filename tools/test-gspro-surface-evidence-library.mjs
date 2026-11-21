@@ -12,12 +12,13 @@ try {
   const {loadGsproSurfaceEvidenceSamples,recordGsproSurfaceHudConfirmation}=
     await server.ssrLoadModule('/src/adapters/gsproSurfaceEvidenceStore.ts')
   // Round 269 paired evidence: code + GSPro minimap label for the same shot.
-  const expected=['rough','fairway','deep-rough','green','sand','tee']
+  const expected=['rough','fairway','deep-rough','green','sand','rough','tee']
   assert.deepEqual(GSProSurfaceCodeEvidenceLibrary.map(x=>x.operationalLabel),expected)
   assert.ok(GSProSurfaceCodeEvidenceLibrary.every(x=>x.state==='paired-confirmed'))
   assert.equal(surfaceFromGsproRaw(3),'deep-rough','3 is Deep Rough (R269 H3), not sand')
   assert.equal(surfaceFromGsproRaw(11),'sand','11 is Sand (R269 H3 bunker)')
   assert.equal(surfaceFromGsproRaw(18),'tee')
+  assert.equal(surfaceFromGsproRaw(16),'rough') // pine straw plays as rough
   assert.equal(surfaceFromGsproRaw(9),null)
   assert.equal(loadGsproSurfaceEvidenceSamples().length,0)
   const sample={shotKey:'farmlinks-H1-255-shot2',shotId:'52ac565c-test',
