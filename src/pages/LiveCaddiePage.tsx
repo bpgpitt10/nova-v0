@@ -1153,7 +1153,7 @@ export default function LiveCaddiePage() {
   })()
   const puttRiseIn = puttMapRiseIn
   const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : null
-  // Chip lab (on unless ?chipLab=off): around the green, the four chip options in place of the club pick.
+  // Chip lab (on unless ?chipLab=off): around the green, the four chip options above the normal card.
   const chipDistanceYds = !isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) : null
   const chipLab = chipLabOn && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
     ? (() => {
@@ -2452,15 +2452,6 @@ export default function LiveCaddiePage() {
             stimp={greenConditions?.stimp ?? null}
             elevationSource={puttElevationSource}
           />
-        ) : chipLab && chipDistanceYds != null ? (
-          <ChipOptionsCard
-            distanceYds={chipDistanceYds}
-            options={chipLab.options}
-            armed={armedChip}
-            onArm={setArmedChip}
-            conditions={chipLab.conditions}
-            hasGreenMap={chipLab.hasGreenMap}
-          />
         ) : holdFirstTeeRecommendation ? (
           <section className="live-empty-state" data-recommendation-gate="first-tee-capture">
             <span className="live-kicker">PROVISIONAL TEE · NOT YET MEASURED</span>
@@ -2502,6 +2493,17 @@ export default function LiveCaddiePage() {
           </section>
         ) : (
           <>
+            {/* Chip lab sits above the normal card, so the club pick, the map and Arm / Auto Aim all stay. */}
+            {chipLab && chipDistanceYds != null ? (
+              <ChipOptionsCard
+                distanceYds={chipDistanceYds}
+                options={chipLab.options}
+                armed={armedChip}
+                onArm={setArmedChip}
+                conditions={chipLab.conditions}
+                hasGreenMap={chipLab.hasGreenMap}
+              />
+            ) : null}
             <section className="live-caddie-main-grid">
               <aside className="live-decision-column">
                 <article className={`live-decision-card${isShotStrategy ? ' strategy-mode' : ''}`}>

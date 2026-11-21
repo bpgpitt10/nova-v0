@@ -6,6 +6,7 @@
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(249, 115, 22, 0.07), rgba(7, 16, 10, 0.6));
   color: #e7efe4;
+  margin-bottom: 14px;
 }
 
 .chip-options header h1 {

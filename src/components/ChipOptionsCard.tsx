@@ -22,7 +22,7 @@ const VERDICT: Readonly<Record<ChipOption['verdict'], string | null>> = {
 
 const yd = (value: number) => `${value < 10 ? value.toFixed(1) : Math.round(value)} yd`
 
-/** Around the green: all four chips, each sized to finish at the hole. Arm one to mark where to land it. */
+/** Around the green: all four chips, each sized to finish at the hole. Pick one to mark where to land it on the map. */
 export default function ChipOptionsCard({ distanceYds, options, armed, onArm, conditions, hasGreenMap }: Props) {
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
     && !options.some((o) => o.verdict === 'good')
@@ -60,7 +60,7 @@ export default function ChipOptionsCard({ distanceYds, options, armed, onArm, co
                 onClick={() => onArm(isArmed ? null : option.type)}
                 aria-pressed={isArmed}
               >
-                {isArmed ? 'Armed · land it on the marker' : 'Arm'}
+                {isArmed ? 'Landing on the map' : 'Show landing'}
               </button>
             </article>
           )
@@ -69,7 +69,7 @@ export default function ChipOptionsCard({ distanceYds, options, armed, onArm, co
       <p className="chip-options__note">
         {comfortable ? 'More than one works here: pick the one you’re most comfortable with. ' : ''}
         Spin is typical for each shot; yours may differ.
-        {hasGreenMap ? '' : ' Aim and break need a green map — not available on this course.'}
+        {' Use Arm below to aim in GSPro as usual.'}{hasGreenMap ? '' : ' Break needs a green map, which this course doesn’t have.'}
       </p>
     </section>
   )
