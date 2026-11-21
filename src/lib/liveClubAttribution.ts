@@ -86,10 +86,22 @@ const parseIntent = (value: unknown): ArmedLiveShotIntent | null => {
   }
 }
 
+/**
+ * The armed club as last set in this page, for when the browser's storage is
+ * full and the save below fails (Andrew, 14 to 20 Nov: every arm was lost).
+ */
+let armedInMemory: string | null = null
+
 export const loadArmedLiveClub = (): ArmedLiveClub | null => {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY)
+    let raw: string | null = null
+    try {
+      raw = window.localStorage.getItem(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY)
+    } catch {
+      raw = null
+    }
+    raw = raw ?? armedInMemory
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<ArmedLiveClub>
     if (!isClub(parsed.club) || typeof parsed.armedAt !== 'string') return null
@@ -116,16 +128,26 @@ export const armLiveClub = (
     intent,
   }
   const serialized = JSON.stringify(armed)
-  window.localStorage.setItem(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY, serialized)
-  persistWorkingCacheValueForActiveUser(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY, serialized)
+  armedInMemory = serialized
+  try {
+    window.localStorage.setItem(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY, serialized)
+    persistWorkingCacheValueForActiveUser(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY, serialized)
+  } catch (error) {
+    console.warn('[Live Caddie] browser storage is full; the armed club is kept in this page only.', error)
+  }
   window.dispatchEvent(new Event(LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT))
   return armed
 }
 
 export const clearArmedLiveClub = () => {
   if (typeof window === 'undefined') return
-  window.localStorage.removeItem(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY)
-  persistWorkingCacheValueForActiveUser(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY, null)
+  armedInMemory = null
+  try {
+    window.localStorage.removeItem(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY)
+    persistWorkingCacheValueForActiveUser(LIVE_CADDIE_ARMED_CLUB_STORAGE_KEY, null)
+  } catch {
+    // Removing never needs space; nothing to do if the browser refuses anyway.
+  }
   window.dispatchEvent(new Event(LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT))
 }
 
@@ -381,6 +403,60 @@ const armFromCurrentUi = (
   }, 0)
 }
 
+// --------------------------------------------------------------------------
+// What Live Caddie showed, for shots hit without arming a club (20 Nov: most
+// players read the screen and swing, so their rounds had no "Looper said X").
+// The page is sampled every SHOWN_SAMPLE_MS; a shot takes the last sample from
+// before it was hit, if that sample is recent (the page was open and showing).
+export type ShownRecommendation = {
+  recommendedClub: Club
+  intent: ArmedLiveShotIntent | null
+  seenAt: string
+}
+
+export const SHOWN_SAMPLE_MS = 2000
+/** A sample older than this before the shot says the page wasn't showing it. */
+export const SHOWN_MAX_AGE_MS = 15_000
+const SHOWN_KEEP = 90
+const shownSamples: ShownRecommendation[] = []
+
+export const noteShownRecommendation = (sample: ShownRecommendation) => {
+  shownSamples.push(sample)
+  if (shownSamples.length > SHOWN_KEEP) shownSamples.splice(0, shownSamples.length - SHOWN_KEEP)
+}
+
+/**
+ * The recommendation on screen just before `observedAt`. `notBefore` (the time
+ * the ball came to rest) rules out the previous position's recommendation.
+ */
+export const shownRecommendationBefore = (
+  observedAt: string,
+  notBefore: string | null = null,
+  samples: readonly ShownRecommendation[] = shownSamples,
+): ShownRecommendation | null => {
+  const at = Date.parse(observedAt)
+  if (!Number.isFinite(at)) return null
+  const floor = notBefore ? Date.parse(notBefore) : Number.NEGATIVE_INFINITY
+  for (let index = samples.length - 1; index >= 0; index -= 1) {
+    const seen = Date.parse(samples[index].seenAt)
+    if (!Number.isFinite(seen) || seen > at) continue
+    if (at - seen > SHOWN_MAX_AGE_MS || seen < floor) return null
+    return samples[index]
+  }
+  return null
+}
+
+const sampleShownRecommendation = () => {
+  if (typeof document === 'undefined' || document.visibilityState === 'hidden') return
+  const recommendedClub = recommendedClubFromUi()
+  if (!recommendedClub) return
+  noteShownRecommendation({
+    recommendedClub,
+    intent: shotIntentFromUi('live-caddie-recommendation'),
+    seenAt: new Date().toISOString(),
+  })
+}
+
 /**
  * Transitional UI bridge: Live Caddie already owns the visible armed state.
  * Capture those existing clicks into the durable attribution state while also
@@ -393,6 +469,7 @@ const installLiveCaddieClubClickBridge = () => {
   bridgedWindow.__looperLiveClubClickBridge = true
 
   window.addEventListener(LIVE_CADDIE_ARMED_CLUB_UPDATED_EVENT, scheduleVisibleArmedClubSync)
+  window.setInterval(sampleShownRecommendation, SHOWN_SAMPLE_MS)
 
   document.addEventListener('click', (event) => {
     const target = event.target

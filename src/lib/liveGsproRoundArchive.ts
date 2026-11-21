@@ -25,6 +25,7 @@ import {
   inferClubForGsproShot,
   loadArmedLiveClub,
   type ClubInferenceResult,
+  shownRecommendationBefore,
 } from './liveClubAttribution'
 import {
   LIVE_GSPRO_ROUND_ARCHIVE_STORAGE_KEY,
@@ -319,6 +320,13 @@ const annotateNewShots = ({
       mayConsumeArm = false
       consumedArmedClub = true
     }
+    // No club armed, live (not the companion backlog), not already attributed:
+    // what Live Caddie had on screen when the shot was hit (20 Nov). The club
+    // hit stays the inferred one; this only records "Looper said X".
+    const shown = !shouldApplyArm && allowArm && archived.recommendedClub == null
+      && archived.startingSurfaceRaw !== 5
+      ? shownRecommendationBefore(observedAt)
+      : null
 
     const next: ArchivedGsproCourseShot = {
       ...archived,
@@ -337,6 +345,11 @@ const annotateNewShots = ({
           usableArmed.intent?.options, usableArmed.club, usableArmed.recommendedClub,
         ),
         modelBasis: decisionBasis(usableArmed.intent?.options),
+      } : shown ? {
+        recommendedClub: shown.recommendedClub,
+        recommendedExpectedStrokes: shown.intent?.options
+          ?.find((option) => option.club === shown.recommendedClub)?.expectedStrokes ?? null,
+        modelBasis: decisionBasis(shown.intent?.options),
       } : {}),
     }
     if (JSON.stringify(next) !== JSON.stringify(archived)) changed = true
