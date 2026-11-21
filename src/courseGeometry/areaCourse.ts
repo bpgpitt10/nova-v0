@@ -353,8 +353,49 @@ const ringToRoute = (ring: readonly CoursePointYds[], route: readonly CoursePoin
   return best
 }
 
-/** A fairway this close to the hole's line (tee, GSPro's aim points, green) is this hole's. */
+/** A fairway this close to the hole's line (tee, GSPro's aim points, green) may be this hole's. */
 const OWN_FAIRWAY_YDS = 30
+/**
+ * ...and is, if at least this share of its outline lies nearer this hole's line
+ * than any other hole's. Being near was not enough: at Georgia Golf Club a
+ * corner of the next hole's fairway came within 30 yd, so the whole of it
+ * counted as this hole's, and the caddie aimed tee shots through the pines onto
+ * it (holes 2 and 9, 20 Nov).
+ */
+const OWN_FAIRWAY_SHARE = 0.5
+const OUTLINE_STEP_YDS = 5
+
+const routeDistance = (p: CoursePointYds, route: readonly CoursePointYds[]) => {
+  let best = Infinity
+  for (let i = 1; i < route.length; i += 1) best = Math.min(best, segmentDistance(p, route[i - 1], route[i]))
+  return best
+}
+
+/** Points every OUTLINE_STEP_YDS around a ring. */
+const outlinePoints = (ring: readonly CoursePointYds[]): CoursePointYds[] => {
+  const out: CoursePointYds[] = []
+  ring.forEach((a, i) => {
+    const b = ring[(i + 1) % ring.length]
+    const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / OUTLINE_STEP_YDS))
+    for (let k = 0; k < steps; k += 1) out.push([a[0] + ((b[0] - a[0]) * k) / steps, a[1] + ((b[1] - a[1]) * k) / steps])
+  })
+  return out
+}
+
+/** Share of a ring's outline nearer `route` than any of `others`. */
+export const shareNearestRoute = (
+  ring: readonly CoursePointYds[],
+  route: readonly CoursePointYds[],
+  others: readonly (readonly CoursePointYds[])[],
+) => {
+  const points = outlinePoints(ring)
+  if (!points.length || route.length < 2) return 1
+  const nearest = points.filter((p) => {
+    const own = routeDistance(p, route)
+    return others.every((other) => other.length < 2 || routeDistance(p, other) >= own)
+  })
+  return nearest.length / points.length
+}
 /** The map green nearest GSPro's green centre, within this, is this hole's green. */
 const OWN_GREEN_YDS = 35
 const VIEW_MARGIN_YDS = 40
@@ -518,18 +559,28 @@ export const buildAreaHoleGeometry = (input: Readonly<{
   const greenLocal = greenCentre ? local(greenCentre) : null
   const route = [base.markers.tee, ...hole.aimPoints.map(local), greenLocal]
     .filter((p): p is CoursePointYds => p !== null)
+  // Every other hole's line (longest tee, aim points, green), in this hole's yards.
+  const otherRoutes = input.layout.holes.filter((h) => h.hole !== holeNumber).map((h) => {
+    const tee = Object.values(h.tees).reduce<NativeXYZ & { distanceM: number } | null>(
+      (best, t) => (!best || t.distanceM > best.distanceM ? t : best), null)
+    const green = effectiveGreenCenter(h)?.point ?? null
+    return [tee, ...h.aimPoints, green].filter((p): p is NativeXYZ => p !== null).map(local)
+      .filter((p): p is CoursePointYds => p !== null)
+  }).filter((r) => r.length >= 2)
+  const isOwnFairway = (r: readonly CoursePointYds[]) =>
+    ringToRoute(r, route) <= OWN_FAIRWAY_YDS && shareNearestRoute(r, route, otherRoutes) >= OWN_FAIRWAY_SHARE
 
   const byKind = new Map<CourseSurfaceKind, CoursePolygonYds[]>()
   const add = (kind: CourseSurfaceKind, rings: readonly CoursePolygonYds[]) => {
     if (rings.length) byKind.set(kind, [...(byKind.get(kind) ?? []), ...rings])
   }
   let mapGreen = false
+  const fairwayRings: CoursePolygonYds[] = []
   for (const surface of area.surfaces) {
     const rings = transformRings(surface.polygons, toHole, box)
     if (!rings.length) continue
     if (surface.kind === 'fairway') {
-      add('fairway', rings.filter((r) => ringToRoute(r, route) <= OWN_FAIRWAY_YDS))
-      add('rough', rings.filter((r) => ringToRoute(r, route) > OWN_FAIRWAY_YDS))
+      fairwayRings.push(...rings)
     } else if (surface.kind === 'green') {
       // This hole's green: the map green nearest GSPro's green centre.
       const near = greenLocal
@@ -541,6 +592,15 @@ export const buildAreaHoleGeometry = (input: Readonly<{
     } else {
       add(surface.kind, rings)
     }
+  }
+  {
+    // If the stricter test leaves the hole no fairway at all (one map fairway
+    // shared by two holes), fall back to nearness alone.
+    const near = fairwayRings.filter((r) => ringToRoute(r, route) <= OWN_FAIRWAY_YDS)
+    const own = near.filter(isOwnFairway)
+    const kept = own.length || !near.length ? own : near
+    add('fairway', kept)
+    add('rough', fairwayRings.filter((r) => !kept.includes(r)))
   }
   // A lake or sea shore can come in whole: cut oversized rings to the hole (see clipOversizedPolygons).
   const mapSurfaces: CourseSurface[] = clipOversizedPolygons([...byKind.entries()].map(([kind, polygons]) => ({

@@ -11,6 +11,14 @@ export const AIM_LINE_MIN_SEPARATION_YDS = 6
 /** Safest must cut this much to be called safer; below it, Best is already the safe line. */
 export const AIM_LINE_SAFER_CATASTROPHE_CUT = 0.01
 export const AIM_LINE_SAFER_TROUBLE_CUT = 0.03
+/**
+ * What a safer line may cost before it stops being worth showing (Georgia Golf Club 2, 21 Nov:
+ * "Safest" was 12 yd left of the pin, off the green, for 0.39 strokes, to trim sand from 24% to
+ * 21%). A line that only trims sand or rough may cost this much; one that takes out water or OB,
+ * more.
+ */
+export const AIM_LINE_SAFER_MAX_COST_TROUBLE = 0.15
+export const AIM_LINE_SAFER_MAX_COST_CATASTROPHE = 0.35
 
 export type AimLineKey = 'best' | 'second' | 'safest'
 
@@ -56,12 +64,17 @@ export const pickAimLineOptions = <T extends AimLineCandidate>(
     (Math.abs(a.catastrophe - b.catastrophe) > 0.005 ? a.catastrophe - b.catastrophe : 0)
     || (Math.abs(a.seriousTrouble - b.seriousTrouble) > 0.005 ? a.seriousTrouble - b.seriousTrouble : 0)
     || byStrokes(a, b)
-  const safestRow = [...apart].sort(bySafety)[0] ?? null
-  const safest = safestRow && (
-    bestRow.catastrophe - safestRow.catastrophe >= AIM_LINE_SAFER_CATASTROPHE_CUT - 1e-9
-    || (safestRow.catastrophe <= bestRow.catastrophe + 0.005
-      && bestRow.seriousTrouble - safestRow.seriousTrouble >= AIM_LINE_SAFER_TROUBLE_CUT - 1e-9)
-  ) ? safestRow : null
+  // A safer line has to be worth its price: cut water/OB within the bigger allowance, or cut
+  // serious trouble (without adding water) within the smaller one. The safest of those is shown.
+  const worthIt = (row: typeof bestRow) => {
+    const cost = row.strokes - bestRow.strokes
+    const cutsCatastrophe = bestRow.catastrophe - row.catastrophe >= AIM_LINE_SAFER_CATASTROPHE_CUT - 1e-9
+    const cutsTrouble = row.catastrophe <= bestRow.catastrophe + 0.005
+      && bestRow.seriousTrouble - row.seriousTrouble >= AIM_LINE_SAFER_TROUBLE_CUT - 1e-9
+    return (cutsCatastrophe && cost <= AIM_LINE_SAFER_MAX_COST_CATASTROPHE + 1e-9)
+      || (cutsTrouble && cost <= AIM_LINE_SAFER_MAX_COST_TROUBLE + 1e-9)
+  }
+  const safest = apart.filter(worthIt).sort(bySafety)[0] ?? null
 
   const options: AimLineOption<T>[] = [option(bestRow, 'best', safest == null)]
   if (second) options.push(option(second, 'second', safest === second))

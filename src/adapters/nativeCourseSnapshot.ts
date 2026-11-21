@@ -128,6 +128,7 @@ export const applyNativeCourseSnapshot = ({
   const pinLocal = pin ? toLocal(pin) : null
   const withPin: BrowserGsproCourseSnapshot = pinLocal
     ? { ...base, pinLocalYds: pinLocal, pinSource: 'native-gkd', pinDistanceValidationErrorYds: pinErrorYds,
+        pinWorldYM: Number.isFinite(pin?.y) ? pin!.y : null,
         warnings: pinNote ? [...new Set([...base.warnings, pinNote])] : base.warnings }
     : base
 

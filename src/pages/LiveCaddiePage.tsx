@@ -120,6 +120,7 @@ import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
+import { ballInTrees, punchOutClub, PUNCH_OUT_AIM_NOTE, PUNCH_OUT_MAX_YDS } from '../liveCaddie/punchOut'
 import { BLEND_RULES } from '../lib/quickBag'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import { ERROR_TEXT, courseStatusView, ocrLetter, supportLine } from '../lib/supportCodes'
@@ -1153,8 +1154,23 @@ export default function LiveCaddiePage() {
     const hole = sampleCourseGreenElevation(greenDetail, pinEstimate)
     return at != null && hole != null ? (hole - at) * 12 : null
   })()
-  const puttRiseIn = puttMapRiseIn
-  const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : null
+  // GSPro's own heights: where the last shot stopped (the round file) against the pin (the course
+  // file on this PC). Works on any course, map or not. Only when that shot is the one before this
+  // putt on this hole.
+  const puttGsproRiseIn = (() => {
+    const last = liveSnapshot?.latestShot
+    const pinY = liveSnapshot?.pinWorldYM
+    if (!isGreenSurface || !liveMatchesHole || !last?.endWorld || typeof pinY !== 'number') return null
+    if (last.holeNumber !== holeNumber || liveSnapshot?.pinSource !== 'native-gkd') return null
+    if (last.holeShot == null || liveSnapshot.nextShotNumber !== last.holeShot + 1) return null
+    const rise = (pinY - last.endWorld.y) * 39.3701
+    // A putt doesn't climb or drop more than a few feet: anything else is a mismatched pin or ball.
+    return Number.isFinite(rise) && Math.abs(rise) <= 96 ? rise : null
+  })()
+  // The green map first where there is one (checked against GSPro on FarmLinks 3, 21 Nov); GSPro's
+  // files on courses without one.
+  const puttRiseIn = puttMapRiseIn ?? puttGsproRiseIn
+  const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : puttGsproRiseIn != null ? 'GSPro' as const : null
   // Chip lab (on unless ?chipLab=off): around the green, the four chip options in place of the shot card.
   // Not from deep rough (GSPro's chips were measured from clean lies). From sand only the pitch and
   // flop are offered, sized for what GSPro's sand takes off (Brian, 21 Nov).
@@ -1589,6 +1605,12 @@ export default function LiveCaddiePage() {
   // ---- Arm: a half-second fill (let go of the mouse), then aim in GSPro ----
   const ARM_FILL_MS = 600
   const aimPin = trustedLivePin ?? (liveMatchesHole ? pinEstimate : null)
+  // Punch-out mode: in the trees, Looper says so and leaves the aim to the player.
+  const inTrees = useMemo(
+    () => (shotOrigin === 'non-tee' && !isShotStrategy ? ballInTrees(hole, ball, aimPin) : false),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hole, ball[0], ball[1], aimPin?.[0], aimPin?.[1], shotOrigin, isShotStrategy],
+  )
   // Yellow aim = GSPro click: on the aim line at the expected carry.
   const aimClick = !isShotStrategy && inspectedCandidate
     ? aimClickPoint(ball, inspectedCandidate.aimPoint, inspectedCandidate.meanCarryLanding, aimPin)
@@ -1617,14 +1639,14 @@ export default function LiveCaddiePage() {
     estimatedPin: estimatedPinCheck,
     aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
-    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
+    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey, inTrees,
   })
   latestAimRef.current = {
     club: displayedClub, aimKey: currentAimKey, ball, pin: aimPin, pinExact: trustedLivePin != null, target: aimTarget,
     estimatedPin: estimatedPinCheck,
     aimCandidates: viewedEvaluation?.candidates ?? null, chosenAimOffsetYds: inspectedCandidate?.aimOffsetYds ?? null,
     companionCanAim, companionConnected: companionStatus?.gspro.status === 'connected',
-    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey,
+    courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber, shotKey: shotConditionsKey, inTrees,
   }
   latestAimOffsetRef.current = (inspectedCandidate ?? viewedBestCandidate)?.aimOffsetYds ?? null
   const armedHere = armPhase === 'armed' && eligibleArmedClub != null && eligibleArmedClub === displayedClub
@@ -1661,6 +1683,10 @@ export default function LiveCaddiePage() {
         setArmedAimKey(snap.aimKey)
         setArmedAimOffsetYds(armedOffset)
         setArmPhase('armed')
+      }
+      if (snap.inTrees) {
+        finish({ outcome: 'not-sent', message: PUNCH_OUT_AIM_NOTE })
+        return
       }
       // Auto Aim lines GSPro's minimap up on the ball and the pin. A pin Looper
       // only estimated turns and shrinks the click; refuse when that could
@@ -2498,6 +2524,7 @@ export default function LiveCaddiePage() {
         {devDiagnostics && inspectedCandidate?.modeledSamples?.length ? (() => {
           const samples = inspectedCandidate.modeledSamples
           const early = samples.filter((q) => q.flightTag === 'trees-early').length / samples.length
+          const mid = samples.filter((q) => q.flightTag === 'trees-mid').length / samples.length
           const late = samples.filter((q) => q.flightTag === 'trees-late').length / samples.length
           // Balls stopped by trees didn't roll: leave them out of the roll figure.
           const flown = samples.filter((q) => !q.flightTag)
@@ -2505,8 +2532,8 @@ export default function LiveCaddiePage() {
           const stock = flown.length ? flown.reduce((a, q) => a + (q.stockRollYds ?? 0), 0) / flown.length : 0
           return (
             <div className="live-caddie-alert">
-              Flight: {early || late
-                ? `${Math.round((early + late) * 100)}% of outcomes hit trees (${Math.round(early * 100)}% after launch, ${Math.round(late * 100)}% coming down)`
+              Flight: {early || mid || late
+                ? `${Math.round((early + mid + late) * 100)}% of outcomes hit trees (${Math.round(early * 100)}% after launch, ${Math.round(mid * 100)}% in flight, ${Math.round(late * 100)}% coming down)`
                 : 'clear of trees'}
               {` · roll ${roll.toFixed(1)} yd of ${stock.toFixed(1)} stock (surface and slope)`}
             </div>
@@ -2587,7 +2614,9 @@ export default function LiveCaddiePage() {
                 <article className={`live-decision-card${isShotStrategy ? ' strategy-mode' : ''}`}>
                   <div className="live-decision-label-row">
                     <span className="live-recommended-pill">
-                      {chipLab
+                      {inTrees
+                        ? 'IN THE TREES'
+                        : chipLab
                         ? 'AROUND THE GREEN'
                         : evaluationPending
                         ? waitingForConditions ? 'READING WIND & LIE' : 'CALCULATING'
@@ -2661,6 +2690,20 @@ export default function LiveCaddiePage() {
                     </div>
                   ) : (
                   <p className="live-decision-reason">
+                    {inTrees ? (
+                    <span className="live-punch-out" role="status">
+                      <strong>PUNCH OUT</strong>
+                      <span>You pick the line: Looper can&rsquo;t see the gaps between the trees. Auto Aim is off.</span>
+                      <small>
+                        {(() => {
+                          const low = punchOutClub(bagClubs as string[])
+                          return low && low !== displayedClub
+                            ? `Consider a lower-lofted club (your ${low}) to keep it under the branches, and no more than about ${PUNCH_OUT_MAX_YDS} yd.`
+                            : `Keep it low, under the branches, and no more than about ${PUNCH_OUT_MAX_YDS} yd.`
+                        })()}
+                      </small>
+                    </span>
+                    ) : null}
                     {greenReadText ? (
                       <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
                     ) : null}
@@ -2712,7 +2755,7 @@ export default function LiveCaddiePage() {
                   {chipLab ? null : (
                   <button
                     type="button"
-                    className={`live-arm-recommendation${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
+                    className={`live-arm-recommendation${inTrees ? ' no-auto-aim' : ''}${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
                     style={{ '--arm-fill-ms': `${ARM_FILL_MS}ms` } as CSSProperties}
                     disabled={isShotStrategy || !displayedClub}
                     onClick={pressArm}
@@ -2726,8 +2769,12 @@ export default function LiveCaddiePage() {
                             ? `${displayedClub} ARMED · AIMING IN GSPRO…`
                             : aimChanged
                               ? `${displayedClub} ARMED · AIM CHANGED, TAP TO RE-AIM`
+                              : armedHere && inTrees
+                                ? `${displayedClub} RECORDED · AIM IT YOURSELF`
                               : armedHere
                                 ? `${displayedClub} ARMED · ${aimShort}`
+                                : displayedClub && inTrees
+                                  ? `HITTING ${displayedClub} · AUTO AIM OFF · TAP TO RECORD`
                                 : displayedClub
                                   ? `HITTING ${displayedClub} · TAP TO ARM`
                                   : evaluationPending

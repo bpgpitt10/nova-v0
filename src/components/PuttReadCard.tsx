@@ -1,7 +1,7 @@
 import { BASELINE_STIMP, feetInches, readPutt } from '../liveCaddie/puttRead'
 import './PuttReadCard.css'
 
-export type PuttElevationSource = 'green map' | 'GSPro HUD'
+export type PuttElevationSource = 'green map' | 'GSPro' | 'GSPro HUD'
 
 type Props = {
   distanceFt: number | null

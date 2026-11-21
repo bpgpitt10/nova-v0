@@ -141,3 +141,60 @@ export function tacticalKindNear(hole: CourseHoleGeometry, point: CoursePointYds
   cache.set(key, kind)
   return kind
 }
+
+// Trees only (woods/scrub context: LiDAR canopy or mapped woods), whatever the
+// surface under them, at 1-yd resolution per hole. For the flight: a ball
+// passing low over rough under a canopy still meets the trees.
+//
+// Some packages carry one tree outline bigger than the whole hole, its
+// clearings lost (Trosper 8: 141% of the hole's box, every fairway point
+// inside; Payne's Valley 1: 135%). That outline is the edge of the wooded
+// area, not trees, so rings over half the hole's box are left out here.
+const MAX_TREE_RING_SHARE = 0.5
+const quantizedWoods = new WeakMap<CourseHoleGeometry, Map<number, boolean>>()
+const treeRings = new WeakMap<CourseHoleGeometry, (readonly (readonly CoursePointYds[])[])[]>()
+
+const ringArea = (ring: readonly CoursePointYds[]) => {
+  let twice = 0
+  for (let i = 0; i < ring.length; i += 1) {
+    const [x1, y1] = ring[i]
+    const [x2, y2] = ring[(i + 1) % ring.length]
+    twice += x1 * y2 - x2 * y1
+  }
+  return Math.abs(twice) / 2
+}
+
+const usableTreeRings = (hole: CourseHoleGeometry) => {
+  let found = treeRings.get(hole)
+  if (found) return found
+  const b = hole.bounds
+  const boxArea = b ? Math.max(1, (b.maxX - b.minX) * (b.maxY - b.minY)) : Infinity
+  found = (hole.contextLayers ?? [])
+    .filter((layer) => layer.kind === 'woods' || layer.kind === 'scrub')
+    .map((layer) => layer.polygons.filter((ring) => ringArea(ring) <= MAX_TREE_RING_SHARE * boxArea))
+    .filter((rings) => rings.length > 0)
+  treeRings.set(hole, found)
+  return found
+}
+
+export function woodsNear(hole: CourseHoleGeometry, point: CoursePointYds): boolean {
+  const layers = usableTreeRings(hole)
+  if (!layers.length) return false
+  let cache = quantizedWoods.get(hole)
+  if (!cache) {
+    cache = new Map()
+    quantizedWoods.set(hole, cache)
+  }
+  const qx = Math.round(point[0]), qy = Math.round(point[1])
+  const key = (qx + 4096) * 8192 + (qy + 4096)
+  const hit = cache.get(key)
+  if (hit !== undefined) return hit
+  // Mapped short grass is never under trees: a tree outline covering a green or
+  // fairway is an outline error (Payne's Valley 15: the green and the last 70 yd
+  // of fairway inside one), so it doesn't count there.
+  const surface = classifyPoint(hole, [qx, qy]).kind
+  const inside = surface !== 'fairway' && surface !== 'green' && surface !== 'tee'
+    && layers.some((rings) => insideContextLayer(rings, [qx, qy]))
+  cache.set(key, inside)
+  return inside
+}
