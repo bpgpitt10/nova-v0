@@ -24,7 +24,12 @@ remember: press Enter to take the suggested answer. Four tests:
   Shots from a lie   On Course practice: drop the ball anywhere (rough, sand,
                      fringe, a slope), press Enter, and it hits three shots, one
                      soft, one medium, one hard. Move the ball and repeat. Records
-                     what GSPro took off each shot for the lie, and the carry
+                     what GSPro took off each shot for the lie, and the carry.
+                     Type "chip stimp 11" at a spot just off a green for the chip
+                     set: bump, chip, pitch and flop, each to 5, 10 and 16 yd,
+                     one shot each. Set green firmness and stimp in GSPro and
+                     repeat the set for each (3 firmnesses x 3 stimps). Your own
+                     chip numbers go in chips.json next to this file.
 
 Everything from one sitting goes into one file, looper_lab_<time>.csv.
 
@@ -587,6 +592,75 @@ def green_speed(shot: dict[str, float], plays: float | None) -> dict[str, float]
     return {"speed": round(shot["speed"] * scale, 1), "vla": shot["vla"], "hla": 0.0, "spin": shot["spin"], "axis": 0.0}
 
 
+# --------------------------------------------------------------------------
+# Chip sets (Brian, 20 Nov): from just off a green (Briarwood West hole 1), each chip type to a few
+# carries, one shot each. Change green firmness and stimp in GSPro between sets: 3 firmnesses x 3 stimps.
+#: Each chip type's launch and spin, and the ball speed that carries it CHIP_REF_CARRY_YD on the flat.
+#: PLACEHOLDERS until Brian's own numbers: speeds are the engine's flight model for a 10 yd carry.
+#: Put his in chips.json next to this file ({"bump": {"speed": .., "vla": .., "spin": .., "carry": ..}, ...})
+#: and it is used instead, no code change.
+CHIP_TYPES: dict[str, dict[str, float]] = {
+    "bump": {"speed": 31.5, "vla": 14.0, "spin": 3000.0, "carry": 10.0},
+    "chip": {"speed": 26.2, "vla": 22.0, "spin": 4500.0, "carry": 10.0},
+    "pitch": {"speed": 23.6, "vla": 30.0, "spin": 6000.0, "carry": 10.0},
+    "flop": {"speed": 22.1, "vla": 42.0, "spin": 7000.0, "carry": 10.0},
+}
+CHIP_CARRIES_YD = (5.0, 10.0, 16.0)
+#: At chip speeds carry grows about as speed^1.9 (the engine: 1.86 to 2.02 across the four types).
+CHIP_SPEED_POWER = 1.9
+CHIP_FILE = "chips.json"
+
+
+def chip_types(folder: Path = HERE) -> dict[str, dict[str, float]]:
+    """Brian's chips.json if it is there and reads cleanly, else the placeholders."""
+    try:
+        loaded = json.loads((folder / CHIP_FILE).read_text(encoding="utf-8"))
+        out = {str(name).lower(): {key: float(value[key]) for key in ("speed", "vla", "spin", "carry")}
+               for name, value in loaded.items()}
+        if out and all(v["speed"] > 0 and v["carry"] > 0 for v in out.values()):
+            return out
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+    return CHIP_TYPES
+
+
+def read_chip_carries(typed: str) -> tuple[float, ...]:
+    """'chip' -> the stock carries; 'chip 4 8 12' -> those (1 to 40 yd)."""
+    found = re.search(r"\bchip\b((?:\s+\d{1,2}(?:\.\d)?)+)", typed, re.I)
+    carries = tuple(float(x) for x in found[1].split()) if found else ()
+    return carries if carries and all(1 <= c <= 40 for c in carries) else CHIP_CARRIES_YD
+
+
+def chip_set(types: dict[str, dict[str, float]], carries: tuple[float, ...] = CHIP_CARRIES_YD) -> list[tuple[str, dict[str, float]]]:
+    """Every type to every carry, one shot each, grouped by type so each type's first chip corrects the rest."""
+    return [(f"{name} {carry:g} yd", {"speed": ref["speed"], "vla": ref["vla"], "hla": 0.0, "spin": ref["spin"], "axis": 0.0,
+                                      "_chip": name, "_ref_speed": ref["speed"], "_ref_carry": ref["carry"], "_target": carry})
+            for name, ref in types.items() for carry in carries]
+
+
+def chip_speed(shot: dict[str, float], plays: float | None) -> dict[str, float]:
+    """Ball speed for the carry wanted. `plays` = what this type actually carried over what the scale said (None at first)."""
+    plays = plays if plays and 0.3 < plays < 3.0 else 1.0
+    scale = (shot["_target"] / (shot["_ref_carry"] * plays)) ** (1.0 / CHIP_SPEED_POWER)
+    return {"speed": round(shot["_ref_speed"] * min(2.5, max(0.3, scale)), 1), "vla": shot["vla"], "hla": 0.0,
+            "spin": shot["spin"], "axis": 0.0}
+
+
+def chip_expected_carry(shot: dict[str, float], sent_speed: float) -> float:
+    return shot["_ref_carry"] * (sent_speed / shot["_ref_speed"]) ** CHIP_SPEED_POWER
+
+
+def chip_summary(rows: list[dict[str, Any]]) -> list[str]:
+    lines = []
+    for row in rows:
+        carry = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
+        roll, finish = row.get("roll_yd"), row.get("finish_surface")
+        where = "on the green" if finish == GREEN_SURFACE else f"finished on surface {finish}" if finish is not None else ""
+        lines.append(f"  {row['club']:<14} carried {carry:5.1f} yd, rolled {roll:5.1f} yd {where}" if carry is not None and roll is not None
+                     else f"  {row['club']:<14} not recorded")
+    return lines
+
+
 def lie_shots_for_spot(spot: int) -> list[tuple[str, dict[str, float]]]:
     """The soft, medium and hard shot for spot number `spot` (1, 2, 3...)."""
     return [(name, {"speed": speed, "vla": vla, "hla": 0.0, "spin": spin, "axis": 0.0})
@@ -610,13 +684,17 @@ def lie_summary(rows: list[dict[str, Any]]) -> list[str]:
 
 def hit_spot(path: Any, writer: Any, flush, *, labels: dict[str, Any], spot: int, typed: str,
              spot_shots: list[tuple[str, dict[str, float]]], round_file: Path, log_file: Path, db_path: Path,
-             notes_file: Path, gap: float, record_wait: float, sleep=time.sleep) -> tuple[list[dict[str, Any]], bool]:
+             notes_file: Path, gap: float, record_wait: float, sleep=time.sleep, test: str = "lie") -> tuple[list[dict[str, Any]], bool]:
     """Hit `spot_shots` from where the ball is now and record each one. (rows, still connected)."""
     rows: list[dict[str, Any]] = []
     origin: tuple[float, float, float] | None = None
     plays = None  # carry here as a share of the same shot's flat, sea-level carry (hill, altitude, lie)
+    chip_plays: dict[str, float] = {}  # per chip type: carried over what the speed scale said
     for index, (name, shot) in enumerate(spot_shots, start=1):
-        if "_target" in shot:
+        planned = shot
+        if "_chip" in shot:
+            shot = chip_speed(shot, chip_plays.get(shot["_chip"]))
+        elif "_target" in shot:
             shot = green_speed(shot, plays)
         before_record = record_fingerprint(newest_round_record(round_file))
         before_log = log_size(log_file)
@@ -646,7 +724,7 @@ def hit_spot(path: Any, writer: Any, flush, *, labels: dict[str, Any], spot: int
         start = _xyz((record or {}).get("StartingPOS"))
         origin = origin or start
         moved = round((((start[0] - origin[0]) ** 2 + (start[2] - origin[2]) ** 2) ** 0.5) * M_TO_YD, 1) if start and origin else None
-        row = {"test": "lie", **labels, "spot": spot, "note": typed, "club": name, "n": index, "status": status,
+        row = {"test": test, **labels, "spot": spot, "note": typed, "club": name, "n": index, "status": status,
                "sent_speed_mph": shot["speed"], "sent_vla_deg": shot["vla"], "sent_spin_rpm": shot["spin"], "sent_at": sent_at,
                **measure_landing(record), **lie, **table,
                "start_surface": (record or {}).get("StartingSurface"), "moved_from_spot_yd": moved,
@@ -655,7 +733,10 @@ def hit_spot(path: Any, writer: Any, flush, *, labels: dict[str, Any], spot: int
         flush()
         rows.append(row)
         flown_yd = row.get("carry_yd") if row.get("carry_yd") is not None else row.get("db_carry_yd")
-        if flown_yd and (row.get("db_raw_carry_game_yd") or 0) > 5:
+        if "_chip" in planned:
+            if flown_yd:
+                chip_plays[planned["_chip"]] = flown_yd / chip_expected_carry(planned, shot["speed"])
+        elif flown_yd and (row.get("db_raw_carry_game_yd") or 0) > 5:
             plays = flown_yd / row["db_raw_carry_game_yd"]
         try:
             kept = [line.strip()[:300] for line in log_text.splitlines() if LOG_KEEP_RE.search(line)][:40]
@@ -694,12 +775,36 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             typed = read_line(f"\nSpot {spot}: drop the ball, then Enter to hit 3 shots. Type the slope first if it is not flat (2 up 3 left). "
                               "Add g and the yards to the pin (g 145) to also hit 2 of your clubs at the green; "
                               "gg 145 hits only the green, 6 shots. Type stimp 11 once to record the stimp. "
-                              "Start with the word all to hit all 25 designed shots from here. q to finish. ").strip()
+                              "Start with the word all to hit all 25 designed shots from here. "
+                              "chip hits the chip set (4 types to 5, 10 and 16 yd). q to finish. ").strip()
         except EOFError:
             break
         if typed.lower() in ("q", "quit"):
             break
         spot_shots = lie_shots_for_spot(spot)
+        stimp_typed = re.search(r"\bstimp\s*(\d{1,2}(?:\.\d)?)", typed, re.I)
+        if re.search(r"\bchip\b", typed, re.I):
+            # Chip set: every chip type to each carry, one shot each. Green firmness comes from GSPro's log;
+            # the stimp GSPro does not write anywhere, so it must be typed.
+            if stimp_typed:
+                labels = {**labels, "stimp": float(stimp_typed[1])}
+            if not labels.get("stimp"):
+                print("  Type the stimp GSPro is set to with the chip set (chip stimp 11). GSPro does not write it anywhere.")
+                continue
+            types = chip_types()
+            spot_shots = chip_set(types, read_chip_carries(typed))
+            print(f"  Chip set at stimp {labels['stimp']:g}: {len(spot_shots)} chips"
+                  + ("" if types is not CHIP_TYPES else " (placeholder chip numbers: no chips.json yet)") + ".")
+            spot_rows, connected = hit_spot(path, writer, flush, labels=labels, spot=spot, typed=typed, spot_shots=spot_shots,
+                                            round_file=round_file, log_file=log_file, db_path=db_path, notes_file=notes_file,
+                                            gap=gap, record_wait=record_wait, sleep=sleep, test="chip")
+            for line in chip_summary(spot_rows):
+                print(line)
+            rows.extend(spot_rows)
+            if not connected:
+                return rows
+            spot += 1
+            continue
         if typed.lower() == "all" or typed.lower().startswith("all "):
             # One lie, every combination of speed, launch and spin: shows what the penalty depends on.
             typed = typed[3:].strip()
