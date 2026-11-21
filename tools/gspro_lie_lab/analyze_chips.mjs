@@ -83,7 +83,8 @@ for (const c of chips) {
     const conditions = { courseType: NAME[c.type], greenFirmness: NAME[c.firm], stimp: c.stimp }
     const grade = c.rise != null && c.roll != null && Math.abs(c.roll) > 0.5 ? (c.rise / 36) / Math.abs(c.roll) * Math.sign(c.roll) : 0
     const level = release.greenReleaseFromLanding({ speedMph: c.landingSpeed, descentDeg: c.descent, spinRpm: c.landingSpin }, conditions)
-    c.engineRelease = release.greenReleaseOnSlope(level, grade, c.stimp)
+    const shape = release.greenReleaseShape({ speedMph: c.landingSpeed, descentDeg: c.descent, spinRpm: c.landingSpin }, conditions)
+    c.engineRelease = release.greenReleaseOnSlope(level, grade, c.stimp, shape)
   }
 }
 

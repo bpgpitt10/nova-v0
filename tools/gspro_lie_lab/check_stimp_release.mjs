@@ -1,11 +1,12 @@
 // Does stimp change how far an approach releases on the green, and is it the way the model says?
 //
-// The model (src/liveCaddie/greenReleaseModel.ts) takes the bounce to be the same at every stimp and
-// only the roll after it to change, as 1/friction: release x stimp / 11. This takes the lab CSVs' shots
-// that landed on a green (the lie test's `gg` shots), works out the model's release from GSPro's own
-// landing numbers at stimp 11, and compares what GSPro did at each stimp with:
+// The model (src/liveCaddie/greenReleaseModel.ts) takes the bounce and skid to be the same at every stimp
+// and only the roll after it (about three quarters of a full approach's release) to change, with the
+// putting model's friction. This takes the lab CSVs' shots that landed on a green (the lie test's `gg`
+// shots), works out the model's release from GSPro's own landing numbers at stimp 11, and compares what
+// GSPro did at each stimp with:
 //   - no stimp effect (the release at stimp 11), and
-//   - the model (stimp / 11 times it).
+//   - the model (stimpReleaseFactor times it).
 // Run from the repo root:  node tools/gspro_lie_lab/check_stimp_release.mjs <lab csv or folder>...
 // (Wander's own green shots are left out: they come from slopes all over and, at Greywolf, in wind.)
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -13,7 +14,7 @@ import { join } from 'node:path'
 import { createServer } from 'vite'
 
 const server = await createServer({ appType: 'custom', logLevel: 'silent', server: { middlewareMode: true } })
-const { greenReleaseFromLanding, greenReleaseOnSlope, REFERENCE_STIMP } = await server.ssrLoadModule('/src/liveCaddie/greenReleaseModel.ts')
+const { greenReleaseFromLanding, greenReleaseOnSlope, stimpReleaseFactor, REFERENCE_STIMP } = await server.ssrLoadModule('/src/liveCaddie/greenReleaseModel.ts')
 const NAME = ['soft', 'medium', 'firm']
 const TYPE = ['Bentgrass', 'Bermuda', 'Links']
 
@@ -57,7 +58,7 @@ for (const file of files) {
     if ([type, firm, speed, descent, spin, release].some((v) => v == null) || !(type in NAME) || !(firm in NAME)) continue
     // Rise over run along the shot's line: a ball spinning back up a slope is going downhill along the line.
     const grade = rise != null && Math.abs(release) > 0.5 ? (rise / 36) / Math.abs(release) * Math.sign(release) : 0
-    shots.push({ stimp: num(r.stimp) ?? REFERENCE_STIMP, stimpTyped: num(r.stimp) != null, type, firm, speed, descent, spin, release, grade, file })
+    shots.push({ club: r.club, stimp: num(r.stimp) ?? REFERENCE_STIMP, stimpTyped: num(r.stimp) != null, type, firm, speed, descent, spin, release, grade, file })
   }
 }
 
@@ -77,8 +78,7 @@ for (const s of shots) {
 }
 
 console.log(`${shots.length} green landings from ${files.length} files (stimp ${REFERENCE_STIMP} where the CSV has none).\n`)
-console.log('stimp  shots  settings                         miss: no stimp effect   miss: model (stimp/11)   measured / at-11 (median, |at-11| > 2 yd)   model says')
-let verdicts = []
+console.log('stimp  shots  settings                         miss: no stimp effect   miss: model   measured / at-11 (median, |at-11| > 2 yd)   model says')
 for (const stimp of [...byStimp.keys()].sort((a, b) => a - b)) {
   const g = byStimp.get(stimp)
   const settings = [...new Set(g.map((s) => `${TYPE[s.type]} ${NAME[s.firm]}`))].join(', ')
@@ -86,18 +86,39 @@ for (const stimp of [...byStimp.keys()].sort((a, b) => a - b)) {
   const modelMiss = mean(g.map((s) => Math.abs(s.release - s.model)))
   const ratios = g.filter((s) => Math.abs(s.at11) > 2).map((s) => s.release / s.at11)
   const ratio = median(ratios)
-  console.log(`${String(stimp).padStart(5)}  ${String(g.length).padStart(5)}  ${settings.slice(0, 32).padEnd(32)} ${f1(noEffect).padStart(10)} yd mean      ${f1(modelMiss).padStart(10)} yd mean        ${f2(ratio).padStart(10)} (${ratios.length} shots)                    ${f2(stimp / REFERENCE_STIMP)}`)
-  if (stimp !== REFERENCE_STIMP && ratio != null) verdicts.push({ stimp, ratio, modelMiss, noEffect })
+  console.log(`${String(stimp).padStart(5)}  ${String(g.length).padStart(5)}  ${settings.slice(0, 32).padEnd(32)} ${f1(noEffect).padStart(10)} yd mean      ${f1(modelMiss).padStart(10)} yd mean        ${f2(ratio).padStart(10)} (${ratios.length} shots)                    ${f2(stimpReleaseFactor(stimp))}`)
 }
-if (verdicts.length) {
+// The verdict: the same shot repeated at each stimp. From its own stimp-11 release, does the model's
+// stimp change land the stimp 8 and 13 shots? (No stimp effect is the comparison.)
+const sameShot = new Map()
+for (const s of shots) {
+  const key = `${s.club}|${s.type}|${s.firm}`
+  const g = sameShot.get(key) ?? new Map()
+  g.set(s.stimp, s)
+  sameShot.set(key, g)
+}
+const misses = new Map()
+for (const g of sameShot.values()) {
+  const s11 = g.get(REFERENCE_STIMP)
+  if (!s11) continue
+  const sign = Math.sign(s11.release) || 1
+  const level11 = s11.release / (greenReleaseOnSlope(sign, s11.grade, REFERENCE_STIMP) * sign)
+  for (const [stimp, s] of g) {
+    if (stimp === REFERENCE_STIMP) continue
+    const model = greenReleaseOnSlope(level11 * stimpReleaseFactor(stimp), s.grade, stimp)
+    const m = misses.get(stimp) ?? { model: [], none: [] }
+    m.model.push(Math.abs(model - s.release))
+    m.none.push(Math.abs(s11.release - s.release))
+    misses.set(stimp, m)
+  }
+}
+if (misses.size) {
   console.log('')
-  for (const v of verdicts) {
-    const expected = v.stimp / REFERENCE_STIMP
-    const ok = Math.abs(v.ratio - expected) <= Math.max(0.12, 0.25 * Math.abs(expected - 1)) && v.modelMiss <= 1.2
-    console.log(`stimp ${v.stimp}: GSPro released ${f2(v.ratio)}x the stimp-11 release; the model says ${f2(expected)}x. `
-      + (ok ? 'PASS: stimp only changes the roll after the bounce.'
-        : v.noEffect < v.modelMiss ? 'FAIL: GSPro shows less stimp effect than the model; fit stimp properly (run the 10 and 12 sets).'
-          : 'FAIL: stimp changes the release, but not as the model says; fit stimp properly (run the 10 and 12 sets).'))
+  for (const [stimp, m] of [...misses].sort((a, b) => a[0] - b[0])) {
+    const ok = mean(m.model) <= 0.25 && Math.max(...m.model) <= 0.6 && mean(m.model) < mean(m.none)
+    console.log(`stimp ${stimp}, ${m.model.length} shots repeated from stimp 11: model misses ${f2(mean(m.model))} yd on average `
+      + `(worst ${f2(Math.max(...m.model))}); no stimp effect would miss ${f2(mean(m.none))}. `
+      + (ok ? 'PASS: stimp only changes the roll after the bounce.' : 'FAIL: refit the roll share (APPROACH_ROLL_SHARE).'))
   }
 }
 await server.close()
