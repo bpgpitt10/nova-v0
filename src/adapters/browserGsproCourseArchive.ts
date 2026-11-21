@@ -51,14 +51,25 @@ type RoundShotRecord = {
   BallSpeed?: unknown
   TotalDistance?: unknown
   ClubIndex?: unknown
+  PlayerName?: unknown
+  UserGuid?: unknown
   StartingPOS?: Vec3
   EndingPOS?: Vec3
   GhostData?: GhostData
   activeShot?: ActiveShot
 }
 
+/**
+ * Who hit a shot. GSPro writes the player's name and GSPro account id on every
+ * record; on a shared sim one round holds several players (each with their own
+ * id, seen in real rounds 21 Nov 2026). `key` is the id, or the name when a
+ * record has no id.
+ */
+export type GsproPlayer = { key: string; name: string | null; guid: string | null }
+
 export type BrowserGsproCourseArchiveShot = {
   key: string
+  player: GsproPlayer
   roundId: number
   holeNumber: number
   holeShot: number | null
@@ -89,6 +100,7 @@ export type BrowserGsproCourseArchiveShot = {
  * round archive, so it goes to its own cloud table (see livePuttDetails.ts).
  */
 export type BrowserGsproPuttDetail = {
+  playerKey: string
   roundId: number
   shotId: string
   courseKey: string | null
@@ -109,6 +121,8 @@ export type BrowserGsproPuttDetail = {
 export type BrowserGsproCourseArchiveRound = {
   roundId: number
   courseKey: string | null
+  /** Everyone with a shot in the round, in order of their first shot. */
+  players: Array<GsproPlayer & { shots: number }>
   shots: BrowserGsproCourseArchiveShot[]
   puttDetails: BrowserGsproPuttDetail[]
 }
@@ -148,6 +162,30 @@ const vec3 = (value: unknown): { x: number; y: number; z: number } | null => {
   const y = asNumber(candidate.y)
   const z = asNumber(candidate.z)
   return x == null || y == null || z == null ? null : { x, y, z }
+}
+
+const EMPTY_GUID = /^[0-]*$/
+
+export const gsproPlayerOf = (record: { PlayerName?: unknown; UserGuid?: unknown }): GsproPlayer => {
+  const rawGuid = asString(record.UserGuid)
+  const guid = rawGuid && !EMPTY_GUID.test(rawGuid) ? rawGuid.toLowerCase() : null
+  const name = asString(record.PlayerName)
+  return { key: guid ?? (name ? `name:${name.toLowerCase()}` : 'unknown'), name, guid }
+}
+
+/** The players in a round's shots, in order of their first shot, with how many shots each hit. */
+export const gsproPlayersOf = (shots: readonly { player: GsproPlayer }[]) => {
+  const players = new Map<string, GsproPlayer & { shots: number }>()
+  for (const { player } of shots) {
+    const known = players.get(player.key)
+    if (known) {
+      known.shots += 1
+      if (!known.name && player.name) known.name = player.name
+    } else {
+      players.set(player.key, { ...player, shots: 1 })
+    }
+  }
+  return [...players.values()]
 }
 
 const parseRoundCandidates = (text: string): RoundShotRecord[] => {
@@ -266,6 +304,7 @@ const buildPuttDetail = (record: RoundShotRecord): BrowserGsproPuttDetail | null
   const shotId = asString(record.ShotID)
   if (roundId == null || holeIndex == null || !shotId) return null
   return {
+    playerKey: gsproPlayerOf(record).key,
     roundId,
     shotId,
     courseKey: asString(record.CourseKey),
@@ -331,8 +370,10 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
       }
     : null
 
+  const player = gsproPlayerOf(record)
   return {
     key: `${roundId}:${holeNumber}:${shotId}`,
+    player,
     roundId,
     holeNumber,
     holeShot: asNumber(record.HoleShot),
@@ -355,6 +396,7 @@ const buildArchiveShot = (record: RoundShotRecord): BrowserGsproCourseArchiveSho
     sideSpinRpm: lmfSS,
     gsproClubIndex: asNumber(record.ClubIndex),
     rawMetrics: {
+      gsproPlayer: player.name,
       ballSpeedRaw: rawBallSpeed,
       totalDistanceMeters,
       distanceToPinMeters,
@@ -423,6 +465,7 @@ export const readBrowserGsproCourseRoundArchive = async (): Promise<BrowserGspro
   return {
     roundId,
     courseKey: asString(activeRoundRecords[activeRoundRecords.length - 1]?.CourseKey),
+    players: gsproPlayersOf(shots),
     shots,
     puttDetails: buildPuttDetails(activeRoundRecords),
   }
@@ -466,6 +509,7 @@ export const archiveRoundsFromRecords = (
     return [{
       roundId,
       courseKey: asString(roundRecords[roundRecords.length - 1]?.CourseKey),
+      players: gsproPlayersOf(shots),
       shots,
       puttDetails: buildPuttDetails(roundRecords),
     }]

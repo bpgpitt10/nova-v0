@@ -43,6 +43,9 @@ jobs:
       - name: Test provisional missing tee fallback, native ruler input and locked-tee priority
         run: node tools/test-provisional-tee-live-fallback.mjs
 
+      - name: Test shared-sim GSPro player claims (only this account's shots)
+        run: node tools/test-gspro-players.mjs
+
       - name: Test FarmLinks physical GSPro world movement and round tee session isolation
         run: node tools/test-unified-gspro-world-projection.mjs
 

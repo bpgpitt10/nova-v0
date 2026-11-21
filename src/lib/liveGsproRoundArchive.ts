@@ -17,6 +17,7 @@ import {
 import { decisionBasis, paperCostStrokes } from '../liveCaddie/decisionOptions'
 import type { ModelBasis } from './quickBag'
 import { syncPuttDetailsToCloud } from './livePuttDetails'
+import { myPartOfRound } from './gsproPlayers'
 import { syncRoundSettingsToCloud } from './roundSettings'
 import type { Club } from './bagConfig'
 import { loadSavedSessions } from './sessions'
@@ -89,6 +90,7 @@ const rawShotPayload = (
   shot: BrowserGsproCourseArchiveShot | ArchivedGsproCourseShot,
 ): BrowserGsproCourseArchiveShot => ({
   key: shot.key,
+  player: shot.player ?? UNKNOWN_PLAYER,
   roundId: shot.roundId,
   holeNumber: shot.holeNumber,
   holeShot: shot.holeShot,
@@ -117,8 +119,11 @@ const shotPayloadFingerprint = (
   shot: BrowserGsproCourseArchiveShot | ArchivedGsproCourseShot,
 ) => JSON.stringify(rawShotPayload(shot))
 
+const UNKNOWN_PLAYER = { key: 'unknown', name: null, guid: null }
+
 const normalizeArchivedShot = (shot: ArchivedGsproCourseShot): ArchivedGsproCourseShot => ({
   ...shot,
+  player: shot.player && typeof shot.player.key === 'string' ? shot.player : UNKNOWN_PLAYER,
   isHoled: shot.isHoled === true,
   isGimme: shot.isGimme === true,
   actualClub: typeof shot.actualClub === 'string' ? shot.actualClub as Club : null,
@@ -479,7 +484,10 @@ export const isArmedAttribution = (shot: Pick<ArchivedGsproCourseShot, 'actualCl
 export const captureAndPersistLiveGsproCourseRound = async (
   observedAt = new Date().toISOString(),
 ) => {
-  const currentRound = await readBrowserGsproCourseRoundArchive()
+  const wholeRound = await readBrowserGsproCourseRoundArchive()
+  if (!wholeRound) return null
+  // A shared sim: only this account's player. Waiting on "which one is you?" keeps nothing yet.
+  const currentRound = (await myPartOfRound(wholeRound)).round
   if (!currentRound) return null
 
   const before = loadLiveGsproRoundArchive().rounds.find(
@@ -608,7 +616,13 @@ export const ingestCompanionRoundBacklog = async (nowMs = Date.now()) => {
     }
 
     let rounds = 0
-    for (const incoming of archiveRoundsFromRecords(usable.map((entry) => entry.record))) {
+    const waitingRounds = new Set<number>()
+    for (const whole of archiveRoundsFromRecords(usable.map((entry) => entry.record))) {
+      // A shared sim: only this account's player. A round waiting on "which one is you?" is re-read next time.
+      const part = await myPartOfRound(whole)
+      if (part.waiting) waitingRounds.add(whole.roundId)
+      const incoming = part.round
+      if (!incoming) continue
       const known = new Set(
         loadLiveGsproRoundArchive().rounds
           .find((round) => round.roundId === incoming.roundId)
@@ -642,6 +656,10 @@ export const ingestCompanionRoundBacklog = async (nowMs = Date.now()) => {
       }
     }
 
+    for (const entry of usable) {
+      const round = entryRound(entry)
+      if (round != null && waitingRounds.has(round)) heldSeqs.push(entry.seq)
+    }
     // Re-read a held round next time; everything before it is done.
     const nextCursor = heldSeqs.length > 0 ? Math.max(startCursor, Math.min(...heldSeqs) - 1) : after
     writeBacklogCursor(cursorKey, nextCursor)

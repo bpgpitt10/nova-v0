@@ -1,0 +1,72 @@
+/* "Which one is you?" for a shared sim. Fixed bottom right, so no page's layout moves. */
+.gspro-player-question {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1140;
+  display: grid;
+  gap: 12px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid #cfb36e;
+  border-radius: 12px;
+  background: #121a16;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  color: #e7efe4;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.gspro-player-question__text {
+  display: grid;
+  gap: 4px;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.gspro-player-question__text strong {
+  font-size: 16px;
+  color: #fff;
+}
+
+.gspro-player-question__error {
+  color: #ffb4a8;
+}
+
+.gspro-player-question__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gspro-player-question__actions button {
+  display: grid;
+  gap: 1px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #cfb36e;
+  color: #101418;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gspro-player-question__actions button small {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.gspro-player-question__actions button.is-quiet {
+  border: 1px solid #3c4a42;
+  background: transparent;
+  color: #cfd8cd;
+  align-content: center;
+}
+
+.gspro-player-question__actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
