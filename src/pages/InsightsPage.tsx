@@ -413,8 +413,8 @@ export default function InsightsPage() {
               GSPro physics, <em>measured</em>
             </h1>
             <p className="insights-hero__lead">
-              A lot of GSPro misses aren&rsquo;t swing misses. They&rsquo;re bad reads. I test GSPro&rsquo;s physics one
-              setting at a time and measure what the ball actually does.{' '}
+              A lot of GSPro misses aren&rsquo;t swing misses. They&rsquo;re bad reads. I tested GSPro 4.1.9&rsquo;s
+              physics one setting at a time and measured what the ball actually did.{' '}
               <a className="insights-hero__method" href={METHOD_HREF}>How I test &rarr;</a>
             </p>
           </div>
