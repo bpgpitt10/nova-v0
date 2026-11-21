@@ -734,7 +734,7 @@ export const evaluateAimLab = (
         lateralSigmaYds: profile.lateral_sigma_yds,
         pinLocalYds: exactPinLocalYds,
         landingTransform: greenLandingTransform,
-        flightCheck: { descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null },
+        flightCheck: { descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null, peakHeightYds: profile.launch_profile?.peak_height_yds ?? null },
         shotDraws: shotCore?.draws ?? null,
       })
       const pureFinish = pureCarryYds != null
@@ -778,7 +778,7 @@ export const evaluateAimLab = (
         lateralAdjustmentYds: empiricalLateralAdjustmentYds,
         pinLocalYds: exactPinLocalYds,
         landingTransform: greenLandingTransform,
-        flightCheck: { descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null },
+        flightCheck: { descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : null, peakHeightYds: profile.launch_profile?.peak_height_yds ?? null },
       })
       const scored = scoreCandidate(sampled.distribution, carryGapYds)
       return {

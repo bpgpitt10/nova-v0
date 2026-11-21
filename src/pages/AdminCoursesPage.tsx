@@ -10,6 +10,7 @@ import {
   type CourseInstallRow,
   type CourseInstallStatus,
 } from '../courseLoading/courseInstalls'
+import { SPACE_LIMITS, coursesLeft, loadSpaceUsage, megabytes, shotsLeft, type SpaceUsage } from '../courseLoading/spaceUsage'
 import './AdminUsersPage.css'
 import './AdminCoursesPage.css'
 
@@ -25,6 +26,46 @@ const STATUS_TEXT: Record<CourseInstallStatus, string> = {
 
 type Filter = 'todo' | 'all'
 
+/** How full the database and file storage are: a bar each, then what's left in courses and shots. */
+function SpaceMeter({ usage }: { usage: SpaceUsage }) {
+  const bars = [
+    {
+      name: 'Course files',
+      used: usage.file_bytes,
+      limit: SPACE_LIMITS.fileBytes,
+      note: `${usage.full_courses + usage.area_courses} courses (${usage.full_courses} hole by hole, ${usage.area_courses} map area)`
+        + (coursesLeft(usage) != null ? ` · room for about ${coursesLeft(usage)!.toLocaleString('en-US')} more` : ''),
+    },
+    {
+      name: 'Database',
+      used: usage.database_bytes,
+      limit: SPACE_LIMITS.databaseBytes,
+      note: `${usage.shot_rows.toLocaleString('en-US')} on-course shots`
+        + (shotsLeft(usage) != null ? ` · room for about ${(Math.floor(shotsLeft(usage)! / 1000) * 1000).toLocaleString('en-US')} more` : ''),
+    },
+  ]
+  return (
+    <div className="looper-admin-space" aria-label="Space used">
+      {bars.map((bar) => {
+        const share = Math.min(1, bar.used / bar.limit)
+        return (
+          <div className="looper-admin-space__row" key={bar.name}>
+            <div className="looper-admin-space__head">
+              <strong>{bar.name}</strong>
+              <span>{megabytes(bar.used)} of {megabytes(bar.limit)} · {Math.round(share * 100)}%</span>
+            </div>
+            <div className={`looper-admin-space__bar${share >= 0.8 ? ' is-high' : share >= 0.6 ? ' is-mid' : ''}`}>
+              <i style={{ width: `${Math.max(1, share * 100)}%` }} />
+            </div>
+            <small>{bar.note}</small>
+          </div>
+        )
+      })}
+      <small className="looper-admin-space__plan">Supabase {SPACE_LIMITS.plan} limits.</small>
+    </div>
+  )
+}
+
 const isLoaded = (courseKey: string, courseName: string | null) =>
   resolveCourseIdFromGsproName(courseKey, { includeGsproOnly: false }) != null
   || (courseName != null && resolveCourseIdFromGsproName(courseName, { includeGsproOnly: false }) != null)
@@ -38,13 +79,17 @@ export default function AdminCoursesPage() {
   const [note, setNote] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('todo')
   const [catalogTick, setCatalogTick] = useState(0)
+  const [space, setSpace] = useState<SpaceUsage | null>(null)
 
   const reload = useCallback(async () => {
     setError(null)
     try {
       if (!(await isCurrentLooperAdmin())) throw new Error('This Looper account is not an admin.')
-      const [installs, recent] = await Promise.all([listCourseInstallsForAdmin(), listCourseLoads(), refreshLoadedCourses().catch(() => 0)])
+      const [installs, recent, usage] = await Promise.all([
+        listCourseInstallsForAdmin(), listCourseLoads(), loadSpaceUsage().catch(() => null), refreshLoadedCourses().catch(() => 0),
+      ])
       setRows(installs)
+      setSpace(usage)
       setLoads(recent)
       setCatalogTick((tick) => tick + 1)
     } catch (loadError) {
@@ -108,6 +153,8 @@ export default function AdminCoursesPage() {
           </div>
           <a href="/looper">Back to Looper</a>
         </div>
+
+        {space ? <SpaceMeter usage={space} /> : null}
 
         <div className="looper-admin-courses__filters" role="group" aria-label="Show">
           <button type="button" className={filter === 'todo' ? 'is-on' : ''} onClick={() => setFilter('todo')}>

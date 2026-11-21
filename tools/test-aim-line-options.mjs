@@ -44,6 +44,16 @@ try {
     const c = [cand(-9, 3.08, 0.06, 0.02), cand(0, 3.00, 0.02, 0.20)]
     assert.deepEqual(keys(pickAimLineOptions(c, c[1])), ['best+safe@0', 'second@-9'])
   }
+  // 7. A line that trims a little sand for 0.39 strokes is not "safest" (Georgia Golf Club 2, 21 Nov);
+  //    a cheaper line that trims sand still is, and water may cost more.
+  {
+    const dear = [cand(-12, 3.39, 0, 0.21), cand(0, 3.00, 0, 0.24), cand(9, 3.07, 0, 0.26)]
+    assert.deepEqual(keys(pickAimLineOptions(dear, dear[1])), ['best+safe@0', 'second@9'])
+    const cheap = [cand(-12, 3.39, 0, 0.10), cand(-6, 3.10, 0, 0.18), cand(0, 3.00, 0, 0.24), cand(9, 3.07, 0, 0.26)]
+    assert.deepEqual(keys(pickAimLineOptions(cheap, cheap[2])), ['best@0', 'second@9', 'safest+safe@-6'])
+    const wet = [cand(-12, 3.50, 0.00), cand(0, 3.00, 0.08)]
+    assert.deepEqual(keys(pickAimLineOptions(wet, wet[1])), ['best+safe@0', 'second@-12'])
+  }
   // 6. Nothing 6 yd away, or no best: just Best, or nothing.
   {
     const c = [cand(0, 3.00), cand(3, 3.01)]

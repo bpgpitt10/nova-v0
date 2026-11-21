@@ -71,6 +71,8 @@ export type BrowserGsproCourseSnapshot = Omit<
   /** Both exact: GSPro's output_log layout, or the GKD pin slot (native positions beta). */
   pinSource: 'output-log-course-layout' | 'native-gkd' | 'unavailable'
   pinDistanceValidationErrorYds: number | null
+  /** Height of the pin in GSPro's world (metres), from the course file on this PC. */
+  pinWorldYM?: number | null
   /** Shot 1: tee -> pin from GSPro's round layout in output_log (validated on use). */
   gsproLayoutTee?: GsproRoundLayoutTee | null
   teePlacement?: 'mapped' | 'locked' | 'provisional' | null
