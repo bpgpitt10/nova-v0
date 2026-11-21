@@ -635,7 +635,8 @@ export const evaluateAimLab = (
         ? { ball, descentDeg, refElevationFt: ballElevationFt + (environment.elevationDeltaFt ?? 0) }
         : null,
       fairwayRoll?.applied ? fairwayRoll.scale : 1,
-      greenRelease?.applied ? greenRelease.predictedYds : null)
+      greenRelease?.applied ? greenRelease.predictedYds : null,
+      environment.greenConditions?.stimp ?? null)
     // Until destination-surface rollout physics are validated, preserve the player's
     // observed Stock rollout and translate both carry and total by the same live carry delta.
     const modeledTotalYds = modeledCarryYds + rolloutYds

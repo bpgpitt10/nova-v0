@@ -802,3 +802,11 @@
 .bagbook-topbar nav a.is-sub { color: #86efac; }
 .bagbook-topbar nav a.is-sub:hover { color: #bbf7d0; }
 .bagbook-topbar nav a.is-sub.is-active { color: #bbf7d0; }
+
+/* Bag, Rounds, Your game and Putting share one top bar. A page tall enough to scroll gets a
+   scrollbar and a shorter one doesn't, which moved the centred bar sideways by half the
+   scrollbar's width between them (Brian, 21 Nov). Keep the scrollbar's room on all four. */
+html:has(.bagbook-layout),
+html:has(.rounds-page) {
+  scrollbar-gutter: stable;
+}

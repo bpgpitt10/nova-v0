@@ -112,6 +112,7 @@ import {
 import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
+import PuttReadCard from '../components/PuttReadCard'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
@@ -1136,6 +1137,33 @@ export default function LiveCaddiePage() {
   const authoritativeGsproSurface = liveMatchesHole ? liveSnapshot?.surface ?? null : null
   const normalizedCurrentSurface = (authoritativeGsproSurface ?? surface).trim().toLowerCase()
   const isGreenSurface = normalizedCurrentSurface === 'green'
+  // On the green: the putt's length and its rise or fall, ball to hole, for the putt card. This is
+  // never the tee read: the HUD's tee-to-pin height says nothing about a putt. Until GSPro's putting
+  // HUD (or the sign over the pin) is confirmed to give ball-to-hole height, only the green map does.
+  const puttDistanceFt = isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) * 3 : null
+  const puttMapRiseIn = (() => {
+    if (!isGreenSurface || !greenDetail || !pinEstimate) return null
+    const at = sampleCourseGreenElevation(greenDetail, ball)
+    const hole = sampleCourseGreenElevation(greenDetail, pinEstimate)
+    return at != null && hole != null ? (hole - at) * 12 : null
+  })()
+  // GSPro's own heights: where the last shot stopped (the round file) against the pin (the course
+  // file on this PC). Works on any course, map or not. Only when that shot is the one before this
+  // putt on this hole.
+  const puttGsproRiseIn = (() => {
+    const last = liveSnapshot?.latestShot
+    const pinY = liveSnapshot?.pinWorldYM
+    if (!isGreenSurface || !liveMatchesHole || !last?.endWorld || typeof pinY !== 'number') return null
+    if (last.holeNumber !== holeNumber || liveSnapshot?.pinSource !== 'native-gkd') return null
+    if (last.holeShot == null || liveSnapshot.nextShotNumber !== last.holeShot + 1) return null
+    const rise = (pinY - last.endWorld.y) * 39.3701
+    // A putt doesn't climb or drop more than a few feet: anything else is a mismatched pin or ball.
+    return Number.isFinite(rise) && Math.abs(rise) <= 96 ? rise : null
+  })()
+  // The green map first where there is one (checked against GSPro on FarmLinks 3, 21 Nov); GSPro's
+  // files on courses without one.
+  const puttRiseIn = puttMapRiseIn ?? puttGsproRiseIn
+  const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : puttGsproRiseIn != null ? 'GSPro' as const : null
   const greenGuidance = !isGreenSurface && hole && greenDetail && trustedLivePin
     && liveMatchesHole && liveSnapshot?.ballSource !== 'world-provisional'
     && Math.hypot(ball[0] - trustedLivePin[0], ball[1] - trustedLivePin[1]) <= 260
@@ -2394,11 +2422,12 @@ export default function LiveCaddiePage() {
             {loadError ? <ScreenOnlyCaddie companionConnected={companionStatus?.gspro.status === 'connected'} /> : null}
           </section>
         ) : isGreenSurface ? (
-          <section className="live-empty-state">
-            <span className="live-kicker">ON GREEN</span>
-            <h1>Caddie paused.</h1>
-            <p>Looper is recording the putt sequence and hole completion for scoring, but it is not calculating a club, aim, wind or lie recommendation.</p>
-          </section>
+          <PuttReadCard
+            distanceFt={puttDistanceFt}
+            riseIn={puttRiseIn}
+            stimp={greenConditions?.stimp ?? null}
+            elevationSource={puttElevationSource}
+          />
         ) : holdFirstTeeRecommendation ? (
           <section className="live-empty-state" data-recommendation-gate="first-tee-capture">
             <span className="live-kicker">PROVISIONAL TEE · NOT YET MEASURED</span>
