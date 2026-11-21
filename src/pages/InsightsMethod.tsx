@@ -1,5 +1,5 @@
 /**
- * How the series is measured: thelooper.golf/insights/method. Linked from the
+ * How the insights are measured: thelooper.golf/insights/method. Linked from the
  * top of the insights page and from each part's "measured in" line. Written as
  * Brian, first person. No shot counts: GSPro repeats a shot exactly, so the
  * count isn't what makes a result solid.
@@ -13,7 +13,7 @@ export default function InsightsMethod() {
         <p className="insights-eyebrow">Method</p>
         <h1>How I tested</h1>
         <p className="insights-hero__lead">
-          Every number in this series comes from GSPro itself. I don&rsquo;t swing at it. I send it a shot, change one
+          Every number here comes from GSPro itself. I don&rsquo;t swing at it. I send it a shot, change one
           setting, and send the exact same shot again.
         </p>
 
@@ -105,7 +105,7 @@ export default function InsightsMethod() {
         </div>
 
         <p className="insights-method__back">
-          <a href="/insights">Back to the series</a>
+          <a href="/insights">Back to the insights</a>
         </p>
       </div>
     </section>

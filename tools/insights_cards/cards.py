@@ -1,4 +1,4 @@
-"""Series cards for thelooper.golf/insights: one HTML per part, rendered to 1600 px wide WebP.
+"""Cards for thelooper.golf/insights: one HTML per part, rendered to 1600 px wide WebP.
 
     python3 tools/insights_cards/cards.py <out_dir> [part ids...]
 
@@ -6,7 +6,7 @@ Needs Python Playwright and Inter installed. Fraunces goes in tools/insights_car
 the two variable TTFs from github.com/google/fonts/tree/main/ofl/fraunces, saved as
 Fraunces_SOFT_WONK_opsz_wght_.ttf and Fraunces-Italic_SOFT_WONK_opsz_wght_.ttf.
 Copy the WebPs into src/assets/insights/ and update each card's width and height in InsightsPage.tsx.
-The numbers are in card_data.py; POSTED below marks parts already posted (striped tab with a tick).
+The numbers are in card_data.py.
 """
 import html
 import json
@@ -27,7 +27,6 @@ PARTS = [
     ("putting", "06", "Putting", "#2ec4e6"),
 ]
 # Parts already posted get a tick and stripes; none are yet.
-POSTED: set = set()
 
 e = html.escape
 
@@ -146,14 +145,12 @@ PANEL = {"grid": grid_panel, "bars": bars_panel, "tiles": tile_panel, "ranges": 
 
 
 def tabs(current):
+    """All six parts ship together: the current one is filled, the rest are plain tabs with their colour."""
     out = []
     for pid, num, name, colour in PARTS:
-        if pid == current:
-            out.append(f'<div class="tab now" style="background:{colour}"><span>{num} · You are here</span>{e(name)}</div>')
-        elif pid in POSTED:
-            out.append(f'<div class="tab posted" style="--c:{colour}"><span>{num} · ✓ Posted</span>{e(name)}</div>')
-        else:
-            out.append(f'<div class="tab soon"><span>{num} · Coming</span>{e(name)}</div>')
+        kind = "now" if pid == current else "other"
+        style = f"background:{colour}" if pid == current else f"--c:{colour}"
+        out.append(f'<div class="tab {kind}" style="{style}"><span>{num}</span>{e(name)}</div>')
     return "".join(out)
 
 
@@ -178,9 +175,8 @@ body {{ width: 800px; font-family: Inter, system-ui, sans-serif; color: #e7efe4;
 .tab span {{ display: block; font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 1px; }}
 .tab.now {{ color: #0b140d; padding-top: 9px; }}
 .tab.now span {{ color: rgba(11,20,13,.72); }}
-.tab.soon {{ border: 1px dashed #2b3a2e; border-bottom: 0; }}
-.tab.posted {{ color: #e7efe4; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 26%, #0b140d) 0 6px, #0b140d 6px 12px); }}
-.tab.posted span {{ color: var(--c); }}
+.tab.other {{ color: #b9c4b7; background: #0f1a12; box-shadow: inset 0 3px 0 var(--c); }}
+.tab.other span {{ color: var(--c); }}
 .top {{ display: flex; align-items: flex-start; justify-content: space-between; margin-top: 20px; }}
 .top img {{ height: 64px; }}
 .series {{ text-align: right; }}

@@ -11,10 +11,9 @@ import InsightsReadQuiz from './InsightsReadQuiz'
 import './InsightsPage.css'
 
 /**
- * "GSPro physics, measured": the public home of the post series. No account
- * needed. Each part is a shareable card plus a short article, and every part
- * points at a free account. Parts that haven't been measured yet are shown as
- * open slots, so the whole series is visible from the first post.
+ * "GSPro physics, measured": six parts released together. No account needed.
+ * Each part is a shareable card plus a short article, and every part points at
+ * a free account.
  *
  * Posts link straight to a part: thelooper.golf/insights#greens
  */
@@ -455,7 +454,7 @@ export default function InsightsPage() {
     <div className="insights-page" id="top">
       <header className="insights-top">
         <div className="insights-wrap insights-top__row">
-          <a className="insights-top__logo" href={onMethod ? '/insights' : '#top'} aria-label={onMethod ? 'The series' : 'Back to the top'}>
+          <a className="insights-top__logo" href={onMethod ? '/insights' : '#top'} aria-label={onMethod ? 'Back to GSPro physics, measured' : 'Back to the top'}>
             <img src={looperLogo} alt="The Looper" />
           </a>
           <nav className="insights-top__nav" aria-label="Account">
@@ -482,7 +481,7 @@ export default function InsightsPage() {
 
         <InsightsReadQuiz />
 
-        <nav className="insights-tabs" aria-label="Parts of the series">
+        <nav className="insights-tabs" aria-label="Parts">
           <div className="insights-wrap insights-tabs__row">
             <a className="insights-tab is-ready" href="#overview" style={colourVar(OVERVIEW_COLOUR)}>
               <span>Overview</span>
@@ -508,7 +507,7 @@ export default function InsightsPage() {
             <h2>Every shot is a sum</h2>
             <div className="insights-entry__text insights-overview">
               <p className="insights-lead">
-                Every part of this series changes one setting at a time. A real shot never does. The ball sits in the
+                Every part here changes one setting at a time. A real shot never does. The ball sits in the
                 rough on a side slope, the green is firm Links and the stimp is 12. Each of those is worth a few yards.
                 Added up, they decide whether you&rsquo;re putting for birdie or chipping for par.
               </p>
