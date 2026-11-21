@@ -75,7 +75,16 @@ export default function ChipOptionsCard({
     <>
       <section className="chip-options" aria-label="Chip options">
         <div className="chip-options__head">
-          <div className="chip-options__distance">{Math.round(distanceYds)} YDS</div>
+          {current?.swingLikeYds != null ? (
+            // From sand the number to play is the swing, not the distance: big and yellow, like a putt's Plays like.
+            <div className="chip-options__swing">
+              <span>Swing for</span>
+              <b>{Math.round(current.swingLikeYds)} YD CARRY</b>
+              <small>{Math.round(distanceYds)} yd to the pin &middot; the sand takes it down to {yd(current.flight.carryYds)}</small>
+            </div>
+          ) : (
+            <div className="chip-options__distance">{Math.round(distanceYds)} YDS</div>
+          )}
           <div className={`chip-options__aim${aimOff ? ' is-off' : ''}`}>
             <span>AIM</span>
             {aimOff && lie
@@ -112,7 +121,7 @@ export default function ChipOptionsCard({
             </p>
             {current.swingLikeYds != null ? (
               <p className="chip-options__reason">
-                From sand: swing it like a {Math.round(current.swingLikeYds)} yd {CHIP_LABEL[current.type].toLowerCase()}. The sand takes the rest.
+                From sand: make the swing of a clean {Math.round(current.swingLikeYds)} yd carry {CHIP_LABEL[current.type].toLowerCase()}. The sand takes it down to {yd(current.flight.carryYds)}.
               </p>
             ) : null}
             {current.reason ? <p className="chip-options__reason">{current.reason}</p> : null}

@@ -15,6 +15,34 @@
   line-height: 0.95;
 }
 
+/* From sand: the swing to make is the number, the distance sits under it. */
+.chip-options__swing {
+  display: grid;
+  gap: 2px;
+}
+
+.chip-options__swing > span {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.chip-options__swing > b {
+  color: #eab308;
+  font-size: clamp(44px, 4vw, 64px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.chip-options__swing > small {
+  margin-top: 4px;
+  color: #9da99f;
+  font-size: 14px;
+}
+
 .chip-options__aim {
   display: flex;
   flex-wrap: wrap;
