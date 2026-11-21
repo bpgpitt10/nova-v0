@@ -20,6 +20,62 @@ const PROBE_YDS = 150
 
 export const PUNCH_OUT_TITLE = 'Punch out.'
 export const PUNCH_OUT_LINE = "You're in the trees: get it back to the fairway, don't be a hero."
+/** A punch stays under the branches: low club, short swing, and no further than this (Brian, 21 Nov). */
+export const PUNCH_OUT_MAX_YDS = 150
+/** Low-launching clubs for a punch, best first. */
+const PUNCH_CLUBS = ['5i', '4i', '6i', '3H', '4H', '7i', '5H', '3i'] as const
+
+/** The club to punch with from this bag: a low iron, never a wedge or a wood. */
+export const punchOutClub = (bag: readonly string[]): string | null =>
+  PUNCH_CLUBS.find((club) => bag.includes(club)) ?? null
+
+export type PunchOutEscape = Readonly<{
+  /** Yards to the nearest fairway. */
+  yds: number
+  /** Where it is, facing the pin. */
+  side: 'left' | 'right' | 'ahead' | 'behind' | 'ahead-left' | 'ahead-right'
+  point: CoursePointYds
+}>
+
+/** The nearest fairway to the ball and where it lies, facing the pin. Null when the hole has no fairway mapped. */
+export const nearestFairway = (
+  hole: CourseHoleGeometry | null,
+  ball: CoursePointYds | null,
+  pin: CoursePointYds | null,
+): PunchOutEscape | null => {
+  if (!hole || !ball) return null
+  let best: { d: number; point: CoursePointYds } | null = null
+  for (const surface of hole.surfaces) {
+    if (surface.kind !== 'fairway') continue
+    for (const ring of surface.polygons) {
+      for (let i = 0; i < ring.length; i += 1) {
+        const a = ring[i]
+        const b = ring[(i + 1) % ring.length]
+        const abx = b[0] - a[0]
+        const aby = b[1] - a[1]
+        const len2 = abx * abx + aby * aby
+        const t = len2 > 0 ? Math.max(0, Math.min(1, ((ball[0] - a[0]) * abx + (ball[1] - a[1]) * aby) / len2)) : 0
+        const point: CoursePointYds = [a[0] + abx * t, a[1] + aby * t]
+        const d = Math.hypot(point[0] - ball[0], point[1] - ball[1])
+        if (!best || d < best.d) best = { d, point }
+      }
+    }
+  }
+  if (!best) return null
+  let side: PunchOutEscape['side'] = 'ahead'
+  if (pin && best.d > 0.5) {
+    const fx = pin[0] - ball[0]
+    const fy = pin[1] - ball[1]
+    const tx = best.point[0] - ball[0]
+    const ty = best.point[1] - ball[1]
+    // Facing the pin, right is (fy, -fx).
+    const angle = (Math.atan2(tx * fy - ty * fx, tx * fx + ty * fy) * 180) / Math.PI   // + right
+    const lr = angle > 0 ? 'right' : 'left'
+    side = Math.abs(angle) < 20 ? 'ahead' : Math.abs(angle) < 65 ? `ahead-${lr}` : Math.abs(angle) <= 125 ? lr : 'behind'
+  }
+  return { yds: best.d, side, point: best.point }
+}
+
 export const PUNCH_OUT_AIM_NOTE = "Aim by hand: you're in the trees, so pick the safest gap back to the fairway yourself."
 
 export const ballInTrees = (

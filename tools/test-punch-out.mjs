@@ -34,6 +34,16 @@ try {
   assert.equal(ballInTrees(gap, [-50, 200], pin), false)
   // No hole or no ball: off.
   assert.equal(ballInTrees(null, [0, 0], pin), false)
+  // The punch: a low iron from the bag, never a wedge; the nearest fairway and which side it's on.
+  const { punchOutClub, nearestFairway } = await server.ssrLoadModule('/src/liveCaddie/punchOut.ts')
+  assert.equal(punchOutClub(['Driver', '3H', '5i', '9i', 'SW']), '5i')
+  assert.equal(punchOutClub(['Driver', '6i', '9i']), '6i')
+  assert.equal(punchOutClub(['Driver', 'PW', 'SW']), null)
+  const fairwayLeft = { surfaces: [{ kind: 'fairway', polygons: [[[-60, 0], [-20, 0], [-20, 300], [-60, 300]]] }] }
+  const out = nearestFairway(fairwayLeft, [0, 100], [0, 400])
+  assert.ok(Math.abs(out.yds - 20) < 0.01)
+  assert.equal(out.side, 'left')
+  assert.equal(nearestFairway({ surfaces: [] }, [0, 100], [0, 400]), null)
   console.log('PASS: punch-out mode under the canopy or boxed in by trees; not on the fairway, beside the trees, or with a gap toward the pin.')
 } finally {
   await server?.close()

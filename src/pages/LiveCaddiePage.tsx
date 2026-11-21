@@ -116,7 +116,8 @@ import PuttReadCard from '../components/PuttReadCard'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
-import { ballInTrees, PUNCH_OUT_AIM_NOTE, PUNCH_OUT_LINE, PUNCH_OUT_TITLE } from '../liveCaddie/punchOut'
+import { ballInTrees, nearestFairway, punchOutClub, PUNCH_OUT_AIM_NOTE } from '../liveCaddie/punchOut'
+import PunchOutCard from '../components/PunchOutCard'
 import { BLEND_RULES } from '../lib/quickBag'
 import NativePositionsBetaPanel from '../components/NativePositionsBetaPanel'
 import { ERROR_TEXT, courseStatusView, ocrLetter, supportLine } from '../lib/supportCodes'
@@ -2474,7 +2475,9 @@ export default function LiveCaddiePage() {
                 <article className={`live-decision-card${isShotStrategy ? ' strategy-mode' : ''}`}>
                   <div className="live-decision-label-row">
                     <span className="live-recommended-pill">
-                      {evaluationPending
+                      {inTrees
+                        ? 'IN THE TREES'
+                        : evaluationPending
                         ? waitingForConditions ? 'READING WIND & LIE' : 'CALCULATING'
                         : isShotStrategy
                           ? 'SHOT STRATEGY'
@@ -2495,6 +2498,17 @@ export default function LiveCaddiePage() {
                     ) : null}
                   </div>
 
+                  {/* In the trees the whole shot card gives way: no club pick, no odds, no aim, no Auto Aim. */}
+                  {inTrees ? (
+                    <PunchOutCard
+                      club={punchOutClub(bagClubs as string[])}
+                      chosenClub={eligibleArmedClub ?? null}
+                      escape={nearestFairway(hole, ball, aimPin)}
+                      pinYds={aimPin ? pointDistance(ball, aimPin) : null}
+                      lie={authoritativeGsproSurface ?? null}
+                      guess={inspectedCandidate ? playerFacingAim : null}
+                    />
+                  ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
                     ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
                     : displayedClub ?? '—'}</div>
@@ -2522,9 +2536,6 @@ export default function LiveCaddiePage() {
                     </div>
                   ) : (
                   <p className="live-decision-reason">
-                    {inTrees ? (
-                      <span className="live-punch-out"><strong>{PUNCH_OUT_TITLE}</strong> {PUNCH_OUT_LINE}</span>
-                    ) : null}
                     {greenReadText ? (
                       <span className="live-green-read"><strong>Green:</strong> {greenReadText}</span>
                     ) : null}
@@ -2641,9 +2652,10 @@ export default function LiveCaddiePage() {
                       )}
                     </button>
                   ) : null}
+                  </>)}
                 </article>
 
-                {!isShotStrategy ? <article className="live-outcomes-card">
+                {!isShotStrategy && !inTrees ? <article className="live-outcomes-card">
                   <div className="live-section-heading">
                     <div>
                       <span className="live-kicker">OUTCOMES</span>
@@ -2699,7 +2711,7 @@ export default function LiveCaddiePage() {
                   showPracticeShots={showPracticeShots}
                   provisionalTeeRadiusYds={provisionalPositionRadiusYds ?? provisionalTeeRadiusYds}
                   greenRead={shownGreenRead}
-                  overlay={aimLineOptions.length > 1 ? (
+                  overlay={aimLineOptions.length > 1 && !inTrees ? (
                     <div className="live-aim-lines" role="group" aria-label="Aim lines for this club">
                       <span className="live-aim-lines-title">AIM LINE</span>
                       {aimLineOptions.map((option) => {
