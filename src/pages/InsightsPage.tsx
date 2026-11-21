@@ -144,24 +144,161 @@ const PARTS: readonly Part[] = [
     number: '03',
     name: 'Stimp',
     colour: '#8bb8ff',
-    question: 'What does stimp do to release?',
-    coming: 'The same approach shots at stimp 8, 10, 12 and 13.',
+    question: 'Stimp barely touches your approaches',
+    caddie: 'Looper takes the stimp you set when you start a round and applies it to the roll after the bounce, not to the bounce itself.',
+    article: (
+      <>
+        <p className="insights-lead">
+          Going from stimp 8 to stimp 13 moved my full pitching wedge a tenth of a yard. I hit the same six approach
+          shots at stimp 8, 11 and 13, a pitching wedge and a 9 iron at three spins each, and the green&rsquo;s speed
+          barely showed up.
+        </p>
+        <h3>How I think about it now</h3>
+        <ul>
+          <li>
+            <strong>Stimp changes the roll, not the bounce.</strong> Every shot split the same way: a hop and skid that
+            didn&rsquo;t change at all, then a roll that grew with the green&rsquo;s speed. A wedge that lands with
+            spin has almost no roll left for the stimp to work on.
+          </li>
+          <li>
+            <strong>Low spin is where it shows.</strong> A 9 iron at 5,500 rpm released 5.3 yards at stimp 8 and 7.1
+            at stimp 13. The same club at 7,800 rpm went from 2.2 to 2.5.
+          </li>
+          <li>
+            <strong>Fast greens spin it back further.</strong> A wedge at 10,800 rpm backed up 0.2 yards at stimp 8
+            and 1.9 at stimp 13. Stimp makes whatever the ball is doing bigger, forward or backward.
+          </li>
+          <li>
+            <strong>A ball that stops dead stays dead.</strong> A 9 iron at 9,800 rpm finished 0.8 yards past its
+            landing spot at all three speeds.
+          </li>
+        </ul>
+        <h3>What to do with it</h3>
+        <p>
+          On full approaches, ignore the stimp and read the grass instead (part 01). Change your number only for a
+          shot that comes in with little spin, or one you know spins back: on a fast green, land it a yard further
+          past the pin than you normally would.
+        </p>
+        <h3>The catch</h3>
+        <p>
+          Stimp barely matters in the air and matters a lot on the ground. The slower the ball arrives, the more of
+          its release is roll, so chips and putts feel the stimp far more. A putt hit to roll 20 feet at stimp 11
+          rolls 15 at stimp 8 and 23 at stimp 13. That&rsquo;s parts 04 and 05.
+        </p>
+        <p className="insights-limits">
+          Measured in GSPro 4.1.9 from 18 shots: a pitching wedge and a 9 iron at three spins each, carried about 125
+          yards onto Briarwood West&rsquo;s Bermuda medium green at stimp 8, 11 and 13.
+        </p>
+      </>
+    ),
   },
   {
     id: 'putting',
     number: '04',
     name: 'Putting',
     colour: '#2ec4e6',
-    question: 'How far does a putt really roll?',
-    coming: 'Roll-out by stimp, uphill and downhill, and how much a side slope turns the ball.',
+    question: 'Only two settings move a putt',
+    caddie: 'Looper’s putting review splits every putt you hit into read, line and pace, and shows which one is costing you strokes.',
+    article: (
+      <>
+        <p className="insights-lead">
+          On a GSPro green, the grass type and firmness don&rsquo;t change a putt at all. I rolled 174 putts at stimp
+          8 to 13, flat, uphill and downhill. On five different grass and firmness settings, the same putt finished
+          within a hundredth of a foot. Only the stimp and the slope move it.
+        </p>
+        <h3>How I think about it now</h3>
+        <ul>
+          <li>
+            <strong>GSPro&rsquo;s stimp is a real stimp.</strong> Run a stimpmeter&rsquo;s release speed through
+            what I measured and the ball rolls 11.0 feet at stimp 11 and 13.0 at stimp 13. The number on the menu is
+            the green you get.
+          </li>
+          <li>
+            <strong>Stimp is worth more than a few feet.</strong> A putt hit to roll 20 feet at stimp 11 rolls 15 at
+            stimp 8 and 23 at stimp 13.
+          </li>
+          <li>
+            <strong>Slopes count for about two-thirds.</strong> GSPro applies about 68% of real gravity along a
+            slope. A 10-foot putt hit for flat runs 14 feet down a 2% slope and dies at 8 feet up one.
+          </li>
+          <li>
+            <strong>Some putts never stop.</strong> Past a certain downhill grade the ball can&rsquo;t stop: about
+            7.5% at stimp 8, 4.7% at stimp 11 and 3.6% at stimp 13. At stimp 13 on a 4.5% slope, every putt I hit
+            from 2 to 7 mph ran about 75 feet.
+          </li>
+        </ul>
+        <h3>What to do with it</h3>
+        <p>
+          Ignore the grass and firmness once you&rsquo;re on the green. Learn your pace at stimp 11, then take about
+          a quarter off at stimp 8 and add a sixth at stimp 13. On a fast green with the pin below you, read the
+          slope before the line.
+        </p>
+        <h3>The catch</h3>
+        <p>
+          These are straight putts. How far a side slope turns the ball is the next thing I&rsquo;m measuring.
+        </p>
+        <p className="insights-limits">
+          Measured in GSPro 4.1.9 from 174 putts at 2 to 8 mph on four practice greens, at stimp 8 to 13, flat and
+          on slopes from 1.2% to 4.5%. One formula fits every putt that stopped to within 0.05 feet on average.
+        </p>
+      </>
+    ),
   },
   {
     id: 'chipping',
     number: '05',
     name: 'Chipping',
     colour: '#f97316',
-    question: 'How do chips react on each green?',
-    coming: 'Bump and run, chip, pitch and flop across the grass types.',
+    question: 'Read the fairway before the green',
+    caddie: 'Looper reads the grass and both firmnesses from GSPro, and works out a chip’s release from where it will land.',
+    article: (
+      <>
+        <p className="insights-lead">
+          Land a chip on a GSPro fairway and the fairway decides how far it goes. I hit 152 chips, from bump and runs
+          to flops, across the grass types, firmnesses and stimps. The same chip landing short on a firm fairway ran
+          about half again as far as on a soft one.
+        </p>
+        <h3>How I think about it now</h3>
+        <ul>
+          <li>
+            <strong>A chip is a putt with a bounce.</strong> Almost all of its release is roll, and once it&rsquo;s
+            rolling on the green it follows the same rules as a putt (part 04). That&rsquo;s why stimp hits chips
+            hard: going from stimp 8 to 13 added about 45% to short chips that landed on the green.
+          </li>
+          <li>
+            <strong>Land short and the fairway takes over.</strong> A firm fairway added about 50% over a soft one. A
+            Links fairway added 30&ndash;50% over Bermuda. Bentgrass ran a little less than Bermuda.
+          </li>
+          <li>
+            <strong>The green&rsquo;s firmness matters less.</strong> Soft to firm on the green added a fifth to a
+            quarter, more for a flop, and nothing at all to a chip that stopped short of the green.
+          </li>
+          <li>
+            <strong>Rough barely matters.</strong> GSPro took about a third of the spin off chips from the rough,
+            and they released only 5&ndash;10% further. A chip doesn&rsquo;t have much spin to lose.
+          </li>
+          <li>
+            <strong>Longer pitches stop.</strong> Spin grows with the swing. A pitch that carried 5 yards released
+            1.3 times its carry. At 30 and 40 yards it released about 7 yards either way.
+          </li>
+        </ul>
+        <h3>What to do with it</h3>
+        <p>
+          Before a chip, check where it lands, not just the green. Landing on a firm fairway or on Links, fly it
+          shorter than you think. Landing on the green, check the stimp. From the rough, play it like the fairway.
+        </p>
+        <h3>The catch</h3>
+        <p>
+          Chip spin is where launch monitors disagree the most. I used typical numbers, about 2,000 rpm for a
+          10-yard chip. If yours reads less spin, your chips will run further than mine.
+        </p>
+        <p className="insights-limits">
+          Measured in GSPro 4.1.9 from 152 chips at Briarwood West: bump and run (12&deg; launch), chip (20&deg;),
+          pitch (28&deg;) and flop (40&deg;), carrying 5 to 40 yards onto a gently uphill green or landing 2 to 8
+          yards short of it, at stimp 8, 11 and 13.
+        </p>
+      </>
+    ),
   },
   {
     id: 'lies',
