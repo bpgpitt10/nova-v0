@@ -1,6 +1,11 @@
 import { useEffect, type CSSProperties, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
-import greensCard from '../assets/insights/insight-01-greens.webp'
+import fairwaysCard from '../assets/insights/insight-01-fairways.webp'
+import liesCard from '../assets/insights/insight-02-lies.webp'
+import slopesCard from '../assets/insights/insight-03-slopes.webp'
+import approachesCard from '../assets/insights/insight-04-approaches.webp'
+import chippingCard from '../assets/insights/insight-05-chipping.webp'
+import puttingCard from '../assets/insights/insight-06-putting.webp'
 import InsightsMethod, { METHOD_HREF } from './InsightsMethod'
 import InsightsReadQuiz from './InsightsReadQuiz'
 import './InsightsPage.css'
@@ -24,7 +29,8 @@ type Part = Readonly<{
   /** The part's colour: its tab, its headings and its account button. */
   colour: string
   question: string
-  card?: { src: string; alt: string }
+  /** Made by tools/insights_cards/cards.py; width and height are the image's own. */
+  card?: { src: string; alt: string; width: number; height: number }
   article?: ReactNode
   /** One line on what an unwritten part will cover. */
   coming?: string
@@ -38,6 +44,12 @@ const PARTS: readonly Part[] = [
     name: 'Fairways',
     colour: '#76d39b',
     question: 'Same drive, 5 to 36 yards of roll',
+    card: {
+      src: fairwaysCard,
+      alt: 'Roll in yards for a driver, 3 hybrid, 7 iron and pitching wedge on Bentgrass, Bermuda and Links fairways at soft, medium and firm, each compared with Bermuda soft, where the GSPro range starts.',
+      width: 1600,
+      height: 1726,
+    },
     caddie: 'Looper reads the course type and fairway firmness from GSPro and adds the roll for the course you\u2019re on, not the range.',
     article: (
       <>
@@ -49,10 +61,10 @@ const PARTS: readonly Part[] = [
         <h3>How I think about it now</h3>
         <ul>
           <li>
-            <strong>Your range is one setting.</strong> GSPro&rsquo;s range plays like a Bermuda medium fairway. On a
-            level course fairway set the same way, the ball rolled what the range showed, within about a yard. Change
-            the course and the range total is wrong: that drive rolls about 20 yards on Bermuda medium, 30 on Links
-            medium and 9 on Bentgrass medium.
+            <strong>Your range is one setting, and you can change it.</strong> GSPro&rsquo;s range can be set to any
+            grass and fairway firmness, and it starts on Bermuda soft. On a level course fairway set the same way, the
+            ball rolled what the range showed, within about a yard. From that default, my drive rolls about 14 yards.
+            On firm Links it rolls 36, and on soft Bentgrass 5.
           </li>
           <li>
             <strong>Grass type first, again.</strong> Bentgrass to Links at the same firmness added 20 yards of roll to
@@ -63,16 +75,16 @@ const PARTS: readonly Part[] = [
             fairway was soft or firm. The driver still went from 5 to 17.
           </li>
           <li>
-            <strong>It isn&rsquo;t a flat percentage.</strong> Firm Links gave a driver 1.8 times the roll of Bermuda
-            medium, and a pitching wedge 2.4 times. Short clubs change by the bigger multiple, long clubs by more
+            <strong>It isn&rsquo;t a flat percentage.</strong> Firm Links gave a driver 2.6 times the roll of Bermuda
+            soft, and a pitching wedge 3.5 times. Short clubs change by the bigger multiple, long clubs by more
             yards.
           </li>
         </ul>
         <h3>What to do with it</h3>
         <p>
-          Learn your carries on the range, not your totals. Then add the roll for the course you&rsquo;re on: on
-          Links, about 10 more yards on a drive than the range shows; on Bentgrass, about 10 fewer. Laying up to a
-          firm fairway, leave room for the ball to run.
+          Set the range to the course you&rsquo;re about to play before you warm up. If you don&rsquo;t, work from
+          Bermuda soft: on Links a drive rolls 10 to 22 yards more, on firmer Bermuda 6 to 14 more, and on soft or
+          medium Bentgrass 4 to 9 less. Laying up to a firm fairway, leave room for the ball to run.
         </p>
         <h3>The catch</h3>
         <p>
@@ -93,13 +105,19 @@ const PARTS: readonly Part[] = [
     name: 'Lies',
     colour: '#c9a46a',
     question: 'Your bag stops working in deep rough',
+    card: {
+      src: liesCard,
+      alt: 'Ball speed and spin GSPro leaves after each lie, deep rough speed by launch angle, and carries out of deep rough for a 3 hybrid, 5 iron, 7 iron and wedges against their clean carries.',
+      width: 1600,
+      height: 1832,
+    },
     caddie: 'Looper reads the lie from GSPro before every shot, and works out each club from there, not from your fairway numbers.',
     article: (
       <>
         <p className="insights-lead">
-          From the fairway, more club means more distance. From GSPro&rsquo;s deep rough it mostly doesn&rsquo;t. Run what I
-          measured through an 8 iron, a 5 iron and a hybrid and all three carry about 105 yards out of the same deep rough, from clean
-          carries of 146, 182 and 198.
+          From the fairway, more club means more distance. From GSPro&rsquo;s deep rough it&rsquo;s the other way
+          round. Out of deep rough a 7 iron carried about 93 yards, a 5 iron about 80 and a 3 hybrid about 70, from
+          clean carries of about 159, 179 and 200.
         </p>
         <h3>How GSPro handles the lie</h3>
         <p>
@@ -147,13 +165,19 @@ const PARTS: readonly Part[] = [
     number: '03',
     name: 'Slopes',
     colour: '#8bb8ff',
-    question: 'Side slopes hit your driver hardest',
+    question: 'Side slopes hit your long clubs hardest',
+    card: {
+      src: slopesCard,
+      alt: 'Yards offline from a 2 to 8 degree side slope for a 3 hybrid, 5 iron, 7 iron and wedges, and the share of a side or up-and-down slope GSPro turns into start line and launch for each club.',
+      width: 1600,
+      height: 1676,
+    },
     caddie: 'Looper reads the slope under the ball from GSPro and turns it into a new launch and start line before it picks the club and the aim.',
     article: (
       <>
         <p className="insights-lead">
-          A slope under the ball changes your shot before it leaves the ground, and in GSPro the club it hurts most is
-          the driver. On a 4&deg; side slope, a drive starts about 15 yards offline. A pitching wedge, about 5.
+          A slope under the ball changes the shot before it leaves the ground, and in GSPro it hurts your longest
+          clubs most. On a 4&deg; side slope, a 3 hybrid starts about 13 yards offline. A pitching wedge, about 5.
         </p>
         <h3>How I think about it now</h3>
         <ul>
@@ -163,25 +187,26 @@ const PARTS: readonly Part[] = [
             at address. It only shows in the flight.
           </li>
           <li>
-            <strong>Low launch feels it most.</strong> A driver takes about nine-tenths of a side slope as start line,
-            a 7 iron about three-quarters, a sand wedge under half. In real golf it runs the other way, because loft
-            points the face off line. Don&rsquo;t bring that instinct to GSPro.
+            <strong>Low launch feels it most.</strong> A 3 hybrid takes about nine-tenths of a side slope as start
+            line, a 7 iron about three-quarters, a sand wedge about half. Hybrids and fairway woods launch lowest, so
+            they feel it most. In real golf it runs the other way, because loft points the face off line. Don&rsquo;t
+            bring that instinct to GSPro.
           </li>
           <li>
-            <strong>Side slope is the one that costs you.</strong> About 4 yards offline per degree with a driver, 2
-            with a 7 iron, 1 with a wedge. An 8&deg; side slope started one drive 7&deg; right, and it landed 30 yards
-            right.
+            <strong>Side slope is the one that costs you.</strong> About 3 yards offline per degree with a hybrid or
+            wood, 2 with a 7 iron, 1 with a wedge.
           </li>
           <li>
-            <strong>Up and down barely move your irons.</strong> Their carry changes by a yard or two. The driver is
-            different: a 4&deg; downslope took about 10 yards off it and an 8&deg; one about 20, because it has little
-            launch to lose. A 4&deg; upslope added about 8.
+            <strong>Up and down barely move your irons.</strong> Their carry changes by a few yards at most. Hybrids
+            and woods are different off a downslope: 4&deg; took about 7 yards off a 3 hybrid and 8&deg; about 26, because
+            a low launch has little to lose.
           </li>
         </ul>
         <h3>What to do with it</h3>
         <p>
-          Check the side slope before every full shot and aim off first: about 4 yards per degree with a driver, 2 with
-          a mid iron, 1 with a wedge. Off a downslope with a driver, expect it to come up short.
+          Check the side slope before every full shot and aim off first: about 3 yards per degree with a hybrid or
+          wood, 2 with a mid iron, 1 with a wedge. Off a downslope, think twice about the hybrid. A more lofted club
+          keeps its launch.
         </p>
         <h3>The catch</h3>
         <p>
@@ -203,8 +228,10 @@ const PARTS: readonly Part[] = [
     colour: '#eab308',
     question: 'Read the grass before the firmness',
     card: {
-      src: greensCard,
+      src: approachesCard,
       alt: 'Release in yards for a wedge, 9 iron, 7 iron and 5 iron on Bentgrass, Bermuda and Links greens at soft, medium and firm, each compared with Bermuda soft, at stimp 11.',
+      width: 1600,
+      height: 1726,
     },
     caddie: 'Looper reads the grass type and firmness from GSPro, takes the stimp you set at the start of a round, and adds the release to every club it recommends.',
     article: (
@@ -261,6 +288,12 @@ const PARTS: readonly Part[] = [
     name: 'Chipping',
     colour: '#f97316',
     question: 'Read the fairway before the green',
+    card: {
+      src: chippingCard,
+      alt: 'Yards a bump and run, chip, pitch and flop run after landing on the green by grass and by stimp, and after landing short in the fairway by firmness and by grass.',
+      width: 1600,
+      height: 1964,
+    },
     caddie: 'Looper reads the grass and both firmnesses from GSPro, and works out a chip’s release from where it will land.',
     article: (
       <>
@@ -317,6 +350,12 @@ const PARTS: readonly Part[] = [
     name: 'Putting',
     colour: '#2ec4e6',
     question: 'Only two settings move a putt',
+    card: {
+      src: puttingCard,
+      alt: 'Feet a putt rolls at stimp 8, 11 and 13, on uphill and downhill slopes, the steepest downhill a putt can stop on at each stimp, and that grass and firmness change nothing.',
+      width: 1600,
+      height: 1664,
+    },
     caddie: 'Looper’s putting review splits every putt you hit into read, line and pace, and shows which one is costing you strokes.',
     article: (
       <>
@@ -467,7 +506,7 @@ export default function InsightsPage() {
                 /* The card floats right from the very top, beside the heading too. */
                 <figure className="insights-entry__card">
                   <a href={part.card.src} rel="noreferrer" target="_blank">
-                    <img alt={part.card.alt} loading="lazy" src={part.card.src} width={1600} height={1723} />
+                    <img alt={part.card.alt} loading="lazy" src={part.card.src} width={part.card.width} height={part.card.height} />
                   </a>
                   <figcaption>Open the card full size to save or share it.</figcaption>
                 </figure>
