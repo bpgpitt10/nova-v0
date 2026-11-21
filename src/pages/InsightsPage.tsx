@@ -417,7 +417,7 @@ export default function InsightsPage() {
               setting at a time and measure what the ball actually does.
             </p>
             <p className="insights-hero__method">
-              <a href={METHOD_HREF}>How I test, and why it doesn&rsquo;t take thousands of shots</a>
+              <a href={METHOD_HREF}>How I test &rarr;</a>
             </p>
           </div>
         </section>

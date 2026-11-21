@@ -347,6 +347,7 @@ export default function InsightsReadQuiz() {
             <div className="insights-quiz__base">
               <span>Your normal</span>
               <strong>{club.short} · {baseYds}</strong>
+              <em className="insights-quiz__base-total">yards total, with roll</em>
               <small>{club.swing.spinRpm.toLocaleString('en-US')} rpm</small>
             </div>
             <ol className="insights-quiz__knowns">

@@ -218,6 +218,16 @@
   font-weight: 600;
 }
 
+/* Says the number is a total, not a carry: the whole sum works in totals. */
+.insights-quiz__base .insights-quiz__base-total {
+  margin: 0 0 6px;
+  color: rgba(17, 24, 15, 0.72);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .insights-quiz__knowns {
   display: grid;
   flex: 1 1 560px;
@@ -909,9 +919,20 @@
 .insights-hero__method {
   margin: 14px 0 0;
   font-size: 16px;
+  white-space: nowrap;
 }
 
-.insights-hero__method a,
+.insights-hero__method a {
+  color: #76d39b;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.insights-hero__method a:hover,
+.insights-hero__method a:focus-visible {
+  color: #a6e6bf;
+}
+
 .insights-limits a,
 .insights-method a {
   color: #eab308;
