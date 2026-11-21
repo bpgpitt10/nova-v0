@@ -17,6 +17,7 @@ import {
   type GreenConditions,
 } from './greenReleaseModel'
 import { sidehillLieShare, upDownLieShare } from './lieResponse'
+import { puttSpeedFor, rollOnGreen, type SlopeField } from './puttRead'
 import { sandSpeedFactor, sandSpinFactor } from './surfaceResponse'
 
 export type ChipType = 'bump' | 'chip' | 'pitch' | 'flop'
@@ -331,4 +332,60 @@ export const chipOptions = (
         ? carryForSpeed(s.type, rawSpeedFromSand(s.flight.ballSpeedMph)) : null,
     }
   })
+}
+
+/**
+ * How far left (+) or right (-) of the pin to aim a chip so its run breaks to the hole, in feet.
+ *
+ * The run is rolled across the green's slope like a putt (rollOnGreen: GSPro's putting friction and
+ * 68% of gravity along the slope), starting where the chip lands at the pace that rolls its run on a
+ * level green. An estimate: a chip's first bounces don't take break like a rolling ball, and the roll
+ * maths hasn't been checked against GSPro's own putts yet. Null when the green map doesn't cover it.
+ */
+export const chipBreakAimFt = (
+  slope: SlopeField,
+  ball: readonly [number, number],
+  pin: readonly [number, number],
+  option: Pick<ChipOption, 'flight' | 'runYds'>,
+  stimp: number | null | undefined,
+): number | null => {
+  const distance = Math.hypot(pin[0] - ball[0], pin[1] - ball[1])
+  if (!(distance > 1) || !(option.runYds > 0.5)) return 0
+  const speed = puttSpeedFor(option.runYds * 3, stimp)
+  if (speed == null) return null
+  const base = (Math.atan2(pin[0] - ball[0], pin[1] - ball[1]) * 180) / Math.PI
+  const fx = (pin[0] - ball[0]) / distance
+  const fy = (pin[1] - ball[1]) / distance
+  /** Where the roll passes the hole, yards right (+) of the ball-to-pin line; null off the map. */
+  const missRight = (offsetDeg: number): number | null => {
+    const rad = ((base + offsetDeg) * Math.PI) / 180
+    const landing: [number, number] = [ball[0] + Math.sin(rad) * option.flight.carryYds, ball[1] + Math.cos(rad) * option.flight.carryYds]
+    if (!slope(landing)) return null
+    const roll = rollOnGreen(slope, landing, base + offsetDeg, speed, stimp, pin)
+    let best: readonly [number, number] = roll.end
+    let bestD = Infinity
+    for (const point of roll.path) {
+      const d = Math.hypot(point[0] - pin[0], point[1] - pin[1])
+      if (d < bestD) { bestD = d; best = point }
+    }
+    return (best[0] - pin[0]) * fy - (best[1] - pin[1]) * fx
+  }
+  let lo = -20
+  let hi = 20
+  const atLo = missRight(lo)
+  const atHi = missRight(hi)
+  if (atLo == null || atHi == null || atLo > 0 || atHi < 0) {
+    const straight = missRight(0)
+    // Can't bracket it: fall back to the straight shot's miss, mirrored.
+    return straight == null ? null : straight * 3
+  }
+  for (let i = 0; i < 14; i += 1) {
+    const mid = (lo + hi) / 2
+    const miss = missRight(mid)
+    if (miss == null) return null
+    if (miss < 0) lo = mid
+    else hi = mid
+  }
+  // A heading right of the pin is a negative "aim left".
+  return -distance * 3 * Math.tan((((lo + hi) / 2) * Math.PI) / 180)
 }

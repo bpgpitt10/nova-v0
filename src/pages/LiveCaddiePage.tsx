@@ -113,8 +113,9 @@ import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
+import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
 import ChipOptionsCard from '../components/ChipOptionsCard'
-import { CHIP_ZONE_YDS, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_ZONE_YDS, chipBreakAimFt, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
@@ -1527,6 +1528,14 @@ export default function LiveCaddiePage() {
     const greens = hole.surfaces.filter((s) => s.kind === 'green').flatMap((s) => s.polygons)
     return analyzeGreen(greenDetail, greens)
   }, [hole, greenDetail])
+  // Chip lab: the aim that lets each chip's run break to the hole, from the green map's slope.
+  const chipBreakKey = chipLab ? `${chipShotKey}|${chipLab.options.map((o) => `${o.flight.carryYds.toFixed(1)}/${o.runYds.toFixed(1)}`).join(',')}` : null
+  const chipBreak = useMemo(() => {
+    if (!chipLab || !greenReadAnalysis || !pinEstimate) return null
+    const slope = slopeFieldFromGreenRead(greenReadAnalysis)
+    return Object.fromEntries(chipLab.options.map((o) => [o.type, chipBreakAimFt(slope, ball, pinEstimate, o, greenConditions?.stimp ?? null)])) as Record<ChipType, number | null>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chipBreakKey, greenReadAnalysis])
   const greenReachable = (() => {
     if (!hole || isGreenSurface || !pinEstimate) return false
     if (isShotStrategy) return true
@@ -1692,7 +1701,8 @@ export default function LiveCaddiePage() {
     const option = chipLab?.options.find((o) => o.type === type)
     if (!option || !pinEstimate || chipDistanceYds == null) return
     const fail = (message: string) => setChipAim({ shot: chipShotKey, type, state: 'not-aimed', message })
-    const lieRead = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
+    const lieOnly = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
+    const lieRead = { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (chipBreak?.[type] ?? 0) }
     // Straight at the pin is where GSPro already points on a new shot: nothing to click.
     if (Math.abs(lieRead.aimLeftFt) < 1) {
       setChipAim({ shot: chipShotKey, type, state: 'aimed', message: 'Aim is straight at the pin, where GSPro already points. Nothing to move (reset GSPro’s aim if you changed it).' })
@@ -2602,6 +2612,7 @@ export default function LiveCaddiePage() {
                       lieLeftRightDeg={hasLiveLie ? lieLeftRightDeg : null}
                       lieUpDownDeg={hasLiveLie ? lieUpDownDeg : null}
                       surface={normalizedCurrentSurface}
+                      breakLeftFt={chipBreak}
                       riseFt={chipLab.riseFt}
                       riseSource={chipLab.riseSource}
                       onAim={aimChip}

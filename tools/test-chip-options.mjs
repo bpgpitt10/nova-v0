@@ -69,7 +69,18 @@ try {
   const flopAim = chipLieRead({ launchDeg: 40 }, 20, 4, -3)
   assert.ok(bumpAim.aimLeftFt < flopAim.aimLeftFt && flopAim.aimLeftFt < 0, 'starts left, so aim right; the bump most')
   assert.ok(bumpAim.launchDeltaDeg < 0)
-  console.log('chip options ok')
+  // Break: a green that climbs to the right (downhill is left) takes the run left, so the aim goes right;
+  // the bump (more run) needs more than the flop; a level green needs none.
+  const { chipBreakAimFt } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')
+  const tilted = () => [0.03, 0]
+  const level = () => [0, 0]
+  const shot = (carry, run) => ({ flight: { carryYds: carry }, runYds: run })
+  const bumpBreak = chipBreakAimFt(tilted, [0, 0], [0, 30], shot(10, 20), 11)
+  const flopBreak = chipBreakAimFt(tilted, [0, 0], [0, 30], shot(25, 5), 11)
+  assert.ok(bumpBreak < -2, `bump aims right (${bumpBreak})`)
+  assert.ok(flopBreak < 0 && flopBreak > bumpBreak, `flop aims right, less (${flopBreak})`)
+  assert.ok(Math.abs(chipBreakAimFt(level, [0, 0], [0, 30], shot(10, 20), 11)) < 0.3)
+  console.log('chip options ok', bumpBreak.toFixed(1), flopBreak.toFixed(1))
 } finally {
   await server.close()
 }

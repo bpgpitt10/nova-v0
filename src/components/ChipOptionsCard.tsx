@@ -17,6 +17,8 @@ type Props = {
   lieUpDownDeg?: number | null
   /** What the ball is sitting on, in plain words. */
   surface?: string
+  /** Feet to aim left (+) or right (-) so each chip's run breaks to the hole; null when not known. */
+  breakLeftFt?: Partial<Record<ChipType, number | null>> | null
   /** Height of the hole above (+) or below (-) the ball, feet, and where it was read. */
   riseFt?: number | null
   riseSource?: 'GSPro' | 'green map' | null
@@ -48,7 +50,7 @@ const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs
 export default function ChipOptionsCard({
   distanceYds, options, shown, onShow, conditions, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
-  terrain = null, hazard = null, safeMiss = null, riseFt = null, riseSource = null,
+  terrain = null, hazard = null, safeMiss = null, riseFt = null, riseSource = null, breakLeftFt = null,
 }: Props) {
   const riseText = riseFt == null ? null
     : Math.abs(riseFt) < 0.25 ? 'level'
@@ -56,8 +58,12 @@ export default function ChipOptionsCard({
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
-  const lie = current ? chipLieRead(current, distanceYds, lieLeftRightDeg, lieUpDownDeg) : null
+  const lieOnly = current ? chipLieRead(current, distanceYds, lieLeftRightDeg, lieUpDownDeg) : null
+  const breakFt = current ? breakLeftFt?.[current.type] ?? null : null
+  // The aim line is the two together; each row below shows its own share.
+  const lie = lieOnly ? { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (breakFt ?? 0) } : null
   const aimOff = lie && Math.abs(lie.aimLeftFt) >= 1
+  const lieAimOff = lieOnly != null && Math.abs(lieOnly.aimLeftFt) >= 1
   const lieKnown = lieLeftRightDeg != null || lieUpDownDeg != null
   const sideText = lieLeftRightDeg == null ? 'not read' : Math.abs(lieLeftRightDeg) < 0.25 ? 'level'
     : `${Math.abs(lieLeftRightDeg).toFixed(1)}° ${lieLeftRightDeg > 0 ? 'left' : 'right'}`
@@ -152,8 +158,16 @@ export default function ChipOptionsCard({
         <div className="chip-conditions__row">
           <span>Side slope<small>{lieKnown ? 'GSPro lie' : 'lie not read yet'}</small></span>
           <b>{sideText}</b>
-          <em className={aimOff ? 'is-off' : ''}>
-            {aimOff && lie ? `aim ${feet(lie.aimLeftFt)} ${lie.aimLeftFt > 0 ? 'left' : 'right'}` : lieLeftRightDeg == null ? '—' : 'aim at the pin'}
+          <em className={lieAimOff ? 'is-off' : ''}>
+            {lieAimOff && lieOnly ? `starts it ${lieOnly.aimLeftFt > 0 ? 'right' : 'left'}: ${feet(lieOnly.aimLeftFt)} ${lieOnly.aimLeftFt > 0 ? 'left' : 'right'}` : lieLeftRightDeg == null ? '—' : 'no change to the aim'}
+          </em>
+        </div>
+        <div className="chip-conditions__row">
+          <span>Break on the green<small>{hasGreenMap ? 'the run, from the green map (estimate)' : 'no green map here'}</small></span>
+          <b>{breakFt == null ? '—' : Math.abs(breakFt) < 1 ? 'straight' : `${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}</b>
+          <em className={breakFt != null && Math.abs(breakFt) >= 1 ? 'is-off' : ''}>
+            {breakFt == null ? '—' : Math.abs(breakFt) < 1 ? 'no change to the aim'
+              : `runs ${breakFt > 0 ? 'left to right' : 'right to left'}: aim ${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}
           </em>
         </div>
         <div className="chip-conditions__row">
@@ -186,7 +200,7 @@ export default function ChipOptionsCard({
         ) : null}
         <p className="chip-conditions__foot">
           {conditions}.{hasGreenMap ? ' The run uses the green’s slope to the hole.' : ' No green map here, so the run is for a level green and there’s no break.'}
-          {' '}Ground short of the green isn’t mapped for slope, and the aim doesn’t include break yet.
+          {' '}Ground short of the green isn’t mapped for slope.
         </p>
       </aside>
     </>
