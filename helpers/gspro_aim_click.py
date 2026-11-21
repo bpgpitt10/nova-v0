@@ -109,7 +109,10 @@ def aim_click(
         return blocked("minimap-not-read", detail=str(error)[:300], seenPng=getattr(error, "seen", None))
     if preview.get("status") != "ready":
         return blocked(preview.get("status") or "minimap-not-read")
-    if not preview["checks"]["alignedLikeGspro"]:
+    checks = preview["checks"]
+    # The usual layout (pin straight above the ball), or a pair found by colour and shape on a
+    # zoomed or angled map; the click is checked against GSPro's aim marker afterwards either way.
+    if not checks.get("pairTrusted", checks["alignedLikeGspro"]):
         return blocked("minimap-not-aligned")
 
     height, width = frame.shape[:2]
@@ -141,6 +144,7 @@ def aim_click(
         "status": "clicked",
         "click": {"desktopX": plan.desktop_x, "desktopY": plan.desktop_y},
         "minimap": mini,
+        "pairing": checks.get("pairing", "vertical"),
         "verified": "not-checked",
     }
     sleep(VERIFY_DELAY_S)

@@ -109,6 +109,56 @@ class AimMathTests(unittest.TestCase):
         self.assertAlmostEqual(result["minimap"]["ball"][0], 140, delta=1.5)
         self.assertAlmostEqual(result["minimap"]["ball"][1], 400, delta=1.5)
 
+    # -- Any angle, any zoom (FarmLinks 3, 4 and 5, 21 Nov 2026) ---------------------------------
+    def _with_banner(self, img):
+        cv2.rectangle(img, (4, 22), (int(W * 0.2), 58), (0, 0, 235), -1)   # red player banner
+        return img
+
+    def test_a_par_3_drawn_at_an_angle(self):
+        # Ball bottom left, pin top right: not GSPro's usual straight-up pair.
+        img = self._with_banner(synthetic_frame((90, 420), (190, 80)))
+        result = aim.aim_preview(img, ball_world=(0.0, 0.0), pin_world=(60.0, 150.0), target_world=(60.0, 150.0))
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["checks"]["pairing"], "free")
+        self.assertFalse(result["checks"]["alignedLikeGspro"])
+        self.assertTrue(result["checks"]["pairTrusted"])
+        self.assertAlmostEqual(result["minimap"]["ball"][0], 90, delta=1.5)
+        self.assertAlmostEqual(result["minimap"]["pin"][0], 190, delta=1.5)
+        # Aiming at the pin clicks the pin.
+        self.assertAlmostEqual(result["minimap"]["target"][0], 190, delta=1.5)
+        self.assertAlmostEqual(result["minimap"]["target"][1], 80, delta=1.5)
+
+    def test_zoomed_in_on_the_green_with_a_bunker_beside_it(self):
+        # Ball mid-map (too high for the usual layout), pin above it, a big white bunker to the side.
+        img = self._with_banner(synthetic_frame((140, 300), (140, 180), red_line=False))
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.ellipse(img, (x0 + 220, y0 + 220), (40, 28), 20, 0, 360, (245, 245, 245), -1)
+        result = aim.aim_preview(img, ball_world=(0.0, 0.0), pin_world=(0.0, 27.0), target_world=(1.0, 27.0))
+        self.assertEqual(result["checks"]["pairing"], "free")
+        self.assertTrue(result["checks"]["pairTrusted"])
+        self.assertAlmostEqual(result["minimap"]["pin"][1], 180, delta=1.5)
+
+    def test_two_white_dots_or_no_ball_colour_is_refused(self):
+        img = self._with_banner(synthetic_frame((90, 420), (190, 80)))
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(img, (x0 + 60, y0 + 200), 5, (255, 255, 255), -1)       # a second pin-like dot
+        with self.assertRaises(aim.AimReadError) as caught:
+            aim.aim_preview(img, ball_world=(0.0, 0.0), pin_world=(60.0, 150.0), target_world=(60.0, 150.0))
+        self.assertIn("More tha", str(caught.exception))
+        # No banner: the ball's colour isn't known, so an angled pair is never trusted.
+        plain = synthetic_frame((90, 420), (190, 80))
+        try:
+            result = aim.aim_preview(plain, ball_world=(0.0, 0.0), pin_world=(60.0, 150.0), target_world=(60.0, 150.0))
+            self.assertFalse(result["checks"]["pairTrusted"])
+        except aim.AimReadError:
+            pass
+
+    def test_a_pair_at_an_impossible_zoom_is_not_trusted(self):
+        img = self._with_banner(synthetic_frame((90, 420), (190, 80)))
+        result = aim.aim_preview(img, ball_world=(0.0, 0.0), pin_world=(600.0, 1500.0), target_world=(600.0, 1500.0))
+        self.assertEqual(result["checks"]["pairing"], "free")
+        self.assertFalse(result["checks"]["pairTrusted"])
+
     def test_minimap_on_the_left(self):
         right = synthetic_frame((140, 400), (140, 60), red_line=False)
         img = np.full_like(right, (40, 110, 50))
