@@ -45,6 +45,12 @@ assert.match(greenReadLine(a, [-120, 120], pin), /^Tilts [34]\.\d% left to right
 const edgeLine = greenReadLine(a, ball, [0, 106])
 assert.doesNotMatch(edgeLine, /uphill putt/, edgeLine)
 assert.match(edgeLine, /Pin is near the front edge: favor the middle of the green\./)
+assert.doesNotMatch(edgeLine, /outline may not match/)
+// A pin off Looper's green (GSPro always cuts it on its own): the outline is off here, and its
+// edges aren't used for advice.
+const offLine = greenReadLine(a, ball, [0, 103])
+assert.match(offLine, /^Looper’s green outline may not match GSPro’s here: the pin sits at its edge\./, offLine)
+assert.doesNotMatch(offLine, /Pin is near the/)
 
 // 3. A 1.2 ft tier across the middle: flat below, a 6-yd face, flat above.
 const tierZ = (x, y) => (y < 17 ? 0 : y > 23 ? 1.2 : ((y - 17) / 6) * 1.2)

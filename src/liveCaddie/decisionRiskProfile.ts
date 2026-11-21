@@ -201,7 +201,7 @@ export const buildDecisionRiskProfile = ({
   /** Same destination-terrain transform used by the modeled core cloud. */
   landingTransform?: LandingTransform
   /** Same flight check as the core cloud: mishits through trees end in the trees. */
-  flightCheck?: Readonly<{ descentDeg: number | null }> | null
+  flightCheck?: Readonly<{ descentDeg: number | null; peakHeightYds?: number | null }> | null
 }): DecisionRiskProfile => {
   const historicalSamples = player?.samples ?? []
   const totalHistoricalWeight = historicalSamples.reduce(
@@ -267,7 +267,7 @@ export const buildDecisionRiskProfile = ({
       const offline = sample.offlineYds + lateralAdjustmentYds
       const carryLanding = addScaled(ball, forward, carry, right, offline)
       const baselineLanding = addScaled(ball, forward, finalDistance, right, offline)
-      const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg) : null
+      const blocked = flightCheck ? flightBlockedAt(hole, ball, carryLanding, flightCheck.descentDeg, flightCheck.peakHeightYds) : null
       const resolved = blocked ? null : resolveLanding(landingTransform, carryLanding, baselineLanding)
       const { landing, classification } = blocked
         ? { landing: blocked.point, classification: { kind: 'deep-rough' as const, surfaceId: null, confidence: 'medium' as const } }

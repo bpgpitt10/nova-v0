@@ -60,7 +60,14 @@ export default function LooperAuthGate({ children }: Props) {
   )
   const [user, setUser] = useState<LooperAuthUser | null>(null)
   const [allowedUser, setAllowedUser] = useState<AllowedUserRecord | null>(null)
-  const [mode, setMode] = useState<AuthMode>('sign-in')
+  // The public insights page sends new players here with ?signup=1.
+  const [mode, setMode] = useState<AuthMode>(() => {
+    try {
+      return new URLSearchParams(window.location.search).has('signup') ? 'sign-up' : 'sign-in'
+    } catch {
+      return 'sign-in'
+    }
+  })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
