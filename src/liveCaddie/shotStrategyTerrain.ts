@@ -14,7 +14,13 @@ import { buildAimShotFrame } from './aimDescriptorFrame'
 import { describeFall, highSide, toPlayerFrameDirection } from './greenPlayerFrame'
 import { sampleCourseGreenSlopeAtPoint } from './greenTargeting'
 
+export type TerrainKind = 'shelf' | 'rise' | 'fall' | 'flat' | 'slope' | 'none'
+
 export type ShotStrategyTacticalRead = {
+  /** What the ground around the pin does, for callers that write their own words (the chip card). */
+  terrainKind: TerrainKind
+  terrainHighSide: 'left' | 'right' | null
+  terrainFall: string | null
   terrain: string
   hazard: string | null
   safeMiss: string
@@ -55,6 +61,9 @@ const containingGreen = (
 }
 
 type TerrainRead = {
+  kind: TerrainKind
+  /** Slope only: which way it falls, in the player's words. */
+  fall?: string | null
   text: string
   shortIsCostly: boolean
   longIsCostly: boolean
@@ -83,6 +92,7 @@ const terrainRead = (
 
     if ((rise6 != null && rise6 >= 2.2) || (rise12 != null && rise12 >= 3.5)) {
       return {
+        kind: 'shelf',
         text: 'Pin sits on a steep rise / shelf. A short miss finishes well below the hole; full carry matters.',
         shortIsCostly: true,
         longIsCostly: false,
@@ -92,6 +102,7 @@ const terrainRead = (
       return {
         // A steady rise (not a shelf): short of the hole is the uphill putt, the one players want.
         // Past it is the quick downhill putt back (Brian, 21 Nov).
+        kind: 'rise',
         text: 'Green rises into the pin. Below the hole leaves an uphill putt; past it leaves a quick downhill one.',
         shortIsCostly: false,
         longIsCostly: true,
@@ -99,6 +110,7 @@ const terrainRead = (
     }
     if ((rise6 != null && rise6 <= -2.2) || (rise12 != null && rise12 <= -3.5)) {
       return {
+        kind: 'fall',
         text: 'Target area falls through the pin. Long leaves the more difficult terrain miss.',
         shortIsCostly: false,
         longIsCostly: true,
@@ -106,6 +118,7 @@ const terrainRead = (
     }
     if (slope && slope.slopePercent <= 2 && Math.abs(rise12 ?? 0) <= 1.5) {
       return {
+        kind: 'flat',
         text: 'Target area is relatively flat.',
         shortIsCostly: false,
         longIsCostly: false,
@@ -117,6 +130,8 @@ const terrainRead = (
       const fall = downhill ? describeFall(downhill) : null
       const high = downhill ? highSide(downhill) : null
       return {
+        kind: 'slope',
+        fall,
         text: fall
           ? `Strong green slope falling ${fall}; keep it on the high side of the target.`
           : 'Strong green slope at the target; keep it on the high side.',
@@ -139,6 +154,7 @@ const terrainRead = (
 
   if ((rise12 != null && rise12 >= 4) || (rise20 != null && rise20 >= 6)) {
     return {
+      kind: 'shelf',
       text: 'Steep rise into the target. A short miss stays well below the hole; full carry matters.',
       shortIsCostly: true,
       longIsCostly: false,
@@ -146,6 +162,7 @@ const terrainRead = (
   }
   if ((rise12 != null && rise12 <= -4) || (rise20 != null && rise20 <= -6)) {
     return {
+      kind: 'fall',
       text: 'Target sits on a meaningful downslope. Long leaves the more difficult terrain miss.',
       shortIsCostly: false,
       longIsCostly: true,
@@ -153,6 +170,7 @@ const terrainRead = (
   }
 
   return {
+    kind: 'none',
     text: 'No major green-terrain warning at the target.',
     shortIsCostly: false,
     longIsCostly: false,
@@ -305,10 +323,32 @@ export const buildShotStrategyTacticalRead = (
   const safeMiss = resolveSafeMiss(hazard, terrain)
 
   return {
+    terrainKind: terrain.kind,
+    terrainHighSide: terrain.highSide ?? null,
+    terrainFall: terrain.fall ?? null,
     terrain: terrain.text,
     hazard: hazard.text,
     safeMiss,
     shortIsCostly: terrain.shortIsCostly,
     longIsCostly: terrain.longIsCostly,
+  }
+}
+
+/**
+ * Around the pin, for a chip: one or two short lines, only what changes how to play it. Nothing when
+ * the ground there is plain. Hazards aren't repeated here: the chip rows already say what a chip
+ * carries and what sits beside its landing (Brian, 21 Nov).
+ */
+export const chipPinNotes = (read: Pick<ShotStrategyTacticalRead, 'terrainKind' | 'terrainHighSide' | 'terrainFall'>): string[] => {
+  switch (read.terrainKind) {
+    case 'shelf': return ['Pin on a shelf: get it all the way up', 'Short rolls back down']
+    case 'rise': return ['Uphill to the hole', 'Below the hole is the easy putt']
+    case 'fall': return ['Falls away past the hole: it keeps running', 'Short leaves a downhill putt']
+    case 'slope': return [
+      read.terrainFall ? `Slopes hard ${read.terrainFall}` : 'Slopes hard at the hole',
+      ...(read.terrainHighSide ? [`Miss on the high side (${read.terrainHighSide})`] : []),
+    ]
+    case 'flat': return ['Flat around the hole']
+    default: return []
   }
 }

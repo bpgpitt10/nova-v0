@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import ChipOptionsCard from '../components/ChipOptionsCard'
-import { chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { chipOptions, defaultChip, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import type { Firmness } from '../liveCaddie/roundConditions'
 
 /**
@@ -80,7 +80,7 @@ export default function ChipLabPreviewPage() {
       <ChipOptionsCard
         distanceYds={distance}
         options={options}
-        shown={armed ?? options.find((o) => o.verdict === 'good')?.type ?? options.find((o) => o.verdict === 'short')?.type ?? null}
+        shown={armed ?? defaultChip(options)?.type ?? null}
         onShow={setArmed}
         conditions={`${grass} · ${greenFirmness} green, ${fairwayFirmness} fairway · stimp ${stimp}`}
         hasGreenMap

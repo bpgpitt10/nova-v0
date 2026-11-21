@@ -91,7 +91,15 @@
   opacity: 1;
 }
 
-.chip-row.is-edge-unclear .chip-row__tag {
+.chip-row.is-nearest {
+  opacity: 1;
+}
+
+.chip-row.is-nearest .chip-row__tag {
+  color: #f97316;
+}
+
+.chip-row.is-edge-unclear:not(.is-nearest) .chip-row__tag {
   color: #eab308;
 }
 
@@ -298,6 +306,16 @@
 .chip-conditions__row em.is-off {
   color: #eab308;
   font-weight: 700;
+}
+
+.chip-conditions__notes {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0 0 0 18px;
+  color: #e7efe4;
+  font-size: 13.5px;
 }
 
 .chip-conditions__foot {

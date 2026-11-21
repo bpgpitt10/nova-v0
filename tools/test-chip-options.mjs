@@ -5,7 +5,7 @@ import { createServer } from 'vite'
 
 const server = await createServer({ appType: 'custom', logLevel: 'silent', server: { middlewareMode: true } })
 try {
-  const { chipOptions, chipFlight, levelCarryFor } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')
+  const { chipOptions, chipFlight, levelCarryFor, defaultChip } = await server.ssrLoadModule('/src/liveCaddie/chipOptions.ts')
   const setting = { green: { courseType: 'medium', greenFirmness: 'medium', stimp: 11 }, fairway: { courseType: 'medium', fairwayFirmness: 'medium' }, fromRough: false }
   const line = (greenStarts, before, grade) => (carry) => ({ surface: carry < greenStarts ? before : 'green', gradeToHole: grade })
   const byType = (options) => Object.fromEntries(options.map((o) => [o.type, o]))
@@ -94,6 +94,17 @@ try {
   assert.ok(bumpBreak < -2, `bump aims right (${bumpBreak})`)
   assert.ok(flopBreak < 0 && flopBreak > bumpBreak, `flop aims right, less (${flopBreak})`)
   assert.ok(Math.abs(chipBreakAimFt(level, [0, 0], [0, 30], shot(10, 20), 11)) < 0.3)
+  // Nothing lands on the green and stops (the green starts 3 yd short of the hole, up a slope): the
+  // shot to show first is the highest one left, never a low one landing short of the green.
+  const tight = chipOptions(26, line(23, 'fairway', 0.08), setting, 3)
+  assert.ok(!tight.some((o) => o.verdict === 'good'), JSON.stringify(tight.map((o) => o.verdict)))
+  const first = defaultChip(tight)
+  assert.ok(first && first.verdict === 'short')
+  assert.ok(tight.filter((o) => o.verdict === 'short').every((o) => o.flight.carryYds <= first.flight.carryYds + 1e-9),
+    `default lands nearest the green (${first.type})`)
+  assert.notEqual(first.type, 'bump')
+  // With a pick, the pick comes first.
+  assert.equal(defaultChip(Object.values(flat)).verdict, 'good')
   console.log('chip options ok', bumpBreak.toFixed(1), flopBreak.toFixed(1))
 } finally {
   await server.close()

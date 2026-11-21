@@ -1,4 +1,4 @@
-import { CHIP_LABEL, chipLieRead, type ChipOption, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_LABEL, chipLieRead, defaultChip, type ChipOption, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import './ChipOptionsCard.css'
 
 type Props = {
@@ -27,10 +27,8 @@ type Props = {
   /** Aim GSPro for this chip (Auto Aim). */
   onAim?: (type: ChipType) => void
   aim?: { type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null
-  /** Looper's read of the green at the target, the trouble near it and the safe miss. */
-  terrain?: string | null
-  hazard?: string | null
-  safeMiss?: string | null
+  /** Around the pin: one or two short lines, only what changes how to play the chip. */
+  pinNotes?: readonly string[]
   /** Looper's green outline ends close to the pin (or misses it): where GSPro's green starts is unsure. */
   greenEdgeUncertain?: boolean
 }
@@ -61,7 +59,7 @@ const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs
 export default function ChipOptionsCard({
   distanceYds, options, shown, onShow, conditions, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
-  terrain = null, hazard = null, safeMiss = null, greenEdgeUncertain = false, riseFt = null, riseSource = null, breakLeftFt = null, breakScaled = false,
+  pinNotes = [], greenEdgeUncertain = false, riseFt = null, riseSource = null, breakLeftFt = null,
 }: Props) {
   const riseText = riseFt == null ? null
     : Math.abs(riseFt) < 0.25 ? 'level'
@@ -70,9 +68,21 @@ export default function ChipOptionsCard({
   // Sand and water short of the green are still real.
   const edgeUnclear = (option: ChipOption) => greenEdgeUncertain && option.verdict === 'short'
     && option.landsOn !== 'bunker' && option.landsOn !== 'water'
-  const tagFor = (option: ChipOption) => (edgeUnclear(option) ? 'Edge unclear' : TAG[option.verdict] ?? '')
+  // Nothing lands on the green and stops: the shot to look at first is the highest one left, which
+  // lands nearest the green. Never a low one landing short (Brian, 21 Nov).
+  const nearest = options.some((o) => o.verdict === 'good') ? null : defaultChip(options)
+  const tagFor = (option: ChipOption) => (option === nearest ? 'Nearest the green'
+    : edgeUnclear(option) ? 'Edge unclear' : TAG[option.verdict] ?? '')
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
+  const onlyLine = !current ? 'None of the four finishes at the hole cleanly from here.'
+    : current.verdict === 'avoid' ? current.reason
+      : current === nearest ? 'Nothing lands on the green and stops: this lands nearest it.'
+        : current.carries
+          ? fromSand && current.carries.surface === 'bunker'
+            ? `Out of the bunker: lands ${Math.round(current.carries.landsPastYds)} yd past its edge.`
+            : `Carries the ${SURFACE[current.carries.surface]}: lands ${Math.round(current.carries.landsPastYds)} yd past it.`
+          : null
   // Landing a yard or more off level changes the swing: say it like sand does (Brian, 21 Nov).
   const heightCounts = current != null && Math.abs(current.levelCarryYds - current.flight.carryYds) >= 1
   const swingYds = current == null ? null
@@ -84,7 +94,6 @@ export default function ChipOptionsCard({
   const lie = lieOnly ? { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (breakFt ?? 0) } : null
   const aimOff = lie && Math.abs(lie.aimLeftFt) >= 1
   const lieAimOff = lieOnly != null && Math.abs(lieOnly.aimLeftFt) >= 1
-  const lieKnown = lieLeftRightDeg != null || lieUpDownDeg != null
   const sideText = lieLeftRightDeg == null ? 'not read' : Math.abs(lieLeftRightDeg) < 0.25 ? 'level'
     : `${Math.abs(lieLeftRightDeg).toFixed(1)}° ${lieLeftRightDeg > 0 ? 'left' : 'right'}`
   const upText = lieUpDownDeg == null ? 'not read' : Math.abs(lieUpDownDeg) < 0.25 ? 'level'
@@ -133,7 +142,7 @@ export default function ChipOptionsCard({
               type="button"
               role="radio"
               aria-checked={option.type === shown}
-              className={`chip-row is-${option.verdict}${edgeUnclear(option) ? ' is-edge-unclear' : ''}${option.type === shown ? ' is-shown' : ''}`}
+              className={`chip-row is-${option.verdict}${edgeUnclear(option) ? ' is-edge-unclear' : ''}${option === nearest ? ' is-nearest' : ''}${option.type === shown ? ' is-shown' : ''}`}
               onClick={() => onShow(option.type)}
             >
               <span className="chip-row__name">{CHIP_LABEL[option.type]}<small>{option.launchDeg}&deg;</small></span>
@@ -143,30 +152,9 @@ export default function ChipOptionsCard({
             </button>
           ))}
         </div>
-        {current ? (
-          <div className="chip-options__detail">
-            <p className="chip-options__line">
-              <strong>{CHIP_LABEL[current.type]}:</strong> fly {yd(current.flight.carryYds)} yd, lands on the {SURFACE[current.landsOn]},
-              runs {yd(current.runYds)}.
-            </p>
-            {current.swingLikeYds != null ? (
-              <p className="chip-options__reason">
-                From sand: make the swing of a clean {Math.round(current.swingLikeYds)} yd carry {CHIP_LABEL[current.type].toLowerCase()}. The sand takes it down to {yd(current.flight.carryYds)}{heightCounts ? ` (it lands ${current.landingRiseFt != null && current.landingRiseFt > 0 ? 'uphill' : 'downhill'}, in that already)` : ''}.
-              </p>
-            ) : heightCounts && current.landingRiseFt != null ? (
-              <p className="chip-options__reason">
-                Lands {current.landingRiseFt > 0 ? 'uphill' : 'downhill'}: make the swing of a {Math.round(current.levelCarryYds)} yd carry on level ground. {current.landingRiseFt > 0 ? 'The slope catches it' : 'It drops'} at {yd(current.flight.carryYds)}.
-              </p>
-            ) : null}
-            {edgeUnclear(current)
-              ? <p className="chip-options__reason">Lands short of Looper&rsquo;s green, which may itself be short here.</p>
-              : current.reason ? <p className="chip-options__reason">{current.reason}</p> : null}
-          </div>
-        ) : (
-          <p className="chip-options__reason">None of the four finishes at the hole cleanly from here.</p>
-        )}
+        {/* One line, and only what the rows, the tags, the big number and the table don't already say. */}
+        {onlyLine ? <p className="chip-options__reason">{onlyLine}</p> : null}
         <p className="chip-options__note">
-          {options.some((o) => o.verdict === 'good') || greenEdgeUncertain ? '' : 'Nothing here lands on the green and stops: every option runs on from short of it. '}
           {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with.' : ''}
         </p>
       </section>
@@ -195,23 +183,23 @@ export default function ChipOptionsCard({
         </div>
         {/* Under the ball first (up/down then side, as GSPro lists them), then the green, then the strike. */}
         <div className="chip-conditions__row">
-          <span>Up or down slope<small>under the ball</small></span>
+          <span>Up or down slope</span>
           <b>{upText}</b>
           <em>
             {lie && Math.abs(lie.launchDeltaDeg) >= 0.75
-              ? `launches ${Math.abs(lie.launchDeltaDeg).toFixed(0)}° ${lie.launchDeltaDeg > 0 ? 'higher: lands softer, runs less' : 'lower: comes in hotter, runs more'} (in the numbers)`
+              ? `launches ${Math.abs(lie.launchDeltaDeg).toFixed(0)}° ${lie.launchDeltaDeg > 0 ? 'higher: lands softer, runs less' : 'lower: comes in hotter, runs more'} · included in Fly and Run`
               : lieUpDownDeg == null ? '—' : 'no change'}
           </em>
         </div>
         <div className="chip-conditions__row">
-          <span>Side slope<small>{lieKnown ? 'GSPro lie' : 'lie not read yet'}</small></span>
+          <span>Side slope</span>
           <b>{sideText}</b>
           <em className={lieAimOff ? 'is-off' : ''}>
             {lieAimOff && lieOnly ? `starts it ${lieOnly.aimLeftFt > 0 ? 'right' : 'left'}: ${feet(lieOnly.aimLeftFt)} ${lieOnly.aimLeftFt > 0 ? 'left' : 'right'}` : lieLeftRightDeg == null ? '—' : 'no change to the aim'}
           </em>
         </div>
         <div className="chip-conditions__row">
-          <span>Lie<small>{surface || 'surface'}</small></span>
+          <span>Lie</span>
           <b>{fromSand ? 'sand' : /rough/.test(surface) ? 'rough' : 'clean'}</b>
           <em>
             {fromSand ? 'about a quarter of the speed gone: bigger swing, pitch or flop only'
@@ -219,34 +207,34 @@ export default function ChipOptionsCard({
           </em>
         </div>
         <div className="chip-conditions__row">
-          <span>To the hole<small>{riseSource ? `from ${riseSource === 'GSPro' ? 'GSPro’s pin height' : 'the green map'}` : 'height not read yet'}</small></span>
+          <span>To the hole</span>
           <b>{riseText ?? '—'}</b>
           <em>
             {riseFt == null ? '—'
               : Math.abs(riseFt) < 0.25 ? 'no change'
-                : `${(Math.abs(riseFt) / (distanceYds * 3) * 100).toFixed(1)}% ${riseFt > 0 ? 'uphill: runs less' : 'downhill: runs more'}${hasGreenMap ? ', in the run already' : riseSource === 'GSPro' ? ', in the run as one even slope' : ''}`}
+                : `${(Math.abs(riseFt) / (distanceYds * 3) * 100).toFixed(1)}% ${riseFt > 0 ? 'uphill: runs less' : 'downhill: runs more'}${hasGreenMap || riseSource === 'GSPro' ? ' · included in Run' : ''}`}
           </em>
         </div>
         <div className="chip-conditions__row">
-          <span>Break on the green<small>{hasGreenMap ? (breakScaled ? 'green map, scaled to GSPro’s height (estimate)' : 'the run, from the green map (estimate)') : 'no green map here'}</small></span>
+          <span>Break on the green</span>
           {/* Under a foot still says which way and how many inches: "straight" only when it truly is. */}
           <b>{breakFt == null ? '—' : Math.abs(breakFt) < BREAK_STRAIGHT_FT ? 'straight'
             : Math.abs(breakFt) < 1 ? `${Math.round(Math.abs(breakFt) * 12)} in ${breakFt > 0 ? 'left' : 'right'}`
               : `${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}</b>
           <em className={breakFt != null && Math.abs(breakFt) >= 1 ? 'is-off' : ''}>
-            {breakFt == null ? '—' : Math.abs(breakFt) < BREAK_STRAIGHT_FT ? 'no change to the aim'
+            {breakFt == null ? (hasGreenMap ? '—' : 'no green map here') : Math.abs(breakFt) < BREAK_STRAIGHT_FT ? 'no change to the aim'
               : Math.abs(breakFt) < 1 ? `runs ${breakFt > 0 ? 'left to right' : 'right to left'}, a little: aim stays at the pin`
                 : `runs ${breakFt > 0 ? 'left to right' : 'right to left'}: aim ${feet(breakFt)} ${breakFt > 0 ? 'left' : 'right'}`}
           </em>
         </div>
-        {terrain ? (
+        {pinNotes.length ? (
           <div className="chip-conditions__row">
-            <span>Around the pin<small>Looper’s read of the area at the hole</small></span><b />
-            <em>{terrain}{hazard ? ` ${hazard}` : ''}{safeMiss ? ` ${safeMiss}` : ''}</em>
+            <span>Around the pin</span><b />
+            <ul className="chip-conditions__notes">{pinNotes.map((note) => <li key={note}>{note}</li>)}</ul>
           </div>
         ) : null}
         <div className="chip-conditions__row">
-          <span>Ball data<small>to hit this chip</small></span>
+          <span>Ball data</span>
           <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
           <em>{current ? `${Math.round(current.swingFlight.ballSpeedMph)} mph · ${Math.round(current.swingFlight.spinRpm / 50) * 50} rpm (typical spin; yours may differ)` : '—'}</em>
         </div>

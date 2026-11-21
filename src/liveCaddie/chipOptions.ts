@@ -27,7 +27,17 @@ export const CHIP_LABEL: Readonly<Record<ChipType, string>> = { bump: 'Bump and 
 /** Chip cards take over from the club recommendation inside this distance, off the green. */
 export const CHIP_ZONE_YDS = 40
 /** Looper's green ending closer than this to the pin, on the ball's side, is probably a short outline. */
-export const GREEN_EDGE_DOUBT_YDS = 5
+export const GREEN_EDGE_DOUBT_YDS = 7
+
+/**
+ * The chip to show first. Looper's pick when there is one. Otherwise never a low shot landing short
+ * of the green (the bank and any sidehill there aren't read: Brian, 21 Nov): the highest shot that
+ * isn't ruled out, which lands nearest the green with the least run over that ground.
+ */
+export const defaultChip = (options: readonly ChipOption[]): ChipOption | null =>
+  options.find((o) => o.verdict === 'good')
+  ?? [...options].reverse().find((o) => o.verdict === 'short')
+  ?? null
 
 /** GSPro, 20 Nov: [ball speed mph, launch spin rpm, carry yd, landing speed mph, descent deg, landing spin rpm]. */
 const FLIGHT: Readonly<Record<ChipType, readonly (readonly number[])[]>> = {

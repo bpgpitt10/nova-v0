@@ -42,6 +42,7 @@ import {
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { analyzeGreen, greenReadLine } from '../liveCaddie/greenRead'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
+import { chipPinNotes } from '../liveCaddie/shotStrategyTerrain'
 import { pureFinishRead } from '../liveCaddie/pureFinishRead'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
@@ -115,7 +116,7 @@ import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
 import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
 import ChipOptionsCard from '../components/ChipOptionsCard'
-import { CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
@@ -1251,8 +1252,7 @@ export default function LiveCaddiePage() {
           + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}${chipFromSand ? ' · from sand' : ''}`
         // The chip on show: the player's pick, else the one Looper would point to first.
         const shown = options.find((o) => armedChip?.shot === chipShotKey && o.type === armedChip.type)
-          ?? options.find((o) => o.verdict === 'good')
-          ?? options.find((o) => o.verdict === 'short') ?? null
+          ?? defaultChip(options)
         return {
           options,
           conditions,
@@ -2666,15 +2666,24 @@ export default function LiveCaddiePage() {
                       riseSource={chipLab.riseSource}
                       onAim={aimChip}
                       aim={chipAim && chipAim.shot === chipShotKey ? chipAim : null}
-                      terrain={shotStrategy?.terrain ?? null}
-                      hazard={shotStrategy?.hazard ?? null}
-                      safeMiss={shotStrategy?.safeMiss ?? null}
+                      pinNotes={shotStrategy ? chipPinNotes(shotStrategy) : []}
                       greenEdgeUncertain={chipLab.greenEdgeUncertain}
                     />
                   ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
                     ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
-                    : displayedClub ?? '—'}</div>
+                    : displayedClub ?? '—'}
+                    {/* 40 to 90 yd: PLAY is the carry to the target; the window is where it can land and be on the green. */}
+                    {isShotStrategy && shotStrategy?.carryWindow ? (
+                      <span className="live-carry-window">
+                        {shotStrategy.carryWindow.fromYds == null
+                          ? 'Carry window: Looper’s green may be short here. Check where GSPro’s green starts.'
+                          : Math.round(shotStrategy.carryWindow.toYds) - Math.round(shotStrategy.carryWindow.fromYds) < 2
+                            ? `Carry it all ${Math.round(shotStrategy.carryWindow.toYds)}: no green to land on short of the target.`
+                            : <>Carry window <b>{Math.round(shotStrategy.carryWindow.fromYds)}–{Math.round(shotStrategy.carryWindow.toYds)}</b> · {shotStrategy.carryWindow.pastTrouble ? `past the ${shotStrategy.carryWindow.pastTrouble}` : 'front of the green'} to the target</>}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="live-aim-hero">
                     {armedOffsetHere != null ? (
                       <span className={`live-armed-tag${armedOffsetHere === shownAimOffset ? '' : ' elsewhere'}`}>
