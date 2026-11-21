@@ -14,6 +14,9 @@ At the prompt:
   7i draw / fade    curve it (hook / slice for more)
   7i 90%            a softer swing (ball speed x 0.9)
   raw 110 17 6000 [hla] [axis]   any ball data: mph, launch deg, spin rpm, start deg, axis deg
+  pitch 18          a chip that carries 18 yd, as Looper's chip lab sizes it:
+                    bump 12°, chip 20°, pitch 28° or flop 40° launch, with
+                    GSPro's measured speed and spin for that carry (5-43 yd)
   bag               list the stock numbers
   q                 quit
 
@@ -90,6 +93,35 @@ class ShotError(ValueError):
     pass
 
 
+# The chip lab's flights (src/liveCaddie/chipOptions.ts, GSPro 20 Nov):
+# [ball speed mph, launch spin rpm, carry yd] for each chip, 5 to 43 yd.
+CHIP_LAUNCH = {"bump": 12.0, "chip": 20.0, "pitch": 28.0, "flop": 40.0}
+CHIP_FLIGHT = {
+    "bump": [(23.6, 903, 4.99), (26.0, 994, 5.77), (28.2, 1078, 7.26), (31.6, 1207, 9.31), (34.0, 1301, 10.98),
+             (36.5, 1396, 12.27), (41.5, 1585, 16.82), (60.6, 2318, 34.15), (65.9, 2518, 42.93)],
+    "chip": [(18.9, 1389, 4.98), (20.8, 1529, 5.53), (22.6, 1662, 6.91), (26.0, 1910, 9.56), (27.3, 2006, 10.59),
+             (29.9, 2196, 12.41), (33.9, 2494, 16.5), (48.5, 3566, 32.85), (53.8, 3956, 41.19)],
+    "pitch": [(16.7, 2083, 4.8), (18.4, 2293, 5.83), (20.4, 2535, 7.39), (22.6, 2817, 9.09), (24.6, 3059, 10.79),
+              (25.7, 3199, 11.52), (30.3, 3768, 16.36), (43.0, 5349, 31.71), (48.6, 6049, 40.45)],
+    "flop": [(15.4, 1805, 4.96), (17.0, 1987, 5.88), (18.5, 2162, 7.11), (20.9, 2453, 8.93), (22.3, 2609, 10.27),
+             (23.6, 2768, 11.22), (28.2, 3298, 16.13), (39.6, 4635, 30.08), (46.0, 5388, 39.22)],
+}
+
+
+def chip_flight(kind: str, carry: float) -> tuple[float, float, float]:
+    """Ball speed, spin and the carry used, interpolated like chipFlight() in the chip lab."""
+    rows = CHIP_FLIGHT[kind]
+    c = max(rows[0][2] * 0.5, min(rows[-1][2], carry))
+    i = next((k for k, row in enumerate(rows) if row[2] >= c), len(rows) - 1)
+    i = max(i, 1)
+    a, b = rows[i - 1], rows[i]
+    if c < a[2]:
+        shrink = (c / a[2]) ** 0.53
+        return a[0] * shrink, a[1] * shrink, c
+    t = (c - a[2]) / (b[2] - a[2])
+    return a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, c
+
+
 def club_for_carry(target: float) -> tuple[str, float]:
     """The shortest club that carries the target, and the speed multiplier to get there."""
     reach = [(c, s) for c, s in BAG.items() if s["carry"] >= target]
@@ -124,6 +156,19 @@ def parse(text: str) -> dict[str, Any]:
                 "spin": nums[2], "hla": nums[3], "axis": nums[4],
                 "clubSpeed": round(near["club"] * ratio, 1), "aoa": near["aoa"],
                 "carry": round(near["carry"] * ratio ** CARRY_POWER, 1)}
+    if head in CHIP_LAUNCH:
+        if not rest or not re.fullmatch(r"\d+(\.\d+)?", rest[0]):
+            raise ShotError(f"Say how far to carry it: {head} 18")
+        speed, spin, carry = chip_flight(head, float(rest[0]))
+        if len(rest) > 1:
+            raise ShotError(f"Just the carry: {head} 18")
+        sw = BAG["SW"]
+        label = f"{head} carrying {carry:.0f} yd ({CHIP_LAUNCH[head]:.0f}° launch)"
+        if abs(carry - float(rest[0])) > 0.05:
+            label += f" (measured chips go {CHIP_FLIGHT[head][0][2] * 0.5:.1f} to {CHIP_FLIGHT[head][-1][2]:.0f} yd)"
+        return {"club": "SW", "label": label, "speed": round(speed, 1), "vla": CHIP_LAUNCH[head],
+                "spin": round(spin), "hla": 0.0, "axis": 0.0,
+                "clubSpeed": round(sw["club"] * speed / sw["speed"], 1), "aoa": sw["aoa"], "carry": round(carry, 1)}
     if re.fullmatch(r"\d+(\.\d+)?", head) and head not in ALIASES:
         target = float(head)
         club, mul = club_for_carry(target)
