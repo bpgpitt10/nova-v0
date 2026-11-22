@@ -1,0 +1,182 @@
+.range-sort-main { max-width: 880px; }
+
+.range-sort-head { display: grid; gap: 10px; }
+
+.range-sort-lead {
+  max-width: 44em;
+  color: var(--rounds-secondary);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.range-sort-saved a { color: var(--rounds-accent); }
+
+.range-sort-visits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.range-sort-page .range-sort-visits button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 999px;
+  background: var(--rounds-inset);
+  color: var(--rounds-secondary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.range-sort-page .range-sort-visits button span { color: var(--rounds-muted); margin-left: 4px; }
+
+.range-sort-page .range-sort-visits button.is-active {
+  border-color: var(--rounds-accent);
+  background: var(--rounds-elevated);
+  color: #fff;
+}
+
+.range-sort-visit { display: grid; gap: 14px; }
+
+.range-sort-visit__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.range-sort-visit__head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+
+.range-sort-runs {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.range-sort-run {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 14px;
+  background: var(--rounds-card);
+}
+
+.range-sort-run.is-skipped { opacity: 0.55; }
+.range-sort-run.needs-club { border-color: var(--rounds-gold); }
+
+.range-sort-run__main {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.4fr) minmax(170px, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.range-sort-run__keep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.range-sort-page input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  accent-color: #86efac;
+}
+
+.range-sort-run__count { color: var(--rounds-secondary); font-size: 15px; }
+.range-sort-run__count strong { color: #fff; font-size: 20px; }
+
+.range-sort-run__numbers { display: grid; gap: 2px; }
+.range-sort-run__numbers strong { font-size: 18px; }
+.range-sort-run__numbers span { color: var(--rounds-muted); font-size: 13px; }
+
+.range-sort-run__club { display: grid; gap: 4px; }
+.range-sort-run__club span { color: var(--rounds-muted); font-size: 12px; }
+
+.range-sort-run__club select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--rounds-line);
+  border-radius: 10px;
+  background: var(--rounds-inset);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+}
+
+.range-sort-run.needs-club .range-sort-run__club select { border-color: var(--rounds-gold); }
+
+.range-sort-run__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  font-size: 13px;
+}
+
+.range-sort-scroll { overflow-x: auto; }
+
+.range-sort-swings {
+  width: 100%;
+  min-width: 460px;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.range-sort-swings th {
+  padding: 6px 8px;
+  color: var(--rounds-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.range-sort-swings td { padding: 6px 8px; border-top: 1px solid var(--rounds-line); }
+.range-sort-swings tr.is-out td { color: var(--rounds-muted); }
+
+.range-sort-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0 18px;
+  background: linear-gradient(180deg, rgba(14, 23, 16, 0) 0%, var(--rounds-bg) 30%);
+}
+
+.range-sort-actions > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.range-sort-actions__side { font-size: 13px; }
+
+.range-sort-page .range-sort-add {
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--rounds-gold);
+  color: #10170f;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.range-sort-page .range-sort-add:hover { background: #f4c430; color: #10170f; }
+.range-sort-page .range-sort-add:disabled { opacity: 0.45; cursor: default; background: var(--rounds-gold); }
+
+.range-sort-need { color: var(--rounds-gold); font-size: 14px; }
+
+@media (max-width: 640px) {
+  .range-sort-run__main { grid-template-columns: 1fr 1fr; }
+  .range-sort-run__club { grid-column: 1 / -1; }
+}

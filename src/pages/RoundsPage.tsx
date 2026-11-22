@@ -645,7 +645,11 @@ function RoundsList({
             <div className="rounds-table-foot rounds-muted">
               {hiddenPartials > 0 ? <span>{hiddenPartials} partial round{hiddenPartials === 1 ? '' : 's'} hidden</span> : null}
               {hiddenNotCounting > 0 ? <span>{hiddenNotCounting} round{hiddenNotCounting === 1 ? '' : 's'} that don’t count hidden</span> : null}
-              {rangeSessions > 0 ? <span>{rangeSessions} range session{rangeSessions === 1 ? '' : 's'} not shown</span> : null}
+              {rangeSessions > 0 ? (
+                <span>
+                  {rangeSessions} range session{rangeSessions === 1 ? '' : 's'} not shown · <a className="rounds-link-button" href="/range-sort">Sort range swings into your bag</a>
+                </span>
+              ) : null}
               {filter !== 'all' && hiddenPartials + hiddenNotCounting > 0 ? (
                 <button className="rounds-link-button" onClick={() => setFilter('all')} type="button">Show everything</button>
               ) : null}
