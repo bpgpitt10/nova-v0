@@ -1084,3 +1084,8 @@
 
 .insights-footer__row a { color: #cfd8cd; text-decoration: none; }
 .insights-footer__row a:hover { color: #f4d15d; text-decoration: underline; }
+
+.insights-close .insights-close__tour { margin: 16px auto 0; font-size: 16px; }
+.insights-close .insights-close__tour a { color: #f4d15d; font-weight: 600; text-decoration: none; }
+.insights-close .insights-close__tour a:hover { text-decoration: underline; }
+@media (max-width: 560px) { .insights-top__how { display: none; } }

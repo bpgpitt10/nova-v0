@@ -459,6 +459,7 @@ export default function InsightsPage() {
             <img src={looperLogo} alt="The Looper" />
           </a>
           <nav className="insights-top__nav" aria-label="Account">
+            <a className="insights-top__how" href="/tour">How Looper works</a>
             <a href={SIGN_IN_HREF}>Sign in</a>
             <AccountButton />
           </nav>
@@ -626,6 +627,7 @@ export default function InsightsPage() {
             you&rsquo;re landing on and how far your clubs carry.
           </p>
           <AccountButton />
+          <p className="insights-close__tour"><a href="/tour">See how it works first →</a></p>
           <p className="insights-close__signin">
             Free, always. Already playing with The Looper? <a href={SIGN_IN_HREF}>Sign in</a>
           </p>
