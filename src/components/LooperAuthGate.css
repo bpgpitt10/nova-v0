@@ -38,7 +38,9 @@
 .looper-auth__card {
   position: relative;
   z-index: 2;
-  width: min(580px, 100%);
+  /* Padding and border are inside the width, so the card and its fields fit a phone. */
+  box-sizing: border-box;
+  width: min(654px, 100%);
   padding: 36px;
   border: 1px solid #314233;
   border-radius: 18px;
@@ -52,7 +54,7 @@
 }
 
 .looper-auth__card--compact {
-  width: min(500px, 100%);
+  width: min(574px, 100%);
 }
 
 .looper-auth__logo {
@@ -171,6 +173,7 @@
 }
 
 .looper-auth input {
+  box-sizing: border-box;
   width: 100%;
   padding: 0 14px;
   border: 1px solid #314233;

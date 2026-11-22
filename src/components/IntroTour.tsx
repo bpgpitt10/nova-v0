@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
 import ConditionsMathPanel from '../pages/ConditionsMathPanel'
 import ChipOptionsCard from './ChipOptionsCard'
@@ -30,7 +30,7 @@ export const introTourSeen = (): boolean => {
   }
 }
 
-const markIntroTourSeen = () => {
+export const markIntroTourSeen = () => {
   try {
     window.localStorage.setItem(INTRO_TOUR_SEEN_KEY, '1')
   } catch {
@@ -44,6 +44,11 @@ type Props = {
   audience: Audience
   /** new-account: close the tour and carry on to the bag step. */
   onDone?: () => void
+  /**
+   * visitor, shown in place of the sign-in card: leave for that card without a page load.
+   * Without it the links go to the home page (the stand-alone /tour).
+   */
+  onExit?: (to: 'sign-in' | 'sign-up') => void
 }
 
 /* ---------- 1. The caddie card: a sample 152-yard approach ---------- */
@@ -306,7 +311,7 @@ type Slide = {
 
 const SWIPE_PX = 50
 
-export default function IntroTour({ audience, onDone }: Props) {
+export default function IntroTour({ audience, onDone, onExit }: Props) {
   const slides: Slide[] = useMemo(() => [
     {
       key: 'caddie',
@@ -391,8 +396,15 @@ export default function IntroTour({ audience, onDone }: Props) {
     }
   }, [audience])
 
+  const leave = (to: 'sign-in' | 'sign-up') => (event: MouseEvent) => {
+    markIntroTourSeen()
+    if (!onExit) return
+    event.preventDefault()
+    onExit(to)
+  }
+
   const skip = audience === 'visitor'
-    ? <a className="intro-tour__skip" href={SIGN_UP_HREF} onClick={markIntroTourSeen}>Skip</a>
+    ? <a className="intro-tour__skip" href={SIGN_UP_HREF} onClick={leave('sign-up')}>Skip</a>
     : <button type="button" className="intro-tour__skip" onClick={finish}>Skip</button>
 
   return (
@@ -402,7 +414,7 @@ export default function IntroTour({ audience, onDone }: Props) {
           <img src={looperLogo} alt="The Looper" />
         </a>
         <div className="intro-tour__top-actions">
-          {audience === 'visitor' ? <a className="intro-tour__skip" href={SIGN_IN_HREF} onClick={markIntroTourSeen}>Sign in</a> : null}
+          {audience === 'visitor' ? <a className="intro-tour__skip" href={SIGN_IN_HREF} onClick={leave('sign-in')}>Sign in</a> : null}
           {index < last ? skip : null}
         </div>
       </header>
@@ -460,13 +472,13 @@ export default function IntroTour({ audience, onDone }: Props) {
         {index < last ? (
           <button type="button" className="intro-tour__next" onClick={() => go(index + 1)}>Next</button>
         ) : audience === 'visitor' ? (
-          <a className="intro-tour__next" href={SIGN_UP_HREF} onClick={markIntroTourSeen}>Create a free account</a>
+          <a className="intro-tour__next" href={SIGN_UP_HREF} onClick={leave('sign-up')}>Create a free account</a>
         ) : (
           <button type="button" className="intro-tour__next" onClick={finish}>Set up your bag</button>
         )}
       </footer>
       {audience === 'visitor' && index === last ? (
-        <p className="intro-tour__signin">Already have an account? <a href={SIGN_IN_HREF} onClick={markIntroTourSeen}>Sign in</a></p>
+        <p className="intro-tour__signin">Already have an account? <a href={SIGN_IN_HREF} onClick={leave('sign-in')}>Sign in</a></p>
       ) : null}
     </div>
   )

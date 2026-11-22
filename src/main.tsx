@@ -10,7 +10,7 @@ import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import LoadCoursePage from './pages/LoadCoursePage.tsx'
 import FaqPage, { LooperFooter } from './pages/FaqPage'
 import InsightsPage from './pages/InsightsPage.tsx'
-import IntroTour, { introTourSeen } from './components/IntroTour.tsx'
+import IntroTour, { introTourSeen, markIntroTourSeen } from './components/IntroTour.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import QuickBagPage from './pages/QuickBagPage.tsx'
@@ -200,6 +200,10 @@ function RootRouter() {
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
   // A brand-new account (no bag yet) sees the intro tour once, unless it took the tour before signing up.
   const [tourSeen, setTourSeen] = useState(() => introTourSeen())
+  // A player with a bag already knows Looper: never show them the tour, signed out or not.
+  useEffect(() => {
+    if (hasBagConfig) markIntroTourSeen()
+  }, [hasBagConfig])
   const [needsQuickBag, setNeedsQuickBag] = useState(() => needsQuickBagStep(loadSavedSessions()))
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
