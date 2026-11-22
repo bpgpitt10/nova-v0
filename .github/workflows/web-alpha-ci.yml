@@ -252,6 +252,8 @@ jobs:
         run: node tools/test-lie-flight.mjs
       - name: Chip lab (land on the green first, sand, slopes, break, default shot)
         run: node tools/test-chip-options.mjs
+      - name: Tee shot held when Looper's map and GSPro disagree on the distance
+        run: node tools/test-map-distance-check.mjs
       - name: Slope of the lie (GSPro's measured launch and start line)
         run: node tools/test-lie-slope.mjs
       - name: GSPro's carry for a launch (measured model)
