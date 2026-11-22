@@ -69,15 +69,24 @@ export default function FaqPage() {
   )
 }
 
-/** One quiet line at the bottom of every page. */
-export function LooperFooter() {
+/** Help, Insights and support: the same links under the tagline and in the page-bottom footer. */
+export function LooperHelpLinks() {
   return (
-    <footer className="looper-footer">
+    <>
       <a href="/faq">FAQ and Help</a>
       <span aria-hidden="true"> · </span>
       <a href="/insights">GSPro 4.1.9 Insights</a>
       <span aria-hidden="true"> · </span>
       <a href={`mailto:${SUPPORT_EMAIL}`}>Email support</a>
+    </>
+  )
+}
+
+/** One quiet line at the bottom of every page. */
+export function LooperFooter() {
+  return (
+    <footer className="looper-footer">
+      <LooperHelpLinks />
     </footer>
   )
 }
