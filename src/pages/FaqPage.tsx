@@ -2,6 +2,9 @@ import { FAQ_SECTIONS, GETTING_STARTED } from '../lib/faqContent'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import './FaqPage.css'
 
+/** Where players write for help (Brian, 21 Nov). */
+export const SUPPORT_EMAIL = 'thelooper.golf.admin@gmail.com'
+
 export default function FaqPage() {
   return (
     <main className="faq-page">
@@ -11,6 +14,7 @@ export default function FaqPage() {
           <div>
             <h1>Questions and answers</h1>
             <p>How The Looper works, and what to do when something does not.</p>
+            <p className="faq-support">Still stuck? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Copy the support code from Live Caddie&rsquo;s Details if you have one.</p>
           </div>
         </header>
         <section aria-labelledby="faq-start-title" className="faq-start" id="start-here">
@@ -56,8 +60,25 @@ export default function FaqPage() {
             ))}
           </section>
         ))}
+        <section className="faq-section faq-contact" id="contact">
+          <h2>Contact</h2>
+          <p>Questions, bugs or a course that isn&rsquo;t loading right: email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. A screenshot and the support code from Live Caddie&rsquo;s Details help a lot.</p>
+        </section>
       </div>
     </main>
+  )
+}
+
+/** Help, Insights and support: the same links under the tagline and in the page-bottom footer. */
+export function LooperHelpLinks() {
+  return (
+    <>
+      <a href="/faq">FAQ and Help</a>
+      <span aria-hidden="true"> · </span>
+      <a href="/insights">GSPro 4.1.9 Insights</a>
+      <span aria-hidden="true"> · </span>
+      <a href={`mailto:${SUPPORT_EMAIL}`}>Email support</a>
+    </>
   )
 }
 
@@ -65,7 +86,7 @@ export default function FaqPage() {
 export function LooperFooter() {
   return (
     <footer className="looper-footer">
-      <a href="/faq">FAQ and Help</a>
+      <LooperHelpLinks />
     </footer>
   )
 }
