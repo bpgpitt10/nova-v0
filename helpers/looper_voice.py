@@ -106,6 +106,14 @@ AIM_LINE_PHRASES = {
     "second best": "second", "second best line": "second", "second line": "second", "second": "second",
     "safest": "safest", "safest line": "safest", "safe line": "safest", "safe": "safest", "safe one": "safest",
 }
+# Chip shots around the green (Brian, 21 Nov): "Looper, pitch", "show me the flop shot".
+# Said alone it shows that chip; with "arm" in front it aims it. Not "lob": that is the lob wedge.
+CHIP_PHRASES = {
+    "bump and run": "bump", "bump": "bump", "bump run": "bump",
+    "chip": "chip", "chip shot": "chip",
+    "pitch": "pitch", "pitch shot": "pitch",
+    "flop": "flop", "flop shot": "flop",
+}
 AIM_RESET_PHRASES = frozenset((
     "reset aim", "aim reset", "aim center", "center", "center it", "center aim",
     "your line", "aim your line", "back center",
@@ -167,6 +175,7 @@ def grammar(clubs: frozenset[str] | None = None) -> list[str]:
                   DETAILS_PHRASES, AIM_RESET_PHRASES):
         phrases += sorted(table)
     phrases += list(AIM_LINE_PHRASES)
+    phrases += list(CHIP_PHRASES)
     words: set[str] = set(FILLER_WORDS) | WIND_VERBS | AIM_VERBS | AIM_QUALIFIERS
     words |= CLUB_STEP_UP | CLUB_STEP_DOWN | {"wind", "club", "left", "right", "one"}
     phrases += sorted(words)
@@ -252,6 +261,8 @@ def _parse_words(rest: list[str]) -> dict | None:
     if view and not after_view:
         return {"action": "gspro", "key": view}
     club_words = words[1:] if words[0] == "arm" else words
+    if " ".join(club_words) in CHIP_PHRASES:
+        return {"action": "chip", "shot": CHIP_PHRASES[" ".join(club_words)], "arm": words[0] == "arm"}
     if " ".join(club_words) in AIM_LINE_PHRASES:
         return {"action": "aim-line", "line": AIM_LINE_PHRASES[" ".join(club_words)], "arm": words[0] == "arm"}
     club, after_club = _match_phrase(club_words, CLUB_PHRASES)

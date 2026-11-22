@@ -86,6 +86,23 @@ class ParseCommandTest(unittest.TestCase):
                              ("flag", "pin"), ("shot camera", "shotcam"), ("putting mode", "putt")):
             self.assertEqual(voice.parse_command("looper " + wording), {"action": "gspro", "key": key}, wording)
 
+    def test_chip_shots_show_or_arm(self):
+        # Brian, 21 Nov: "pitch" shows it, "show me the pitch shot" too; "arm" aims it.
+        for wording, shot in (("pitch", "pitch"), ("show me the pitch shot", "pitch"), ("show me pitch", "pitch"),
+                              ("flop", "flop"), ("the flop shot", "flop"), ("chip", "chip"),
+                              ("bump and run", "bump"), ("give me the bump and run", "bump")):
+            self.assertEqual(voice.parse_command("looper " + wording),
+                             {"action": "chip", "shot": shot, "arm": False}, wording)
+        for wording, shot in (("arm the pitch", "pitch"), ("arm flop", "flop"), ("arm the bump and run", "bump")):
+            self.assertEqual(voice.parse_command("looper " + wording),
+                             {"action": "chip", "shot": shot, "arm": True}, wording)
+        # Wedges stay wedges: "pitching" and "lob" are clubs, not chips.
+        self.assertEqual(voice.parse_command("looper pitching wedge"), {"action": "arm", "club": "PW"})
+        self.assertEqual(voice.parse_command("looper lob"), {"action": "arm", "club": "LW"})
+        self.assertEqual(voice.parse_command("looper arm it"), {"action": "arm-shown"})
+        self.assertIn("pitch", voice.grammar())
+        self.assertIn("bump and run", voice.grammar())
+
     def test_aim_lines_show_or_arm(self):
         for wording, line in (("second best", "second"), ("the safest line", "safest"), ("best line", "best"),
                               ("show me the safe line", "safest")):
