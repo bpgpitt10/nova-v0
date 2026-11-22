@@ -418,6 +418,24 @@
   color: #12180f;
 }
 
+/* Armed and clicked, but GSPro's aim marker wasn't seen: a bold gold outline, not filled. */
+.live-arm-recommendation.armed.aim-unconfirmed {
+  border: 2px solid #eab308;
+  background: #0d130e;
+  color: #f8dc70;
+}
+
+/* Couldn't aim, or the marker is somewhere else: the player has to do something. */
+.live-arm-recommendation.armed.aim-failed {
+  border-color: #e5484d;
+  background: #e5484d;
+  color: #ffffff;
+}
+
+.live-arm-note.is-failed {
+  color: #f2a6a0;
+}
+
 /* The countdown: yellow sweeps left to right; let go of the mouse. */
 .live-arm-recommendation.filling::before {
   content: '';

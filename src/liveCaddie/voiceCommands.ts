@@ -10,6 +10,7 @@ const VOICE_ENABLED_KEY = 'looper.live-caddie.voice.v1'
 
 const VOICE_ACTIONS = [
   'arm', 'arm-shown', 'arm-recommended', 'clear', 'aim', 'aim-reset', 'aim-line', 'club-step', 'wind', 'details', 'gspro', 'confirm',
+  'chip', 'retry',
 ] as const
 
 export type VoiceCommand = {
@@ -30,6 +31,8 @@ export type VoiceCommand = {
   /** aim-line: 'best' | 'second' | 'safest', and whether to arm it or only show it */
   line?: string
   arm?: boolean
+  /** chip: 'bump' | 'chip' | 'pitch' | 'flop'. Shows it; with `arm`, aims it too. */
+  shot?: string
 }
 
 /** Below this the command is treated as misheard. Tuned from real rounds. */

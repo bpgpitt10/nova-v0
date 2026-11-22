@@ -115,8 +115,8 @@ import ConditionsMathPanel from './ConditionsMathPanel'
 import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
 import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
-import ChipOptionsCard from '../components/ChipOptionsCard'
-import { CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import ChipOptionsCard, { type ChipAimState } from '../components/ChipOptionsCard'
+import { CHIP_LABEL, CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
@@ -367,7 +367,7 @@ export default function LiveCaddiePage() {
   const [armedClub, setArmedClub] = useState<string | null>(null)
   const [chipLabOn] = useState(() => isChipLabEnabled())
   const [armedChip, setArmedChip] = useState<{ shot: string; type: ChipType } | null>(null)
-  const [chipAim, setChipAim] = useState<{ shot: string; type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null>(null)
+  const [chipAim, setChipAim] = useState<{ shot: string; type: ChipType; state: ChipAimState; message: string } | null>(null)
   // Clicking a club only previews it; Arm commits (fills, then aims in GSPro).
   const [previewClub, setPreviewClub] = useState<string | null>(null)
   const [armPhase, setArmPhase] = useState<'idle' | 'filling' | 'aiming' | 'armed'>('idle')
@@ -1252,7 +1252,7 @@ export default function LiveCaddiePage() {
           + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}${chipFromSand ? ' · from sand' : ''}`
         // The chip on show: the player's pick, else the one Looper would point to first.
         const shown = options.find((o) => armedChip?.shot === chipShotKey && o.type === armedChip.type)
-          ?? defaultChip(options)
+          ?? defaultChip(options, chipDistanceYds)
         return {
           options,
           conditions,
@@ -1771,7 +1771,8 @@ export default function LiveCaddiePage() {
       shotKey: shotConditionsKey ?? `${courseId}|${holeNumber}`,
     }).then((result) => setChipAim({
       shot: chipShotKey, type,
-      state: result.outcome === 'not-sent' ? 'not-aimed' : 'aimed',
+      state: result.outcome === 'aimed' ? 'aimed' : result.outcome === 'clicked-unverified' ? 'unconfirmed'
+        : result.outcome === 'clicked-mismatch' ? 'mismatch' : 'not-aimed',
       message: result.message,
     }))
   }
@@ -1868,6 +1869,32 @@ export default function LiveCaddiePage() {
       resetArm()
       setVoiceArmRequest(null)
       voiceDid('Cleared')
+      return
+    }
+    // Around the green: "Looper, pitch" / "show me the flop" shows that chip; "arm" (or
+    // "arm the pitch") aims the one on screen, exactly as its button does (Brian, 21 Nov).
+    if (command.action === 'chip') {
+      const type = command.shot as ChipType | undefined
+      if (!chipLab) { voiceMissed('Chip options show inside 40 yards of the green.', heard); return }
+      const option = chipLab.options.find((o) => o.type === type)
+      if (!type || !option) { voiceMissed("Didn't catch which chip", heard); return }
+      setArmedChip({ shot: chipShotKey, type })
+      if (command.arm) {
+        aimChip(type)
+        voiceDid(`Aim the ${CHIP_LABEL[type].toLowerCase()}`)
+      } else voiceDid(`Show the ${CHIP_LABEL[type].toLowerCase()}`)
+      return
+    }
+    // "Looper, retry": the same aim again, for whatever is on screen (Brian, 21 Nov). It is the
+    // button's "tap to retry", so it does exactly what arming the shown chip or club does.
+    if (command.action === 'retry') command = { ...command, action: 'arm-shown' }
+    if (chipLab && (command.action === 'arm-shown' || command.action === 'arm-recommended')) {
+      const type = command.action === 'arm-recommended' ? defaultChip(chipLab.options, chipDistanceYds ?? undefined)?.type ?? null : chipLab.shown
+      const option = chipLab.options.find((o) => o.type === type)
+      if (!type || !option) { voiceMissed('No chip to aim yet', heard); return }
+      setArmedChip({ shot: chipShotKey, type })
+      aimChip(type)
+      voiceDid(`Aim the ${CHIP_LABEL[type].toLowerCase()}`)
       return
     }
     if (isShotStrategy) { voiceMissed('Voice arming works in club mode.', heard); return }
@@ -2009,10 +2036,16 @@ export default function LiveCaddiePage() {
       : voiceStatus.state === 'unavailable' ? 'Voice unavailable'
         : 'Voice starting'
 
-  const aimShort = aimResult?.outcome === 'aimed' ? 'AIMED IN GSPRO'
-    : aimResult?.outcome === 'clicked-unverified' ? 'AIM SENT TO GSPRO'
-      : aimResult?.outcome === 'clicked-mismatch' ? 'CHECK AIM IN GSPRO'
+  const aimShort = aimResult?.outcome === 'aimed' ? 'AIMED'
+    : aimResult?.outcome === 'clicked-unverified' ? 'CHECK THE AIM'
+      : aimResult?.outcome === 'clicked-mismatch' ? 'AIM IS OFF · CHECK IT'
         : 'AIM BY HAND'
+  // The armed button's colour says how the aim went (Brian, 21 Nov): solid gold = GSPro's aim marker
+  // seen where Looper clicked; gold outline = clicked, not seen; red = the player has to do something.
+  const aimStateClass = !aimResult ? ''
+    : aimResult.outcome === 'aimed' ? ''
+      : aimResult.outcome === 'clicked-unverified' ? ' aim-unconfirmed'
+        : ' aim-failed'
   const aimDescriptor = !isShotStrategy && hole && viewedEvaluation && inspectedCandidate
     ? buildAimDescriptor({
         hole,
@@ -2677,7 +2710,7 @@ export default function LiveCaddiePage() {
                     {isShotStrategy && shotStrategy?.carryWindow ? (
                       <span className="live-carry-window">
                         {shotStrategy.carryWindow.fromYds == null
-                          ? 'Carry window: Looper’s green may be short here. Check where GSPro’s green starts.'
+                          ? 'Carry window: check where GSPro’s green starts.'
                           : Math.round(shotStrategy.carryWindow.toYds) - Math.round(shotStrategy.carryWindow.fromYds) < 2
                             ? `Carry it all ${Math.round(shotStrategy.carryWindow.toYds)}: no green to land on short of the target.`
                             : <>Carry window <b>{Math.round(shotStrategy.carryWindow.fromYds)}–{Math.round(shotStrategy.carryWindow.toYds)}</b> · {shotStrategy.carryWindow.pastTrouble ? `past the ${shotStrategy.carryWindow.pastTrouble}` : 'front of the green'} to the target</>}
@@ -2773,7 +2806,7 @@ export default function LiveCaddiePage() {
                   {chipLab ? null : (
                   <button
                     type="button"
-                    className={`live-arm-recommendation${inTrees ? ' no-auto-aim' : ''}${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
+                    className={`live-arm-recommendation${inTrees ? ' no-auto-aim' : ''}${armedHere && !aimChanged ? ` armed${inTrees ? '' : aimStateClass}` : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
                     style={{ '--arm-fill-ms': `${ARM_FILL_MS}ms` } as CSSProperties}
                     disabled={isShotStrategy || !displayedClub}
                     onClick={pressArm}
@@ -2802,7 +2835,7 @@ export default function LiveCaddiePage() {
                   </button>
                   )}
                   {armedHere && aimResult && aimResult.outcome !== 'aimed' ? (
-                    <p className="live-arm-note">{aimResult.message}</p>
+                    <p className={`live-arm-note${aimResult.outcome === 'not-sent' || aimResult.outcome === 'clicked-mismatch' ? ' is-failed' : ''}`}>{aimResult.message}</p>
                   ) : null}
                   {safePick && !armedHere ? (
                     // One line, two states. Before the tap it offers the safe play; after

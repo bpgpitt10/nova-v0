@@ -1,6 +1,13 @@
 import { CHIP_LABEL, chipLieRead, defaultChip, type ChipOption, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import './ChipOptionsCard.css'
 
+/**
+ * How aiming this chip went. aimed: GSPro's aim marker seen where Looper clicked (button fills);
+ * unconfirmed: clicked, marker not seen (outline); mismatch: the marker is somewhere else, and
+ * not-aimed: couldn't click (both red: the player has to do something).
+ */
+export type ChipAimState = 'aiming' | 'aimed' | 'unconfirmed' | 'mismatch' | 'not-aimed'
+
 type Props = {
   distanceYds: number
   options: readonly ChipOption[]
@@ -26,7 +33,7 @@ type Props = {
   riseSource?: 'GSPro' | 'green map' | null
   /** Aim GSPro for this chip (Auto Aim). */
   onAim?: (type: ChipType) => void
-  aim?: { type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null
+  aim?: { type: ChipType; state: ChipAimState; message: string } | null
   /** Around the pin: one or two short lines, only what changes how to play the chip. */
   pinNotes?: readonly string[]
   /** Looper's green outline ends close to the pin (or misses it): where GSPro's green starts is unsure. */
@@ -70,14 +77,16 @@ export default function ChipOptionsCard({
     && option.landsOn !== 'bunker' && option.landsOn !== 'water'
   // Nothing lands on the green and stops: the shot to look at first is the highest one left, which
   // lands nearest the green. Never a low one landing short (Brian, 21 Nov).
-  const nearest = options.some((o) => o.verdict === 'good') ? null : defaultChip(options)
+  const nearest = options.some((o) => o.verdict === 'good') ? null : defaultChip(options, distanceYds)
   const tagFor = (option: ChipOption) => (option === nearest ? 'Best guess'
     : edgeUnclear(option) ? 'Edge unclear' : TAG[option.verdict] ?? '')
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
   const onlyLine = !current ? 'None of the four finishes at the hole cleanly from here.'
-    : current.verdict === 'avoid' ? current.reason
-      : current === nearest ? 'Nothing lands on the green and stops: the highest shot is the best guess.'
+    : current === nearest && current.verdict === 'avoid'
+      ? `Nothing finishes cleanly by Looper's map. This comes closest: ${current.reason ?? ''}`.trim()
+      : current.verdict === 'avoid' ? current.reason
+        : current === nearest ? 'Nothing lands on the green and stops: the highest shot is the best guess.'
         : current.carries
           ? fromSand && current.carries.surface === 'bunker'
             ? `Out of the bunker: lands ${Math.round(current.carries.landsPastYds)} yd past its edge.`
@@ -128,7 +137,7 @@ export default function ChipOptionsCard({
           </div>
           {greenEdgeUncertain ? (
             <p className="chip-options__edge">
-              Looper&rsquo;s green may be short here: check where GSPro&rsquo;s green starts.
+              Check where GSPro&rsquo;s green starts. Confirm your aim.
             </p>
           ) : null}
         </div>
@@ -163,16 +172,22 @@ export default function ChipOptionsCard({
         <div className="chip-options__arm-wrap">
           <button
             type="button"
-            className={`chip-options__arm${aimedThis && aim?.state === 'aimed' ? ' is-aimed' : ''}`}
-            disabled={current.verdict === 'avoid' || (aimedThis && aim?.state === 'aiming')}
+            className={`chip-options__arm${!aimedThis || !aim ? '' : aim.state === 'aimed' ? ' is-aimed'
+              : aim.state === 'unconfirmed' ? ' is-unconfirmed'
+                : aim.state === 'mismatch' || aim.state === 'not-aimed' ? ' is-failed' : ''}`}
+            // Avoid is advice, not a lock: Looper's green can be off (Brian, 21 Nov), so any chip can be aimed.
+            disabled={aimedThis && aim?.state === 'aiming'}
             onClick={() => onAim(current.type)}
           >
             {aimedThis && aim?.state === 'aiming' ? 'AIMING IN GSPRO…'
               : aimedThis && aim?.state === 'aimed' ? `${CHIP_LABEL[current.type].toUpperCase()} · AIMED · TAP TO RE-AIM`
+                : aimedThis && aim?.state === 'unconfirmed' ? `${CHIP_LABEL[current.type].toUpperCase()} · CHECK THE AIM · TAP TO RE-AIM`
+                  : aimedThis && aim?.state === 'mismatch' ? `${CHIP_LABEL[current.type].toUpperCase()} · AIM IS OFF · TAP TO RE-AIM`
+                    : aimedThis && aim?.state === 'not-aimed' ? `${CHIP_LABEL[current.type].toUpperCase()} · AIM BY HAND · TAP TO RETRY`
                 : `HITTING THE ${CHIP_LABEL[current.type].toUpperCase()} · TAP TO AIM`}
           </button>
           {/* Always there, so a message never moves the button. */}
-          <p className="chip-options__arm-note">{aimedThis && aim && aim.state !== 'aiming' ? aim.message : ''}</p>
+          <p className={`chip-options__arm-note${aimedThis && (aim?.state === 'mismatch' || aim?.state === 'not-aimed') ? ' is-failed' : ''}`}>{aimedThis && aim && aim.state !== 'aiming' ? aim.message : ''}</p>
         </div>
       ) : null}
 

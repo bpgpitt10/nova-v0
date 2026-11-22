@@ -64,6 +64,8 @@ export const aimInGspro = async ({
           + '. Check the aim.',
       }
     }
+    // Why it couldn't confirm, for diagnosis (21 Nov: "check the aim" on most shots).
+    console.info('[Looper] Auto Aim clicked, not confirmed:', result.verified ?? 'no check', result)
     return { outcome: 'clicked-unverified', message: "Clicked GSPro's minimap. Glance at the aim to confirm." }
   } catch (error) {
     return { outcome: 'not-sent', message: `Aim by hand: ${error instanceof Error ? error.message : String(error)}` }
