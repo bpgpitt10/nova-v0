@@ -34,10 +34,19 @@ export const GREEN_EDGE_DOUBT_YDS = 7
  * of the green (the bank and any sidehill there aren't read: Brian, 21 Nov): the highest shot that
  * isn't ruled out, which lands nearest the green with the least run over that ground.
  */
-export const defaultChip = (options: readonly ChipOption[]): ChipOption | null =>
+export const defaultChip = (options: readonly ChipOption[], distanceYds?: number): ChipOption | null =>
   options.find((o) => o.verdict === 'good')
   ?? [...options].reverse().find((o) => o.verdict === 'short')
-  ?? null
+  // Every one is avoid (Bellerive 4, 21 Nov: an 8 yd chip to a pin on the edge of Looper's green):
+  // still show something to aim, the one that finishes nearest the hole, since the map can be off.
+  ?? (options.length
+    ? options.reduce((best, o) => {
+      const miss = (x: ChipOption) => Math.abs(x.flight.carryYds + x.runYds - (distanceYds ?? 0))
+      return distanceYds == null
+        ? (o.flight.carryYds + o.runYds < best.flight.carryYds + best.runYds ? o : best)
+        : miss(o) < miss(best) ? o : best
+    })
+    : null)
 
 /** GSPro, 20 Nov: [ball speed mph, launch spin rpm, carry yd, landing speed mph, descent deg, landing spin rpm]. */
 const FLIGHT: Readonly<Record<ChipType, readonly (readonly number[])[]>> = {

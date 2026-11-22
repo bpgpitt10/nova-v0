@@ -10,7 +10,7 @@ const VOICE_ENABLED_KEY = 'looper.live-caddie.voice.v1'
 
 const VOICE_ACTIONS = [
   'arm', 'arm-shown', 'arm-recommended', 'clear', 'aim', 'aim-reset', 'aim-line', 'club-step', 'wind', 'details', 'gspro', 'confirm',
-  'chip',
+  'chip', 'retry',
 ] as const
 
 export type VoiceCommand = {

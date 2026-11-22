@@ -1252,7 +1252,7 @@ export default function LiveCaddiePage() {
           + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}${chipFromSand ? ' · from sand' : ''}`
         // The chip on show: the player's pick, else the one Looper would point to first.
         const shown = options.find((o) => armedChip?.shot === chipShotKey && o.type === armedChip.type)
-          ?? defaultChip(options)
+          ?? defaultChip(options, chipDistanceYds)
         return {
           options,
           conditions,
@@ -1885,8 +1885,11 @@ export default function LiveCaddiePage() {
       } else voiceDid(`Show the ${CHIP_LABEL[type].toLowerCase()}`)
       return
     }
+    // "Looper, retry": the same aim again, for whatever is on screen (Brian, 21 Nov). It is the
+    // button's "tap to retry", so it does exactly what arming the shown chip or club does.
+    if (command.action === 'retry') command = { ...command, action: 'arm-shown' }
     if (chipLab && (command.action === 'arm-shown' || command.action === 'arm-recommended')) {
-      const type = command.action === 'arm-recommended' ? defaultChip(chipLab.options)?.type ?? null : chipLab.shown
+      const type = command.action === 'arm-recommended' ? defaultChip(chipLab.options, chipDistanceYds ?? undefined)?.type ?? null : chipLab.shown
       const option = chipLab.options.find((o) => o.type === type)
       if (!type || !option) { voiceMissed('No chip to aim yet', heard); return }
       setArmedChip({ shot: chipShotKey, type })

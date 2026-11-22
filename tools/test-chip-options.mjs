@@ -110,6 +110,15 @@ try {
   const collared = byType(chipOptions(23, (carry) => ({ surface: carry < 18 ? 'fairway' : carry < 21 ? 'rough' : 'green', gradeToHole: 0.048 }), { ...setting, green: { ...setting.green, greenFirmness: 'soft' } }, 2))
   assert.equal(collared.flop.verdict, 'good', JSON.stringify(collared.flop))
   assert.match(collared.flop.reason, /runs about \d yd past/)
+  // Every option avoid (Bellerive 4: 8 yd to a pin on the edge of Looper's green): still one to show
+  // and aim, the one finishing nearest the hole.
+  const edge = chipOptions(8, (carry) => ({ surface: carry < 6 ? 'rough' : 'green', gradeToHole: 0.027 }), setting, 0.5)
+  if (edge.every((o) => o.verdict === 'avoid')) {
+    const near = defaultChip(edge, 8)
+    assert.ok(near)
+    for (const o of edge) assert.ok(Math.abs(near.flight.carryYds + near.runYds - 8) <= Math.abs(o.flight.carryYds + o.runYds - 8) + 1e-9)
+  }
+  assert.equal(defaultChip([], 8), null)
   console.log('chip options ok', bumpBreak.toFixed(1), flopBreak.toFixed(1))
 } finally {
   await server.close()

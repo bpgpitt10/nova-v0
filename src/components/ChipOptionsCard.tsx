@@ -77,14 +77,16 @@ export default function ChipOptionsCard({
     && option.landsOn !== 'bunker' && option.landsOn !== 'water'
   // Nothing lands on the green and stops: the shot to look at first is the highest one left, which
   // lands nearest the green. Never a low one landing short (Brian, 21 Nov).
-  const nearest = options.some((o) => o.verdict === 'good') ? null : defaultChip(options)
+  const nearest = options.some((o) => o.verdict === 'good') ? null : defaultChip(options, distanceYds)
   const tagFor = (option: ChipOption) => (option === nearest ? 'Best guess'
     : edgeUnclear(option) ? 'Edge unclear' : TAG[option.verdict] ?? '')
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
   const onlyLine = !current ? 'None of the four finishes at the hole cleanly from here.'
-    : current.verdict === 'avoid' ? current.reason
-      : current === nearest ? 'Nothing lands on the green and stops: the highest shot is the best guess.'
+    : current === nearest && current.verdict === 'avoid'
+      ? `Nothing finishes cleanly by Looper's map. This comes closest: ${current.reason ?? ''}`.trim()
+      : current.verdict === 'avoid' ? current.reason
+        : current === nearest ? 'Nothing lands on the green and stops: the highest shot is the best guess.'
         : current.carries
           ? fromSand && current.carries.surface === 'bunker'
             ? `Out of the bunker: lands ${Math.round(current.carries.landsPastYds)} yd past its edge.`
