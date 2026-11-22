@@ -600,15 +600,20 @@ export const evaluateAimLab = (
     const descentDeg = profile.launch_profile?.descent_angle_deg
     // Roll for the round's Course Type and Fairway Firmness, from how this club's ball arrives.
     // Wind and elevation reach it as the flight model's change in landing angle.
-    const landedDeg = modeled.physicsPrior.combined?.landingAngleDeg
+    // From rough, deep rough or sand the ball that lands is the lie's: slower, less spin, a different
+    // landing angle. A 3 wood out of deep rough comes in low with little spin and runs (Brian, 21 Nov:
+    // Shinnecock 9 showed 0.2 yd of roll because this used the clean 3 wood).
+    const lieFlight = modeled.lieFlight
+    const landedDeg = lieFlight?.landedDeg ?? modeled.physicsPrior.combined?.landingAngleDeg
     const calmLandedDeg = modeled.physicsPrior.baseline?.landingAngleDeg
     const descentDeltaDeg = finiteNumber(landedDeg) && finiteNumber(calmLandedDeg) ? landedDeg - calmLandedDeg : null
+    const arrival = {
+      ballSpeedMph: lieFlight?.ballSpeedMph ?? profile.launch_profile?.ball_speed_mph,
+      spinRpm: lieFlight?.totalSpinRpm ?? profile.launch_profile?.total_spin_rpm,
+      descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : undefined,
+    }
     const fairwayRollEstimate = estimateFairwayRoll({
-      arrival: {
-        ballSpeedMph: profile.launch_profile?.ball_speed_mph,
-        spinRpm: profile.launch_profile?.total_spin_rpm,
-        descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : undefined,
-      },
+      arrival,
       descentDeltaDeg,
       stockRolloutYds: rolloutYds,
       conditions: environment.fairwayConditions,
@@ -618,11 +623,7 @@ export const evaluateAimLab = (
       : null
     // The same for a ball that lands on the green: Course Type and Green Firmness.
     const greenReleaseEstimate = estimateGreenRelease({
-      arrival: {
-        ballSpeedMph: profile.launch_profile?.ball_speed_mph,
-        spinRpm: profile.launch_profile?.total_spin_rpm,
-        descentDeg: typeof descentDeg === 'number' && Number.isFinite(descentDeg) ? descentDeg : undefined,
-      },
+      arrival,
       descentDeltaDeg,
       stockRolloutYds: rolloutYds,
       conditions: environment.greenConditions,

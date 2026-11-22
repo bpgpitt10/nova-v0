@@ -42,6 +42,7 @@ import {
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { analyzeGreen, greenReadLine } from '../liveCaddie/greenRead'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
+import { chipPinNotes } from '../liveCaddie/shotStrategyTerrain'
 import { pureFinishRead } from '../liveCaddie/pureFinishRead'
 import { estimateProvisionalTee, readTeeBallPinDistanceYds } from '../courseGeometry/provisionalTeeEstimate'
 import { refineTeeDistanceWithLayout } from '../adapters/gsproRoundLayoutDistance'
@@ -113,6 +114,10 @@ import type { SavedSession } from '../types'
 import ConditionsMathPanel from './ConditionsMathPanel'
 import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
+import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
+import ChipOptionsCard from '../components/ChipOptionsCard'
+import { CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
@@ -360,6 +365,9 @@ export default function LiveCaddiePage() {
   const [showPracticeShots, setShowPracticeShots] = useState(false)
   const [inspectedAimOffset, setInspectedAimOffset] = useState<number | null>(null)
   const [armedClub, setArmedClub] = useState<string | null>(null)
+  const [chipLabOn] = useState(() => isChipLabEnabled())
+  const [armedChip, setArmedChip] = useState<{ shot: string; type: ChipType } | null>(null)
+  const [chipAim, setChipAim] = useState<{ shot: string; type: ChipType; state: 'aiming' | 'aimed' | 'not-aimed'; message: string } | null>(null)
   // Clicking a club only previews it; Arm commits (fills, then aims in GSPro).
   const [previewClub, setPreviewClub] = useState<string | null>(null)
   const [armPhase, setArmPhase] = useState<'idle' | 'filling' | 'aiming' | 'armed'>('idle')
@@ -1164,6 +1172,103 @@ export default function LiveCaddiePage() {
   // files on courses without one.
   const puttRiseIn = puttMapRiseIn ?? puttGsproRiseIn
   const puttElevationSource = puttMapRiseIn != null ? 'green map' as const : puttGsproRiseIn != null ? 'GSPro' as const : null
+  // Chip lab (on unless ?chipLab=off): around the green, the four chip options in place of the shot card.
+  // Not from deep rough (GSPro's chips were measured from clean lies). From sand only the pitch and
+  // flop are offered, sized for what GSPro's sand takes off (Brian, 21 Nov).
+  const chipLie = !/deep/.test(normalizedCurrentSurface)
+  const chipFromSand = /sand|bunker/.test(normalizedCurrentSurface)
+  const chipDistanceYds = !isGreenSurface && pinEstimate ? pointDistance(ball, pinEstimate) : null
+  // A tapped chip belongs to one ball position; the next shot starts on Looper's pick again.
+  const chipShotKey = `${holeNumber}|${Math.round(ball[0])}|${Math.round(ball[1])}`
+  // GSPro's lie under the ball, read here because the chips are sized before the card's own lie values.
+  const chipLieUpDownDeg = lieObservation?.status === 'READY'
+    && typeof lieObservation.upDownDegrees === 'number' && Number.isFinite(lieObservation.upDownDegrees)
+    ? lieObservation.upDownDegrees : null
+  const chipLab = chipLabOn && chipLie && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
+    ? (() => {
+        const dx = (pinEstimate[0] - ball[0]) / chipDistanceYds
+        const dy = (pinEstimate[1] - ball[1]) / chipDistanceYds
+        const along = (carry: number): CoursePointYds => [ball[0] + dx * carry, ball[1] + dy * carry]
+        const surfaceAt = (carry: number): LandingSurface => {
+          const kind = classifyPoint(hole, along(carry)).kind
+          if (kind === 'green' || kind === 'fairway' || kind === 'rough' || kind === 'deep-rough' || kind === 'bunker') return kind
+          if (kind === 'tee') return 'fairway'
+          if (kind === 'water' || kind === 'penalty') return 'water'
+          return 'other'
+        }
+        const pinElevation = greenDetail ? sampleCourseGreenElevation(greenDetail, pinEstimate) : null
+        // GSPro's own ball-to-pin height (the player box, top left; the pin sign shows the same number).
+        // Only this shot's reading, and only when its distance agrees with ours (Brian, 21 Nov).
+        const hudRiseFt = hudReading && liveMatchesHole && hudReading.shotNumber === liveSnapshot?.nextShotNumber
+          && hudReading.distanceToPinYds != null && Math.abs(hudReading.distanceToPinYds - chipDistanceYds) <= 2.5
+          && typeof hudReading.elevationFt === 'number' && Number.isFinite(hudReading.elevationFt)
+          ? hudReading.elevationFt : null
+        const mapRiseFt = pinElevation != null && ballTerrain ? pinElevation - ballTerrain.elevationFt : null
+        const riseFt = hudRiseFt ?? mapRiseFt
+        // GSPro's green against Looper's map on the same line: where the map is steeper than GSPro's
+        // green (Royal New Kent 2, 21 Nov: 2.5 times), its break is too big by about the same share.
+        const heightScale = hudRiseFt != null && mapRiseFt != null && Math.abs(mapRiseFt) >= 0.3 && Math.sign(hudRiseFt) === Math.sign(mapRiseFt)
+          ? Math.min(1.5, Math.max(0.35, hudRiseFt / mapRiseFt)) : 1
+        // How far above (+) the ball the landing spot is: the map's shape, held to GSPro's height;
+        // with no map there, GSPro's height spread evenly along the line.
+        const landingRiseFt = (carry: number): number | null => {
+          const z = greenDetail ? sampleCourseGreenElevation(greenDetail, along(carry)) : null
+          if (z != null && ballTerrain) return (z - ballTerrain.elevationFt) * heightScale
+          return riseFt != null ? riseFt * (carry / chipDistanceYds) : null
+        }
+        const gradeToHole = (carry: number) => {
+          // No green map: GSPro's height spread evenly along the line is the best there is.
+          if ((!greenDetail || pinElevation == null) && hudRiseFt != null) return hudRiseFt / (chipDistanceYds * 3)
+          if (!greenDetail || pinElevation == null) return null
+          const at = sampleCourseGreenElevation(greenDetail, along(carry))
+          const runFt = (chipDistanceYds - carry) * 3
+          return at != null && runFt > 1 ? (pinElevation - at) / runFt : null
+        }
+        let greenStarts: number | null = null
+        for (let carry = 0; carry <= chipDistanceYds; carry += 0.5) {
+          if (surfaceAt(carry) === 'green') { greenStarts = carry; break }
+        }
+        const green = { courseType: greenConditions?.courseType ?? 'medium', greenFirmness: greenConditions?.greenFirmness ?? 'medium', stimp: greenConditions?.stimp ?? null }
+        const fairway = { courseType: fairwayConditions?.courseType ?? green.courseType, fairwayFirmness: fairwayConditions?.fairwayFirmness ?? 'medium' }
+        const fromRough = !chipFromSand && normalizedCurrentSurface.includes('rough')
+        // Sand or water within 3 yd either side of a landing spot: a short landing there is a gamble.
+        const sideTrouble = (carry: number): LandingSurface | null => {
+          const [x, y] = along(carry)
+          for (const offset of [-3, -1.5, 1.5, 3]) {
+            const kind = classifyPoint(hole, [x - dy * offset, y + dx * offset]).kind
+            if (kind === 'bunker') return 'bunker'
+            if (kind === 'water' || kind === 'penalty') return 'water'
+          }
+          return null
+        }
+        const options = chipOptions(
+          chipDistanceYds,
+          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry), riseFt: landingRiseFt(carry) }),
+          { green, fairway, fromRough, fromSand: chipFromSand, lieUpDownDeg: chipLieUpDownDeg },
+          greenStarts == null ? null : chipDistanceYds - greenStarts,
+        )
+        const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[green.courseType]
+        const conditions = `${grass} · ${green.greenFirmness} green, ${fairway.fairwayFirmness} fairway`
+          + `${green.stimp ? ` · stimp ${green.stimp}` : ''}${fromRough ? ' · from the rough' : ''}${chipFromSand ? ' · from sand' : ''}`
+        // The chip on show: the player's pick, else the one Looper would point to first.
+        const shown = options.find((o) => armedChip?.shot === chipShotKey && o.type === armedChip.type)
+          ?? defaultChip(options)
+        return {
+          options,
+          conditions,
+          // The pin is always on GSPro's green. When Looper's green (OpenStreetMap's outline) ends within
+          // a few yards of it on the ball's side, or misses it, the outline is likely short (Shinnecock 6,
+          // 21 Nov: GSPro's green starts 13 yd in front of the pin, Looper's 3 to 5).
+          greenEdgeUncertain: greenStarts == null || chipDistanceYds - greenStarts < GREEN_EDGE_DOUBT_YDS,
+          shown: shown?.type ?? null,
+          landingPoint: shown ? along(shown.flight.carryYds) : null,
+          hasGreenMap: Boolean(greenDetail),
+          riseFt,
+          breakScale: heightScale,
+          riseSource: hudRiseFt != null ? 'GSPro' as const : mapRiseFt != null ? 'green map' as const : null,
+        }
+      })()
+    : null
   const greenGuidance = !isGreenSurface && hole && greenDetail && trustedLivePin
     && liveMatchesHole && liveSnapshot?.ballSource !== 'world-provisional'
     && Math.hypot(ball[0] - trustedLivePin[0], ball[1] - trustedLivePin[1]) <= 260
@@ -1459,6 +1564,17 @@ export default function LiveCaddiePage() {
     const greens = hole.surfaces.filter((s) => s.kind === 'green').flatMap((s) => s.polygons)
     return analyzeGreen(greenDetail, greens)
   }, [hole, greenDetail])
+  // Chip lab: the aim that lets each chip's run break to the hole, from the green map's slope.
+  const chipBreakKey = chipLab ? `${chipShotKey}|${chipLab.breakScale.toFixed(2)}|${chipLab.options.map((o) => `${o.flight.carryYds.toFixed(1)}/${o.runYds.toFixed(1)}`).join(',')}` : null
+  const chipBreak = useMemo(() => {
+    if (!chipLab || !greenReadAnalysis || !pinEstimate) return null
+    const slope = slopeFieldFromGreenRead(greenReadAnalysis)
+    return Object.fromEntries(chipLab.options.map((o) => {
+      const aim = chipBreakAimFt(slope, ball, pinEstimate, o, greenConditions?.stimp ?? null)
+      return [o.type, aim == null ? null : aim * chipLab.breakScale]
+    })) as Record<ChipType, number | null>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chipBreakKey, greenReadAnalysis])
   const greenReachable = (() => {
     if (!hole || isGreenSurface || !pinEstimate) return false
     if (isShotStrategy) return true
@@ -1626,6 +1742,38 @@ export default function LiveCaddiePage() {
           : result,
       ))
     }, ARM_FILL_MS)
+  }
+
+  // Chip lab: aim GSPro for the chip on show. The line is the pin, moved to cancel a side slope
+  // under the ball. Break on the green isn't in it yet.
+  const aimChip = (type: ChipType) => {
+    const option = chipLab?.options.find((o) => o.type === type)
+    if (!option || !pinEstimate || chipDistanceYds == null) return
+    const fail = (message: string) => setChipAim({ shot: chipShotKey, type, state: 'not-aimed', message })
+    const lieOnly = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
+    const lieRead = { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (chipBreak?.[type] ?? 0) }
+    // Always click, even for a straight line: GSPro's aim may not be on the pin.
+    if (!trustedLivePin) return fail("Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot).")
+    if (!companionCanAim) {
+      return fail(companionStatus?.gspro.status === 'connected'
+        ? 'Aim by hand: update the Looper Companion so Looper can aim for you.'
+        : 'Aim by hand: Looper Companion or GSPro not connected.')
+    }
+    const read = lieRead
+    const fx = (trustedLivePin[0] - ball[0]) / chipDistanceYds
+    const fy = (trustedLivePin[1] - ball[1]) / chipDistanceYds
+    const rightYds = -read.aimLeftFt / 3
+    const target: CoursePointYds = [trustedLivePin[0] + fy * rightYds, trustedLivePin[1] - fx * rightYds]
+    setChipAim({ shot: chipShotKey, type, state: 'aiming', message: 'Aiming in GSPro…' })
+    void aimInGspro({
+      courseId, courseKey: liveSnapshot?.courseKey ?? null, holeNumber,
+      ball, pin: trustedLivePin, target,
+      shotKey: shotConditionsKey ?? `${courseId}|${holeNumber}`,
+    }).then((result) => setChipAim({
+      shot: chipShotKey, type,
+      state: result.outcome === 'not-sent' ? 'not-aimed' : 'aimed',
+      message: result.message,
+    }))
   }
 
   const pickClub = (club: string) => {
@@ -2476,6 +2624,8 @@ export default function LiveCaddiePage() {
                     <span className="live-recommended-pill">
                       {inTrees
                         ? 'IN THE TREES'
+                        : chipLab
+                        ? 'AROUND THE GREEN'
                         : evaluationPending
                         ? waitingForConditions ? 'READING WIND & LIE' : 'CALCULATING'
                         : isShotStrategy
@@ -2497,9 +2647,43 @@ export default function LiveCaddiePage() {
                     ) : null}
                   </div>
 
+                  {/* Around the green the chip options take the shot card's place; the map and the club rail stay. */}
+                  {chipLab && chipDistanceYds != null ? (
+                    <ChipOptionsCard
+                      distanceYds={chipDistanceYds}
+                      options={chipLab.options}
+                      shown={chipLab.shown}
+                      onShow={(type) => setArmedChip({ shot: chipShotKey, type })}
+                      conditions={chipLab.conditions}
+                      hasGreenMap={chipLab.hasGreenMap}
+                      fromSand={chipFromSand}
+                      lieLeftRightDeg={hasLiveLie ? lieLeftRightDeg : null}
+                      lieUpDownDeg={hasLiveLie ? lieUpDownDeg : null}
+                      surface={normalizedCurrentSurface}
+                      breakLeftFt={chipBreak}
+                      breakScaled={chipLab.breakScale !== 1}
+                      riseFt={chipLab.riseFt}
+                      riseSource={chipLab.riseSource}
+                      onAim={aimChip}
+                      aim={chipAim && chipAim.shot === chipShotKey ? chipAim : null}
+                      pinNotes={shotStrategy ? chipPinNotes(shotStrategy) : []}
+                      greenEdgeUncertain={chipLab.greenEdgeUncertain}
+                    />
+                  ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
                     ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
-                    : displayedClub ?? '—'}</div>
+                    : displayedClub ?? '—'}
+                    {/* 40 to 90 yd: PLAY is the carry to the target; the window is where it can land and be on the green. */}
+                    {isShotStrategy && shotStrategy?.carryWindow ? (
+                      <span className="live-carry-window">
+                        {shotStrategy.carryWindow.fromYds == null
+                          ? 'Carry window: Looper’s green may be short here. Check where GSPro’s green starts.'
+                          : Math.round(shotStrategy.carryWindow.toYds) - Math.round(shotStrategy.carryWindow.fromYds) < 2
+                            ? `Carry it all ${Math.round(shotStrategy.carryWindow.toYds)}: no green to land on short of the target.`
+                            : <>Carry window <b>{Math.round(shotStrategy.carryWindow.fromYds)}–{Math.round(shotStrategy.carryWindow.toYds)}</b> · {shotStrategy.carryWindow.pastTrouble ? `past the ${shotStrategy.carryWindow.pastTrouble}` : 'front of the green'} to the target</>}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="live-aim-hero">
                     {armedOffsetHere != null ? (
                       <span className={`live-armed-tag${armedOffsetHere === shownAimOffset ? '' : ' elsewhere'}`}>
@@ -2584,7 +2768,9 @@ export default function LiveCaddiePage() {
                     decisionOptions={decisionOptionsJson}
                     altitudeSource={gsproAltitudeFt != null ? 'gspro' : airAltitudeFt != null ? 'map' : null}
                   />
+                  </>)}
 
+                  {chipLab ? null : (
                   <button
                     type="button"
                     className={`live-arm-recommendation${inTrees ? ' no-auto-aim' : ''}${armedHere && !aimChanged ? ' armed' : ''}${armPhase === 'filling' ? ' filling' : ''}${armPhase === 'aiming' ? ' aiming' : ''}${aimChanged ? ' aim-changed' : ''}${isShotStrategy ? ' strategy-mode' : ''}`}
@@ -2614,6 +2800,7 @@ export default function LiveCaddiePage() {
                                     : 'WAITING FOR RECOMMENDATION'}
                     </span>
                   </button>
+                  )}
                   {armedHere && aimResult && aimResult.outcome !== 'aimed' ? (
                     <p className="live-arm-note">{aimResult.message}</p>
                   ) : null}
@@ -2706,6 +2893,7 @@ export default function LiveCaddiePage() {
                 <LiveCaddieMap
                   hole={hole}
                   ball={ball}
+                  landingPoint={chipLab?.landingPoint ?? null}
                   target={isShotStrategy && shotStrategy ? shotStrategy.target : target}
                   pinEstimate={pinEstimate}
                   candidate={isShotStrategy || !inspectedCandidate ? null

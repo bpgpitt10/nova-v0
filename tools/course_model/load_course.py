@@ -48,7 +48,15 @@ def slugify(text: str) -> str:
 STAGES = ('find', 'config', 'import', 'osm', 'dem', 'lidar', 'trees', 'enrich', 'area')
 # The importer's message when OpenStreetMap doesn't draw one numbered hole line
 # per hole 1-18 (fetch_osm_course_snapshot.validate_holes).
-HOLES_NOT_MAPPED = 'one route per hole'
+#: The hole importer's errors that mean OpenStreetMap can't supply the holes, so the course loads as a
+#: map area (GSPro's course file gives the holes on the PC): holes not numbered once each, or the
+#: holes it did find not usable (Dunes West, 20 Nov: the outline is mapped, the holes aren't).
+HOLES_NOT_MAPPED = ('one route per hole', 'ready holes: [')
+
+
+def holes_not_mapped(errors: list[str] | None) -> bool:
+    text = ' '.join(errors or [])
+    return any(marker in text for marker in HOLES_NOT_MAPPED)
 
 
 class Load:
@@ -170,6 +178,8 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
         return load.finish(request, extra)
     bbox = json.loads((model / 'course-bbox.json').read_text())
     extra['osmCourse'] = bbox['osm']
+    w, s_, e, n = bbox['bboxLonLat']
+    extra['center'] = {'lat': round((s_ + n) / 2, 6), 'lon': round((w + e) / 2, 6)}
     extra['lidar'] = bbox['ept'].get('chosen')
     extra['crs'] = bbox['crs']
 
@@ -195,10 +205,10 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
                                             '--config', str(config_path.relative_to(ROOT)), '--slug', slug,
                                             '--reason', 'one-click-course-load'):
         failed = load.stages[-1]
-        if HOLES_NOT_MAPPED not in ' '.join(failed.get('error') or []):
+        if not holes_not_mapped(failed.get('error')):
             return load.finish(request, extra)
         load.stages[-1] = {'stage': 'import', 'ok': True, 'seconds': failed['seconds'], 'mode': 'area',
-                           'note': "OpenStreetMap doesn't number every hole once: packaging the course area instead",
+                           'note': "OpenStreetMap doesn't have usable holes for this course: packaging the course area instead",
                            'importError': failed.get('error')}
         area_mode = True
     if area_mode:

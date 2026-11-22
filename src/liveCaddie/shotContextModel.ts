@@ -23,6 +23,11 @@ export type ModeledShotContext = {
   rawContext: ShotContextInput
   physicsPrior: FlightPhysicsPrior
   surfaceResponse: SurfaceResponse
+  /**
+   * The ball as the lie sends it (rough, deep rough, sand), and its landing angle with wind and
+   * elevation; null from a clean lie. What happens after it lands follows this ball, not the clean one.
+   */
+  lieFlight: Readonly<{ ballSpeedMph: number; totalSpinRpm: number; landedDeg: number | null }> | null
   sidehillLieResponse: SidehillLieResponse
   upDownLieResponse: UpDownLieResponse
   effectiveTargetDistanceYds: number | null
@@ -104,13 +109,6 @@ export const modelShotContext = (
   const carryScale = stockCarry != null && finite(simulatedStock) && simulatedStock > 1
     ? Math.min(1.25, Math.max(0.75, stockCarry / simulatedStock))
     : 1
-  const combinedAirborneCarryYds = finite(physicsPrior.deltas.combinedCarryYds)
-    ? physicsPrior.deltas.combinedCarryYds * carryScale
-    : 0
-  const combinedAirborneLateralYds = finite(physicsPrior.deltas.combinedLateralYds)
-    ? physicsPrior.deltas.combinedLateralYds
-    : 0
-
   const surfaceResponse = getSurfaceResponse(context.surface, launch)
   const surfaceLaunch = launch && surfaceResponse.modeled
     ? applySurfaceLaunchFactors(launch, surfaceResponse)
@@ -119,25 +117,42 @@ export const modelShotContext = (
     surfaceLaunch && surfaceResponse.kind !== 'baseline'
       ? buildFlightPhysicsPrior(surfaceLaunch, flightEnvironment)
       : null
+  // Wind and elevation act on the ball the lie sends: a 3 wood out of deep rough comes out low and
+  // slow and loses far more climbing to a raised green than the clean one (Brian, 21 Nov: Shinnecock 9).
+  const airborne = surfacePhysics?.status === 'ready' && finite(surfacePhysics.deltas.combinedCarryYds)
+    && surfacePhysics.baseline && physicsPrior.baseline
+    ? surfacePhysics : physicsPrior
+
+  const combinedAirborneCarryYds = finite(airborne.deltas.combinedCarryYds)
+    ? airborne.deltas.combinedCarryYds * carryScale
+    : 0
+  const combinedAirborneLateralYds = finite(airborne.deltas.combinedLateralYds)
+    ? airborne.deltas.combinedLateralYds
+    : 0
 
   // What the lie takes off the carry: GSPro's own carry for the penalised launch against the
   // clean one, when both are inside what was measured; the flight model otherwise.
   const surfaceRatio = surfaceLaunch && surfaceResponse.kind !== 'baseline' ? gsproCarryRatio(launch, surfaceLaunch) : null
+  // The lie's own change, in calm air on level ground (wind and elevation are in `airborne` above)
+  // when the lie's flight carries them; otherwise the lie's change in these conditions, as before.
+  const lieFrame = airborne === surfacePhysics ? 'baseline' : 'combined'
+  const surfaceFlight = surfacePhysics?.[lieFrame]
+  const cleanFlight = physicsPrior[lieFrame]
   const surfaceCarryYds =
     surfaceRatio != null && stockCarry != null
       ? stockCarry * (surfaceRatio - 1)
-      : surfacePhysics?.combined &&
-        physicsPrior.combined &&
-        finite(surfacePhysics.combined.carryYds) &&
-        finite(physicsPrior.combined.carryYds)
-        ? (surfacePhysics.combined.carryYds - physicsPrior.combined.carryYds) * carryScale
+      : surfaceFlight &&
+        cleanFlight &&
+        finite(surfaceFlight.carryYds) &&
+        finite(cleanFlight.carryYds)
+        ? (surfaceFlight.carryYds - cleanFlight.carryYds) * carryScale
         : 0
   const surfaceLateralYds =
-    surfacePhysics?.combined &&
-    physicsPrior.combined &&
-    finite(surfacePhysics.combined.offlineYds) &&
-    finite(physicsPrior.combined.offlineYds)
-      ? surfacePhysics.combined.offlineYds - physicsPrior.combined.offlineYds
+    surfaceFlight &&
+    cleanFlight &&
+    finite(surfaceFlight.offlineYds) &&
+    finite(cleanFlight.offlineYds)
+      ? surfaceFlight.offlineYds - cleanFlight.offlineYds
       : 0
 
   const preLieCarryYds = stockCarry == null
@@ -162,14 +177,14 @@ export const modelShotContext = (
   })
 
   const appliedAdjustments = {
-    elevationYds: finite(physicsPrior.deltas.elevationCarryYds)
-      ? physicsPrior.deltas.elevationCarryYds * carryScale
+    elevationYds: finite(airborne.deltas.elevationCarryYds)
+      ? airborne.deltas.elevationCarryYds * carryScale
       : 0,
-    windCarryYds: finite(physicsPrior.deltas.windCarryYds)
-      ? physicsPrior.deltas.windCarryYds * carryScale
+    windCarryYds: finite(airborne.deltas.windCarryYds)
+      ? airborne.deltas.windCarryYds * carryScale
       : 0,
-    windLateralYds: finite(physicsPrior.deltas.windLateralYds)
-      ? physicsPrior.deltas.windLateralYds
+    windLateralYds: finite(airborne.deltas.windLateralYds)
+      ? airborne.deltas.windLateralYds
       : 0,
     combinedAirborneCarryYds,
     combinedAirborneLateralYds,
@@ -193,6 +208,13 @@ export const modelShotContext = (
     rawContext: context,
     physicsPrior,
     surfaceResponse,
+    lieFlight: surfaceLaunch && surfaceResponse.kind !== 'baseline'
+      ? {
+          ballSpeedMph: surfaceLaunch.ballSpeedMph,
+          totalSpinRpm: surfaceLaunch.totalSpinRpm,
+          landedDeg: finite(surfacePhysics?.combined?.landingAngleDeg) ? surfacePhysics!.combined!.landingAngleDeg : null,
+        }
+      : null,
     sidehillLieResponse,
     upDownLieResponse,
     // Elevation is already represented by the airborne trajectory delta. Keeping

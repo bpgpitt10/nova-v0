@@ -62,6 +62,32 @@ def rest(method: str, path: str, body: dict | None = None, key: str | None = Non
         return json.loads(raw) if raw else None
 
 
+def crosswalk_update(report: dict) -> dict | None:
+    """What a successful load says about its GSPro course's crosswalk row: the outline that really
+    loaded and where it is. The crosswalk's coordinates come from the GSPro course listing and can be
+    km off (Dunes West 15 km), so after one load they are right for the next one."""
+    osm, center = report.get('osmCourse') or {}, report.get('center') or {}
+    if osm.get('type') not in ('way', 'relation') or not osm.get('id') or center.get('lat') is None:
+        return None
+    return {'osm_type': osm['type'], 'osm_id': osm['id'], 'osm_name': osm.get('name') or None,
+            'lat': center['lat'], 'lon': center['lon'], 'distance_m': 0, 'status': 'matched',
+            'verified': True, 'updated_at': now()}
+
+
+def record_in_crosswalk(request: dict, report: dict, key: str) -> None:
+    """Best effort: a crosswalk write must never fail a load that worked."""
+    gspro_key = request.get('gspro_course_key')
+    body = crosswalk_update(report)
+    if not gspro_key or not body:
+        return
+    try:
+        keys = urllib.parse.quote('{"' + gspro_key.replace('\\', '\\\\').replace('"', '\\"') + '"}')
+        rows = rest('PATCH', f'course_crosswalk?gspro_keys=cs.{keys}', body, key) or []
+        print(f"crosswalk: {gspro_key} -> {body['osm_type']} {body['osm_id']} ({len(rows)} row(s))", flush=True)
+    except Exception as error:  # noqa: BLE001
+        print(f'crosswalk update skipped: {error}', flush=True)
+
+
 def name_regex(name: str) -> str:
     tokens = [t for t in re.findall(r"[A-Za-z0-9']+", name) if t.lower() not in STOP_WORDS]
     tokens = tokens[:2] or re.findall(r"[A-Za-z0-9']+", name)[:1]
@@ -277,7 +303,7 @@ def work(request: dict, key: str) -> None:
     }
     report = load_course.load_one(
         job, on_stage=lambda name, index, count: patch(stage=name, stage_index=index, stage_count=count))
-    summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'lidar', 'publishedBytes', 'mode')}
+    summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'center', 'lidar', 'publishedBytes', 'mode')}
     if not report['ready']:
         failed = next((s for s in report['stages'] if not s['ok']), {})
         tail = readable_reason(failed.get('error') or [])
@@ -289,12 +315,14 @@ def work(request: dict, key: str) -> None:
         # A whole-area package: storage only (the site's code has no place for it).
         publish_area_to_storage(request, slug, key)
         patch(status='ready', stage=None, finished_at=now())
+        record_in_crosswalk(request, report, key)
         print(f'published {slug} (course area) to storage', flush=True)
         return
     if PUBLISH_MODE != 'git':
         try:
             publish_to_storage(request, slug, key)
             patch(status='ready', stage=None, finished_at=now())
+            record_in_crosswalk(request, report, key)
             print(f'published {slug} to storage', flush=True)
             return
         except Exception as error:  # fall back to committing it
@@ -305,6 +333,7 @@ def work(request: dict, key: str) -> None:
         time.sleep(30)
     if published(slug):
         patch(status='ready', stage=None, finished_at=now())
+        record_in_crosswalk(request, report, key)
     else:
         patch(status='failed', finished_at=now(),
               error='Loaded and committed, but thelooper.golf did not serve it within 15 minutes (check the Vercel deploy).')

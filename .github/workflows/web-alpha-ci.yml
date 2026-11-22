@@ -227,7 +227,7 @@ jobs:
       - name: Package validator on a whole-area package
         run: |
           python3 -m pip install --quiet --break-system-packages pytest || python3 -m pip install --quiet pytest
-          python3 -m pytest -q tests/test_validate_package_area.py tests/test_area_package_clip.py tests/test_find_course.py
+          python3 -m pytest -q tests/test_validate_package_area.py tests/test_area_package_clip.py tests/test_find_course.py tests/test_load_course_fallback.py tests/test_course_load_crosswalk.py
 
       - name: Canadian elevation (NRCan HRDEM) reads
         run: |
@@ -248,6 +248,10 @@ jobs:
         run: node tools/test-fairway-roll.mjs
       - name: Green release by course type and green firmness (measured model)
         run: node tools/test-green-release.mjs
+      - name: Wind, elevation and roll follow the ball the lie sends
+        run: node tools/test-lie-flight.mjs
+      - name: Chip lab (land on the green first, sand, slopes, break, default shot)
+        run: node tools/test-chip-options.mjs
       - name: Slope of the lie (GSPro's measured launch and start line)
         run: node tools/test-lie-slope.mjs
       - name: GSPro's carry for a launch (measured model)
