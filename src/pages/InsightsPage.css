@@ -1081,3 +1081,6 @@
     display: none;
   }
 }
+
+.insights-footer__row a { color: #cfd8cd; text-decoration: none; }
+.insights-footer__row a:hover { color: #f4d15d; text-decoration: underline; }

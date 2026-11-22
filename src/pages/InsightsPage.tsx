@@ -634,7 +634,7 @@ export default function InsightsPage() {
 
       <footer className="insights-footer">
         <div className="insights-wrap insights-footer__row">
-          <span>The Looper · thelooper.golf</span>
+          <span><a href="/">The Looper · thelooper.golf</a> · <a href="/faq">FAQ and Help</a></span>
           <span>Measured in GSPro 4.1.9. The Looper is not affiliated with GSPro.</span>
         </div>
       </footer>

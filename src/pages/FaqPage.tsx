@@ -75,6 +75,8 @@ export function LooperFooter() {
     <footer className="looper-footer">
       <a href="/faq">FAQ and Help</a>
       <span aria-hidden="true"> · </span>
+      <a href="/insights">GSPro 4.1.9 Insights</a>
+      <span aria-hidden="true"> · </span>
       <a href={`mailto:${SUPPORT_EMAIL}`}>Email support</a>
     </footer>
   )
