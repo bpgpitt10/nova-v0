@@ -135,7 +135,7 @@ export default function ChipOptionsCard({
           </div>
           {greenEdgeUncertain ? (
             <p className="chip-options__edge">
-              Looper&rsquo;s green may be short here: check where GSPro&rsquo;s green starts.
+              Looper&rsquo;s green may be short: check where GSPro&rsquo;s green starts.
             </p>
           ) : null}
         </div>

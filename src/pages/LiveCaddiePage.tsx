@@ -2684,7 +2684,7 @@ export default function LiveCaddiePage() {
                     {isShotStrategy && shotStrategy?.carryWindow ? (
                       <span className="live-carry-window">
                         {shotStrategy.carryWindow.fromYds == null
-                          ? 'Carry window: Looper’s green may be short here. Check where GSPro’s green starts.'
+                          ? 'Carry window: Looper’s green may be short. Check where GSPro’s green starts.'
                           : Math.round(shotStrategy.carryWindow.toYds) - Math.round(shotStrategy.carryWindow.fromYds) < 2
                             ? `Carry it all ${Math.round(shotStrategy.carryWindow.toYds)}: no green to land on short of the target.`
                             : <>Carry window <b>{Math.round(shotStrategy.carryWindow.fromYds)}–{Math.round(shotStrategy.carryWindow.toYds)}</b> · {shotStrategy.carryWindow.pastTrouble ? `past the ${shotStrategy.carryWindow.pastTrouble}` : 'front of the green'} to the target</>}
