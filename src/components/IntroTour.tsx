@@ -19,6 +19,8 @@ import './IntroTour.css'
 
 export const INTRO_TOUR_SEEN_KEY = 'looper-intro-tour-seen-v1'
 export const SIGN_UP_HREF = '/?signup=1'
+// With a query, so the home page shows the sign-in card even where the browser can't remember the tour was seen.
+export const SIGN_IN_HREF = '/?signin=1'
 
 export const introTourSeen = (): boolean => {
   try {
@@ -399,7 +401,10 @@ export default function IntroTour({ audience, onDone }: Props) {
         <a className="intro-tour__logo" href={audience === 'visitor' ? '/' : undefined} aria-label="The Looper">
           <img src={looperLogo} alt="The Looper" />
         </a>
-        {index < last ? skip : <span />}
+        <div className="intro-tour__top-actions">
+          {audience === 'visitor' ? <a className="intro-tour__skip" href={SIGN_IN_HREF} onClick={markIntroTourSeen}>Sign in</a> : null}
+          {index < last ? skip : null}
+        </div>
       </header>
 
       <main
@@ -461,7 +466,7 @@ export default function IntroTour({ audience, onDone }: Props) {
         )}
       </footer>
       {audience === 'visitor' && index === last ? (
-        <p className="intro-tour__signin">Already have an account? <a href="/" onClick={markIntroTourSeen}>Sign in</a></p>
+        <p className="intro-tour__signin">Already have an account? <a href={SIGN_IN_HREF} onClick={markIntroTourSeen}>Sign in</a></p>
       ) : null}
     </div>
   )

@@ -29,6 +29,8 @@
 /* Signed in: the account chip sits fixed at the top right. */
 .intro-tour.is-new-account .intro-tour__top { padding-top: 60px; }
 
+.intro-tour__top-actions { display: flex; align-items: center; gap: 14px; }
+
 .intro-tour__logo img {
   display: block;
   height: 38px;

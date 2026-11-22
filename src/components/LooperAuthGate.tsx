@@ -23,6 +23,7 @@ import {
 import { deactivateLocalUserScope } from '../lib/localUserScope'
 import { loadSavedSessions } from '../lib/sessions'
 import { flushPendingShotVariantSync } from '../lib/shotVariants'
+import IntroTour, { introTourSeen } from './IntroTour'
 import './LooperAuthGate.css'
 
 type AuthState =
@@ -79,6 +80,12 @@ export default function LooperAuthGate({ children }: Props) {
   // screen with a resend button: three of eight new players never verified,
   // and one tried to sign in and only got "Email not confirmed".
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
+  const [firstVisitTour] = useState(() =>
+    typeof window !== 'undefined'
+    && (window.location.pathname === '/' || window.location.pathname === '')
+    && !window.location.search
+    && !window.location.hash
+    && !introTourSeen())
   const [resendWaitUntil, setResendWaitUntil] = useState(0)
   const [, setResendTick] = useState(0)
   const gsproPlayers = useKnownGsproPlayers(state === 'allowed' && user != null)
@@ -592,6 +599,10 @@ export default function LooperAuthGate({ children }: Props) {
 
   const isForgotPassword = mode === 'forgot-password'
   const isSignUp = mode === 'sign-up'
+
+  // A first-time visitor to thelooper.golf sees the tour before the sign-in card (Brian, 21 Nov).
+  // Only the bare home page: sign-up, reset and other links go straight to their card.
+  if (firstVisitTour && !verifyEmail) return <IntroTour audience="visitor" />
 
   if (verifyEmail) {
     return (
