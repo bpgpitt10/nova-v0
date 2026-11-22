@@ -32,6 +32,11 @@ SCHEMA_VERSION = "looper-companion-aim-click-v1"
 # GSPro's aim reticle is a magenta crosshair (FarmLinks screenshots, Nov 2026).
 MAGENTA_LOW = np.array([138, 110, 120])
 MAGENTA_HIGH = np.array([172, 255, 255])
+# ...and on Bellerive (21 Nov) a bright blue disc with a white ring: BGR (242, 127, 0), HSV
+# (104, 255, 242). Every click there read "check the aim" because only magenta was looked for.
+# Bright only: the minimap's water is the same hue but dark (value under 140).
+BLUE_LOW = np.array([95, 170, 170])
+BLUE_HIGH = np.array([115, 255, 255])
 MIN_MARKER_PIXELS = 12
 VERIFY_MATCH_PX = 8.0
 VERIFY_DELAY_S = 0.3
@@ -39,13 +44,13 @@ CAPTURE_ATTEMPTS = 4
 
 
 def find_aim_marker(crop_bgr: np.ndarray, ball=None):
-    """Centre of GSPro's magenta aim reticle on the minimap crop, or None.
+    """Centre of GSPro's aim marker (magenta crosshair or blue disc) on the minimap crop, or None.
 
     ``ball``: the ball dot's pixel. A purple or pink ball is the reticle's colour
     (Farmlinks, 19 Nov: "285 px off" was the ball itself), so nothing on it counts.
     """
     hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, MAGENTA_LOW, MAGENTA_HIGH)
+    mask = cv2.inRange(hsv, MAGENTA_LOW, MAGENTA_HIGH) | cv2.inRange(hsv, BLUE_LOW, BLUE_HIGH)
     count, _, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
     keep_away = 2.0 * native_aim.BALL_DOT_FRACTION * crop_bgr.shape[1]
     best = None
