@@ -10,6 +10,7 @@ import RoundSetupPage from './pages/RoundSetupPage.tsx'
 import LoadCoursePage from './pages/LoadCoursePage.tsx'
 import FaqPage, { LooperFooter } from './pages/FaqPage'
 import InsightsPage from './pages/InsightsPage.tsx'
+import IntroTour, { introTourSeen } from './components/IntroTour.tsx'
 import DataManagementPage from './pages/DataManagementPage.tsx'
 import BagSetupPage from './pages/BagSetupPage.tsx'
 import QuickBagPage from './pages/QuickBagPage.tsx'
@@ -197,6 +198,8 @@ function LiveCaddieRoundBootstrap({ active }: { active: boolean }) {
 function RootRouter() {
   const [pathname, setPathname] = useState(() => normalizePath(window.location.pathname))
   const [hasBagConfig, setHasBagConfig] = useState(() => hasSavedBagConfig())
+  // A brand-new account (no bag yet) sees the intro tour once, unless it took the tour before signing up.
+  const [tourSeen, setTourSeen] = useState(() => introTourSeen())
   const [needsQuickBag, setNeedsQuickBag] = useState(() => needsQuickBagStep(loadSavedSessions()))
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
@@ -320,6 +323,8 @@ function RootRouter() {
   const showFaq = pathname === '/faq' || pathname === '/help'
   // Public: GSPro physics, measured. No account, so it sits outside the sign-in gate.
   const showInsights = pathname === '/insights' || pathname.startsWith('/insights/')
+  // Public: how Looper works, five cards. Linked from Insights and the sign-in card.
+  const showTour = pathname === '/tour'
   const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest || showPuttReadPreview || showChipLabPreview
 
   useEffect(() => {
@@ -363,6 +368,7 @@ function RootRouter() {
     if (showAdminUsers) return <AdminUsersPage />
     if (showAdminCourses) return <AdminCoursesPage />
     if (showCloudRepair) return <CloudRepairPage />
+    if (!hasBagConfig && !tourSeen) return <IntroTour audience="new-account" onDone={() => setTourSeen(true)} />
     if (showBagSetup || !hasBagConfig) return <BagSetupPage />
     // New players: a starting bag right after the clubs, so Live Caddie has
     // numbers before the first range session. Skippable; always at /quick-bag.
@@ -389,6 +395,7 @@ function RootRouter() {
   }, [
     checkForUpdates,
     hasBagConfig,
+    tourSeen,
     needsQuickBag,
     installAvailableUpdate,
     pathname,
@@ -423,6 +430,7 @@ function RootRouter() {
   )
 
   if (showInsights) return <InsightsPage />
+  if (showTour) return <IntroTour audience="visitor" />
 
   return (
     <LooperAuthGate>

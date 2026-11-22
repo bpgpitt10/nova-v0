@@ -1,0 +1,506 @@
+/* The intro tour: one card at a time, phone first. */
+.intro-tour {
+  --tour-gold: #f4d15d;
+  --tour-cta: #eab308;
+  --tour-line: #2b3b2e;
+  --tour-muted: #9fb09f;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #1f3424 0%, #0e1710 60%) fixed,
+    #0e1710;
+  color: #fff;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.intro-tour__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 14px 16px 6px;
+  box-sizing: border-box;
+}
+
+/* Signed in: the account chip sits fixed at the top right. */
+.intro-tour.is-new-account .intro-tour__top { padding-top: 60px; }
+
+.intro-tour__logo img {
+  display: block;
+  height: 38px;
+  width: auto;
+}
+
+.intro-tour .intro-tour__skip,
+.intro-tour .intro-tour__skip:hover {
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--tour-muted);
+  font: inherit;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.intro-tour .intro-tour__skip:hover { color: var(--tour-gold); }
+
+.intro-tour__card {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 0 16px;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.intro-tour__slide {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  animation: intro-tour-in 220ms ease-out;
+}
+
+@keyframes intro-tour-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-tour__slide { animation: none; }
+}
+
+.intro-tour__kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--tour-gold);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.intro-tour__copy h1 {
+  margin: 0 0 10px;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  font-size: clamp(30px, 7.5vw, 46px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+.intro-tour__copy h1 em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--tour-gold);
+}
+
+.intro-tour__copy p {
+  margin: 0;
+  max-width: 34em;
+  color: #d7e0d5;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.intro-tour__visual {
+  min-width: 0;
+}
+
+/* Desktop: copy on the left, the screen on the right. */
+@media (min-width: 900px) {
+  .intro-tour__slide {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 48px;
+    align-items: start;
+    padding-top: 28px;
+  }
+  .intro-tour__copy { position: sticky; top: 24px; padding-top: 24px; }
+  .intro-tour__copy p { font-size: 19px; }
+}
+
+/* ---------- Bottom nav ---------- */
+.intro-tour__nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(14, 23, 16, 0) 0%, rgba(14, 23, 16, 0.94) 30%);
+}
+
+.intro-tour__back,
+.intro-tour__next {
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.intro-tour__back {
+  border: 1px solid var(--tour-line);
+  background: #172419;
+  color: #fff;
+}
+
+.intro-tour__back:hover { background: #1e3123; }
+.intro-tour__back:disabled { opacity: 0.35; cursor: default; background: #172419; }
+
+.intro-tour__next {
+  border: 0;
+  background: var(--tour-cta);
+  color: #10170f;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.intro-tour .intro-tour__next:hover,
+.intro-tour .intro-tour__next:focus-visible { background: #f4c430; color: #10170f; }
+
+.intro-tour__dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.intro-tour .intro-tour__dots button,
+.intro-tour .intro-tour__dots button:hover {
+  min-height: 44px;
+  width: 24px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.intro-tour__dots button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3d5240;
+  transform: translate(-50%, -50%);
+  transition: width 160ms ease, background 160ms ease;
+}
+
+.intro-tour__dots button.is-current::after {
+  width: 20px;
+  border-radius: 4px;
+  background: var(--tour-gold);
+}
+
+.intro-tour__signin {
+  margin: 0;
+  padding: 0 16px 18px;
+  text-align: center;
+  color: var(--tour-muted);
+  font-size: 15px;
+}
+
+.intro-tour__signin a { color: var(--tour-gold); }
+
+@media (max-width: 480px) {
+  .intro-tour__nav.is-last { grid-template-columns: auto 1fr; }
+  .intro-tour__nav.is-last .intro-tour__dots { display: none; }
+}
+
+@media (max-width: 420px) {
+  .intro-tour__back { padding: 0 14px; }
+  .intro-tour__next { padding: 0 16px; font-size: 15px; }
+  .intro-tour__dots { gap: 0; }
+  .intro-tour__dots button { width: 18px; }
+}
+
+/* ---------- 1. Caddie ---------- */
+.intro-tour__caddie {
+  display: grid;
+  gap: 10px;
+}
+
+.intro-tour__beside {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 6px;
+  height: 64px;
+  padding: 6px;
+  border: 1px solid var(--tour-line);
+  border-radius: 10px;
+  background: #0b120d;
+}
+
+.intro-tour__sim,
+.intro-tour__looper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.intro-tour__sim svg { display: block; width: 100%; height: 100%; }
+
+.intro-tour__sim b,
+.intro-tour__looper {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.intro-tour__sim b {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.intro-tour__looper {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--tour-gold);
+  background: #162619;
+  color: var(--tour-gold);
+}
+
+/* Live Caddie's card, as a plain stack: its own grid belongs to the Live Caddie page. */
+.intro-tour .intro-tour__decision {
+  box-sizing: border-box;
+  max-width: 560px;
+  padding: 18px;
+  border: 1px solid rgba(49, 66, 51, 0.82);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(25, 46, 32, 0.7) 0%, rgba(14, 28, 19, 0.64) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 18px 50px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.intro-tour .intro-tour__decision .live-club-hero { font-size: 64px; line-height: 1; }
+.intro-tour .intro-tour__decision .live-aim-hero { font-size: 22px; }
+.intro-tour .intro-tour__decision .live-decision-reason { font-size: 14px; }
+.intro-tour .intro-tour__decision .live-conditions-shell { display: grid; gap: 10px; }
+.intro-tour .intro-tour__decision .live-conditions-panel,
+.intro-tour .intro-tour__decision .live-expected-shot-block { grid-area: auto; height: auto; margin: 0; }
+/* Shorter for the tour: the outcome tiles and roll-out row stay on Live Caddie. */
+.intro-tour .intro-tour__decision .live-hero-outcomes,
+.intro-tour .intro-tour__decision .live-hero-outcome-detail,
+.intro-tour .intro-tour__decision .live-condition-after-landing { display: none; }
+
+.intro-tour .intro-tour__decision > * + * { margin-top: 10px; }
+.intro-tour .intro-tour__decision .live-arm-recommendation { width: 100%; }
+
+/* ---------- 2. Green ---------- */
+.intro-tour__green {
+  display: grid;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.intro-tour__toggle {
+  display: inline-flex;
+  justify-self: start;
+  padding: 3px;
+  border: 1px solid var(--tour-line);
+  border-radius: 999px;
+  background: #121d14;
+}
+
+.intro-tour .intro-tour__toggle button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tour-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.intro-tour .intro-tour__toggle button:hover { background: #1a2b1e; color: #fff; }
+.intro-tour .intro-tour__toggle button[aria-selected='true'] {
+  background: #23382a;
+  color: #fff;
+}
+
+/* ---------- Panels: range and game ---------- */
+.intro-tour__panel {
+  max-width: 560px;
+  padding: 18px;
+  border: 1px solid var(--tour-line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(30, 49, 35, 0.92) 0%, rgba(20, 33, 24, 0.94) 100%);
+}
+
+.intro-tour__panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-bottom: 12px;
+  color: var(--tour-muted);
+  font-size: 13px;
+}
+
+.intro-tour__bag-row {
+  display: grid;
+  grid-template-columns: 0.8fr 0.9fr 1.2fr 1.3fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--tour-line);
+  font-size: 15px;
+}
+
+.intro-tour__bag-row.is-head {
+  border-top: 0;
+  padding-top: 0;
+  color: var(--tour-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.intro-tour__status {
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.intro-tour__status.is-measured { background: rgba(110, 231, 168, 0.14); color: #8ef0bd; }
+.intro-tour__status.is-learning { background: rgba(244, 209, 93, 0.14); color: var(--tour-gold); }
+.intro-tour__status.is-starting { background: #233026; color: var(--tour-muted); }
+
+.intro-tour__panel-foot {
+  margin: 12px 0 0;
+  color: var(--tour-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.intro-tour__sg { display: grid; gap: 2px; }
+
+.intro-tour__sg-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.4fr) 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 15px;
+}
+
+.intro-tour__sg-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+.intro-tour__sg-row .is-loss { color: #f59e72; }
+.intro-tour__sg-row .is-gain { color: #8ef0bd; }
+
+.intro-tour__sg-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 10px;
+  border-left: 0;
+  position: relative;
+}
+
+.intro-tour__sg-bar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: #4a5f4d;
+}
+
+.intro-tour__sg-bar .is-left { display: flex; justify-content: flex-end; }
+.intro-tour__sg-bar i { display: block; height: 100%; border-radius: 3px; }
+.intro-tour__sg-bar .is-left i { background: #f59e72; }
+.intro-tour__sg-bar .is-right i { background: #8ef0bd; }
+
+.intro-tour__leaks {
+  display: grid;
+  gap: 2px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--tour-line);
+}
+
+.intro-tour__leaks .live-kicker { margin-bottom: 4px; }
+
+.intro-tour__leaks div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 15px;
+}
+
+.intro-tour__leaks strong { color: #f59e72; white-space: nowrap; }
+
+/* ---------- 5. Setup ---------- */
+.intro-tour__steps {
+  max-width: 560px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 12px;
+}
+
+.intro-tour__steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--tour-line);
+  border-radius: 14px;
+  background: rgba(23, 36, 25, 0.9);
+}
+
+.intro-tour__steps li::before {
+  content: counter(step);
+  grid-row: 1 / span 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #23382a;
+  color: var(--tour-gold);
+  font-family: Fraunces, Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.intro-tour__steps strong { font-size: 17px; }
+.intro-tour__steps span { color: #cfd8cd; font-size: 15px; line-height: 1.4; }
+.intro-tour__steps a { color: var(--tour-gold); }

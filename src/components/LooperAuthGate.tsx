@@ -745,6 +745,12 @@ export default function LooperAuthGate({ children }: Props) {
           )}
         </div>
 
+        {!isForgotPassword ? (
+          <a className="looper-auth__tour" href="/tour">
+            New to The Looper? <strong>See how it works</strong>
+          </a>
+        ) : null}
+
         {!isForgotPassword && !isSignUp ? (
           <p className="looper-auth__fineprint">
             Used Looper before without a password? Use “Forgot password?” once to set one. Your Looper data stays tied to your account.
