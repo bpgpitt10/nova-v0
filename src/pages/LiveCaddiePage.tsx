@@ -116,7 +116,7 @@ import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
 import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
 import ChipOptionsCard, { type ChipAimState } from '../components/ChipOptionsCard'
-import { CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_LABEL, CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
@@ -1869,6 +1869,31 @@ export default function LiveCaddiePage() {
       resetArm()
       setVoiceArmRequest(null)
       voiceDid('Cleared')
+      return
+    }
+    // Around the green: "Looper, pitch" / "show me the flop" shows that chip; "arm" (or
+    // "arm the pitch") aims the one on screen, exactly as its button does (Brian, 21 Nov).
+    if (command.action === 'chip') {
+      const type = command.shot as ChipType | undefined
+      if (!chipLab) { voiceMissed('Chip options show inside 40 yards of the green.', heard); return }
+      const option = chipLab.options.find((o) => o.type === type)
+      if (!type || !option) { voiceMissed("Didn't catch which chip", heard); return }
+      setArmedChip({ shot: chipShotKey, type })
+      if (command.arm) {
+        if (option.verdict === 'avoid') { voiceMissed(`${CHIP_LABEL[type]}: Looper says avoid it here`, heard); return }
+        aimChip(type)
+        voiceDid(`Aim the ${CHIP_LABEL[type].toLowerCase()}`)
+      } else voiceDid(`Show the ${CHIP_LABEL[type].toLowerCase()}`)
+      return
+    }
+    if (chipLab && (command.action === 'arm-shown' || command.action === 'arm-recommended')) {
+      const type = command.action === 'arm-recommended' ? defaultChip(chipLab.options)?.type ?? null : chipLab.shown
+      const option = chipLab.options.find((o) => o.type === type)
+      if (!type || !option) { voiceMissed('No chip to aim yet', heard); return }
+      if (option.verdict === 'avoid') { voiceMissed(`${CHIP_LABEL[type]}: Looper says avoid it here`, heard); return }
+      setArmedChip({ shot: chipShotKey, type })
+      aimChip(type)
+      voiceDid(`Aim the ${CHIP_LABEL[type].toLowerCase()}`)
       return
     }
     if (isShotStrategy) { voiceMissed('Voice arming works in club mode.', heard); return }
