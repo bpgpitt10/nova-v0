@@ -87,6 +87,7 @@
   font-size: 12px;
 }
 .looper-footer a { color: #9fb09f; text-decoration: none; }
+.looper-footer span { color: #5f6f62; }
 .looper-footer a:hover { color: #f4d15d; text-decoration: underline; }
 
 /* "How to get going": open at the top, never collapsed. */
@@ -128,3 +129,6 @@
   text-transform: uppercase;
 }
 .faq-start p { margin: 0 0 8px; color: #cfd8cd; font-size: 14px; line-height: 1.55; }
+
+.faq-header p.faq-support { margin-top: 6px; color: #cfd8cd; }
+.faq-support a, .faq-contact a { color: #cfb36e; }
