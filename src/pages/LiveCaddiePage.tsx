@@ -1880,7 +1880,6 @@ export default function LiveCaddiePage() {
       if (!type || !option) { voiceMissed("Didn't catch which chip", heard); return }
       setArmedChip({ shot: chipShotKey, type })
       if (command.arm) {
-        if (option.verdict === 'avoid') { voiceMissed(`${CHIP_LABEL[type]}: Looper says avoid it here`, heard); return }
         aimChip(type)
         voiceDid(`Aim the ${CHIP_LABEL[type].toLowerCase()}`)
       } else voiceDid(`Show the ${CHIP_LABEL[type].toLowerCase()}`)
@@ -1890,7 +1889,6 @@ export default function LiveCaddiePage() {
       const type = command.action === 'arm-recommended' ? defaultChip(chipLab.options)?.type ?? null : chipLab.shown
       const option = chipLab.options.find((o) => o.type === type)
       if (!type || !option) { voiceMissed('No chip to aim yet', heard); return }
-      if (option.verdict === 'avoid') { voiceMissed(`${CHIP_LABEL[type]}: Looper says avoid it here`, heard); return }
       setArmedChip({ shot: chipShotKey, type })
       aimChip(type)
       voiceDid(`Aim the ${CHIP_LABEL[type].toLowerCase()}`)

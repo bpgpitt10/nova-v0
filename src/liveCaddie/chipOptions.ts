@@ -309,6 +309,13 @@ export const sizeChip = (type: ChipType, distanceYds: number, probe: LandingProb
 export const ONTO_GREEN_YDS = 2
 
 /**
+ * A chip that has to land past rough or a collar to reach the green can't always be sized to stop at
+ * the hole. Finishing up to this far past still leaves a short putt, so it isn't "avoid" (Bellerive 4,
+ * 21 Nov: a flop that cleared the collar and ran 2 yd past was marked avoid).
+ */
+export const RUNS_PAST_OK_YDS = 3
+
+/**
  * The four options for a chip of `distanceYds`, each sized to finish at the hole.
  *
  * Landing on the green comes first (Brian, 21 Nov): the apron, the bank and the bunkers beside it
@@ -347,6 +354,8 @@ export const chipOptions = (
     } else if (s.tooHot) {
       verdict = 'avoid'
       reason = `Runs past even landed as short as it can: about ${Math.round(finish(s) - distanceYds)} yd by.`
+    } else if (onGreen && finish(s) <= distanceYds + RUNS_PAST_OK_YDS) {
+      verdict = 'fine'
     } else if (finish(s) > distanceYds + 1) {
       verdict = 'avoid'
       reason = `Lands on the ${SURFACE_NAME[s.landsOn]} and runs about ${Math.round(finish(s) - distanceYds)} yd past.`
@@ -367,12 +376,17 @@ export const chipOptions = (
   })
 
   // Looper's pick: the lowest shot that lands on the green and stops.
-  const pick = judged.find((j) => j.verdict === 'fine')
+  // One that stops at the hole first; one that runs a little past only if none does.
+  const pick = judged.find((j) => j.verdict === 'fine' && finish(j.s) <= distanceYds + 1)
+    ?? judged.find((j) => j.verdict === 'fine')
   if (pick) {
     pick.verdict = 'good'
-    pick.reason = pick.s.type === 'flop'
-      ? 'The only shot that lands on the green and stops.'
-      : 'Lands on the green and stops: the lowest shot that does.'
+    const past = Math.round(finish(pick.s) - distanceYds)
+    pick.reason = past >= 1
+      ? `The only shot that lands on the green: it runs about ${past} yd past.`
+      : pick.s.type === 'flop'
+        ? 'The only shot that lands on the green and stops.'
+        : 'Lands on the green and stops: the lowest shot that does.'
   }
   const flop = judged.find((j) => j.s.type === 'flop')
   if (flop && pick && pick !== flop && flop.verdict === 'fine') {

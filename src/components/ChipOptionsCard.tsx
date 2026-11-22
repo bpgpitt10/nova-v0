@@ -173,7 +173,8 @@ export default function ChipOptionsCard({
             className={`chip-options__arm${!aimedThis || !aim ? '' : aim.state === 'aimed' ? ' is-aimed'
               : aim.state === 'unconfirmed' ? ' is-unconfirmed'
                 : aim.state === 'mismatch' || aim.state === 'not-aimed' ? ' is-failed' : ''}`}
-            disabled={current.verdict === 'avoid' || (aimedThis && aim?.state === 'aiming')}
+            // Avoid is advice, not a lock: Looper's green can be off (Brian, 21 Nov), so any chip can be aimed.
+            disabled={aimedThis && aim?.state === 'aiming'}
             onClick={() => onAim(current.type)}
           >
             {aimedThis && aim?.state === 'aiming' ? 'AIMING IN GSPRO…'

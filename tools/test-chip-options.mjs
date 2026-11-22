@@ -105,6 +105,11 @@ try {
   assert.notEqual(first.type, 'bump')
   // With a pick, the pick comes first.
   assert.equal(defaultChip(Object.values(flat)).verdict, 'good')
+  // A collar of rough in front of the green (Bellerive 4, 21 Nov): the flop has to land past it and
+  // runs about 3 yd by. That still leaves a short putt, so it is Looper's pick, not "avoid".
+  const collared = byType(chipOptions(23, (carry) => ({ surface: carry < 18 ? 'fairway' : carry < 21 ? 'rough' : 'green', gradeToHole: 0.048 }), { ...setting, green: { ...setting.green, greenFirmness: 'soft' } }, 2))
+  assert.equal(collared.flop.verdict, 'good', JSON.stringify(collared.flop))
+  assert.match(collared.flop.reason, /runs about \d yd past/)
   console.log('chip options ok', bumpBreak.toFixed(1), flopBreak.toFixed(1))
 } finally {
   await server.close()
