@@ -42,7 +42,7 @@ COMPANION_VERSION = "courses.10"
 # the release workflow publishes v<COMPANION_RELEASE> to the public releases
 # repo and writes latest.json, which the web app compares with the running
 # companion's "release" to show "update available" / "needs update".
-COMPANION_RELEASE = "1.2.0-test2"
+COMPANION_RELEASE = "1.2.0-test3"
 COMPANION_STATUS_PATH = "/companion/v1/status"
 COMPANION_CAPTURE_PATH = "/companion/v1/capture-check"
 COMPANION_OBSERVATIONS_PATH = "/companion/v1/observations"
