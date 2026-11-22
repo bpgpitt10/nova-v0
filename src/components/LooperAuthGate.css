@@ -382,3 +382,78 @@
     max-width: calc(100vw - 16px);
   }
 }
+
+/* GSPro player in the account menu: who Looper keeps shots for, and a way to change it. */
+.looper-account-control__email strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.looper-account-control__player {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+  padding: 8px 11px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #263239;
+  color: #e6e9e7;
+  font-size: 12px;
+}
+
+.looper-account-control__label {
+  color: #8f9a9f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.looper-account-control__player-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.looper-account-control__player-row strong {
+  font-size: 14px;
+}
+
+.looper-account-control__hint {
+  color: #aab4b7;
+  line-height: 1.35;
+}
+
+.looper-account-control__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #cfb36e;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.looper-account-control__choices {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.looper-account-control__choices button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #314047;
+  border-radius: 7px;
+  background: #18232a;
+  color: #e6e9e7;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.looper-account-control__choices button:disabled {
+  color: #cfb36e;
+  cursor: default;
+}

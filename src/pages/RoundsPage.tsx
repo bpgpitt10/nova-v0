@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BagTopBar } from '../components/BagNav'
+import GsproPlayerLine from '../components/GsproPlayerLine'
 import type { CourseHoleGeometry, CoursePointYds, CourseSurfaceKind } from '../courseGeometry/types'
 import { getClubLabel, type Club } from '../lib/bagConfig'
 import {
@@ -440,6 +441,7 @@ function RoundsList({
         <div>
           <h1 className="rounds-display-title">Rounds</h1>
           <p className="rounds-muted">Every round the companion saw, with each shot, lie and putt.</p>
+          <GsproPlayerLine />
         </div>
         <div className="rounds-segment" role="group" aria-label="Filter rounds">
           {(['full', 'all', 'live-caddie'] as const).map((value) => (

@@ -34,6 +34,7 @@ import PuttReadPreviewPage from './dev/PuttReadPreviewPage.tsx'
 import ChipLabPreviewPage from './dev/ChipLabPreviewPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
+import GsproPlayerQuestion from './components/GsproPlayerQuestion.tsx'
 import { signOutLooper } from './cloud/supabaseClient.ts'
 import {
   BAG_CONFIG_UPDATED_EVENT,
@@ -426,6 +427,7 @@ function RootRouter() {
   return (
     <LooperAuthGate>
       <LiveGsproRoundArchiveBridge />
+      <GsproPlayerQuestion />
       {(showDevPage || showFaq) && !showLiveCaddie
         ? view
         : <BrowserGsproSetupGate>{normalContent}</BrowserGsproSetupGate>}
