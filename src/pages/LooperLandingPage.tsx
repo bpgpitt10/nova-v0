@@ -1,3 +1,4 @@
+import RangeSortNotice from '../components/RangeSortNotice'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   isGsproAccessAvailable,
@@ -417,6 +418,8 @@ export default function LooperLandingPage({
               {' '}on your GSPro PC, then start it again.
             </p>
           ) : null}
+
+          <RangeSortNotice />
 
           {/* Big screens: takes the slack so the modes sit near the bottom of the view. */}
           <div className="looper-landing-spacer" aria-hidden="true" />

@@ -19,6 +19,7 @@ import { loadSavedSessions } from './lib/sessions'
 import ShotVariantsPage from './pages/ShotVariantsPage.tsx'
 import TheReadPage from './pages/TheReadPage.tsx'
 import RoundsPage from './pages/RoundsPage.tsx'
+import RangeSortPage from './pages/RangeSortPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import AdminCoursesPage from './pages/AdminCoursesPage.tsx'
 import CloudRepairPage from './pages/CloudRepairPage.tsx'
@@ -33,6 +34,7 @@ import DecisionAuditDevPage from './dev/DecisionAuditDevPage.tsx'
 import OcrTestPage from './dev/OcrTestPage.tsx'
 import PuttReadPreviewPage from './dev/PuttReadPreviewPage.tsx'
 import ChipLabPreviewPage from './dev/ChipLabPreviewPage.tsx'
+import RangeSortPreviewPage from './dev/RangeSortPreviewPage.tsx'
 import BrowserGsproSetupGate from './components/BrowserGsproSetupGate.tsx'
 import LooperAuthGate from './components/LooperAuthGate.tsx'
 import GsproPlayerQuestion from './components/GsproPlayerQuestion.tsx'
@@ -324,12 +326,13 @@ function RootRouter() {
   const showOcrTest = pathname === '/ocr-test' || pathname === '/dev/ocr-test'
   const showPuttReadPreview = pathname === '/dev/putt-read'
   const showChipLabPreview = pathname === '/dev/chip-lab'
+  const showRangeSortPreview = pathname === '/dev/range-sort'
   const showFaq = pathname === '/faq' || pathname === '/help'
   // Public: GSPro physics, measured. No account, so it sits outside the sign-in gate.
   const showInsights = pathname === '/insights' || pathname.startsWith('/insights/')
   // Public: how Looper works, five cards. Linked from Insights and the sign-in card.
   const showTour = pathname === '/tour'
-  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest || showPuttReadPreview || showChipLabPreview
+  const showDevPage = showCourseRenderDev || showCourseGeometryDev || showGsproCourseAlignment || showAimLab || showDevLiveCaddie || showCaddieInputs || showGsproReplay || showDecisionReplay || showDecisionAudit || showOcrTest || showPuttReadPreview || showChipLabPreview || showRangeSortPreview
 
   useEffect(() => {
     if (showLiveCaddie) {
@@ -367,6 +370,7 @@ function RootRouter() {
     if (showOcrTest) return <OcrTestPage />
     if (showPuttReadPreview) return <PuttReadPreviewPage />
     if (showChipLabPreview) return <ChipLabPreviewPage />
+    if (showRangeSortPreview) return <RangeSortPreviewPage />
     if (showFaq) return <FaqPage />
     if (showSignOut) return <SignOutPage />
     if (showAdminUsers) return <AdminUsersPage />
@@ -382,6 +386,7 @@ function RootRouter() {
     if (showDataManagement) return <DataManagementPage />
     if (showSessionIntelligence) return <SessionIntelligencePage />
     if (showTheRead) return <TheReadPage />
+    if (pathname === '/range-sort') return <RangeSortPage />
     if (showRounds) return <RoundsPage pathname={pathname} />
     if (showLooperLanding) {
       return (
@@ -416,6 +421,7 @@ function RootRouter() {
     showOcrTest,
     showPuttReadPreview,
     showChipLabPreview,
+    showRangeSortPreview,
     showRoundSetup,
     updateError,
     updateStatus,
