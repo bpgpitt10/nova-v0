@@ -93,6 +93,8 @@ CONFIRM_PHRASES = frozenset(("confirm", "yes", "do it", "yes do it"))
 ARM_SHOWN_PHRASES = frozenset((
     "arm", "arm it", "arm that", "arm that one", "that one", "lock it", "lock it in", "send it",
 ))
+# The same aim again, for whatever is on screen: the button's "tap to retry" (Brian, 21 Nov).
+RETRY_PHRASES = frozenset(("retry", "try again", "again", "redo", "re aim", "aim again", "do it again"))
 # Arm Looper's own pick, even if another club is being looked at.
 ARM_RECOMMENDED_PHRASES = frozenset((
     "your call", "your pick", "your club", "arm your pick", "arm your call",
@@ -171,7 +173,7 @@ def grammar(clubs: frozenset[str] | None = None) -> list[str]:
     phrases: list[str] = list(WAKE_WORDS)
     phrases += [phrase for phrase, club in CLUB_PHRASES.items() if clubs is None or club in clubs]
     phrases += list(GSPRO_VIEWS)
-    for table in (CLEAR_PHRASES, CONFIRM_PHRASES, ARM_SHOWN_PHRASES, ARM_RECOMMENDED_PHRASES,
+    for table in (CLEAR_PHRASES, CONFIRM_PHRASES, ARM_SHOWN_PHRASES, ARM_RECOMMENDED_PHRASES, RETRY_PHRASES,
                   DETAILS_PHRASES, AIM_RESET_PHRASES):
         phrases += sorted(table)
     phrases += list(AIM_LINE_PHRASES)
@@ -230,6 +232,8 @@ def _parse_words(rest: list[str]) -> dict | None:
     (filler words aside), so half-heard sentences do nothing."""
     spoken_all = " ".join(rest)
     # Whole phrases first: some contain words that are filler elsewhere ("do it").
+    if spoken_all in RETRY_PHRASES:
+        return {"action": "retry"}
     if spoken_all in CONFIRM_PHRASES:
         return {"action": "confirm"}
     words = [word for word in rest if word not in FILLER_WORDS]
@@ -238,6 +242,8 @@ def _parse_words(rest: list[str]) -> dict | None:
     spoken = " ".join(words)
     if spoken in CLEAR_PHRASES:
         return {"action": "clear"}
+    if spoken in RETRY_PHRASES:
+        return {"action": "retry"}
     if spoken in CONFIRM_PHRASES:
         return {"action": "confirm"}
     if spoken in ARM_SHOWN_PHRASES:
