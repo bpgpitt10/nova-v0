@@ -146,6 +146,7 @@ import './LiveCaddiePage.css'
 import { outcomeTiles } from '../liveCaddie/outcomeShares'
 import { aimClickPoint } from '../liveCaddie/aimClickPoint'
 import { reconcilePinWithHud } from '../liveCaddie/pinReconcile'
+import { mapDistanceDisagrees } from '../liveCaddie/mapDistanceCheck'
 
 const AIM_WIDTH_FACT = /^(Fairway|Green) width: /
 
@@ -1060,10 +1061,21 @@ export default function LiveCaddiePage() {
   // The original tee is NOT the next physical ball location. Imported GSPro
   // shot files can contain true distances/lie while lacking a validated map
   // transform. Never recommend Driver/hazard lines using the previous tee.
-  const spatialPositionUnavailable = liveMatchesHole
+  // A tee shot where GSPro's own start distance is far from Looper's ball-to-pin
+  // distance: the tee or pin is from another layout, so no club is ranked from it.
+  const teeMapPin = trustedLivePin ?? pinEstimate
+  const teeMapMismatch = liveMatchesHole
+    && liveSnapshot?.nextShotNumber === 1
+    && liveSnapshot.surfaceSource === 'gspro-startingpos'
+    && teeMapPin != null
+    && mapDistanceDisagrees(
+      Math.hypot(teeMapPin[0] - ball[0], teeMapPin[1] - ball[1]),
+      liveSnapshot.distanceToPinYds ?? null,
+    )
+  const spatialPositionUnavailable = teeMapMismatch || (liveMatchesHole
     && nextShotNumber != null && nextShotNumber > 1
     && !liveSnapshot?.ballLocalYds
-    && liveSnapshot?.ballSource !== 'cached-tee'
+    && liveSnapshot?.ballSource !== 'cached-tee')
   const spatialPositionProvisional = liveMatchesHole
     && liveSnapshot?.ballSource === 'world-provisional'
   const savedNativeTee = liveMatchesHole
@@ -2468,7 +2480,7 @@ export default function LiveCaddiePage() {
             ±{provisionalPositionRadiusYds ?? 50} yards.
           </div>
         ) : null}
-        {spatialPositionUnavailable ? (
+        {spatialPositionUnavailable && !teeMapMismatch ? (
           <div className="live-caddie-alert bad" data-spatial-position="unavailable" data-error-code="E1">
             {ERROR_TEXT.E1} <span className="live-error-code">E1</span>
           </div>
@@ -2641,12 +2653,19 @@ export default function LiveCaddiePage() {
           </section>
         ) : spatialPositionUnavailable ? (
           <section className="live-empty-state" data-recommendation-gate="unregistered-ball">
-            <span className="live-kicker">POSITION NOT REGISTERED</span>
-            <h1>Shot {nextShotNumber} recognized. Mapping pending.</h1>
+            <span className="live-kicker">{teeMapMismatch ? 'MAP DOESN’T MATCH GSPRO' : 'POSITION NOT REGISTERED'}</span>
+            <h1>{teeMapMismatch
+              ? `GSPro has ${liveSnapshot?.distanceToPinYds != null ? Math.round(liveSnapshot.distanceToPinYds) : '—'} yd to the pin.`
+              : `Shot ${nextShotNumber} recognized. Mapping pending.`}</h1>
+            {teeMapMismatch ? (
+              <p>Looper’s map has this hole at a different length (other tees or another layout), so it
+                won’t pick a club or an aim here. Play GSPro’s distance. Your shots are still tracked.</p>
+            ) : (
             <p>GSPro distance to pin: {liveSnapshot?.distanceToPinYds != null
               ? `${Math.round(liveSnapshot.distanceToPinYds)} yd` : 'unavailable'}.
               We will not reuse the old tee point to calculate a misleading club or aim.
               Physical shot tracking remains active.</p>
+            )}
           </section>
         ) : (
           <>
