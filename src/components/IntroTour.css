@@ -113,6 +113,27 @@
   min-width: 0;
 }
 
+.intro-tour__points {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: 34em;
+}
+
+.intro-tour__points li {
+  padding: 10px 12px;
+  border-left: 3px solid var(--tour-gold);
+  border-radius: 0 8px 8px 0;
+  background: rgba(23, 36, 25, 0.75);
+  color: #cfd8cd;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.intro-tour__points strong { color: #fff; }
+
 /* Desktop: copy on the left, the screen on the right. */
 @media (min-width: 900px) {
   .intro-tour__slide {
@@ -304,8 +325,6 @@
 .intro-tour .intro-tour__decision .live-conditions-panel,
 .intro-tour .intro-tour__decision .live-expected-shot-block { grid-area: auto; height: auto; margin: 0; }
 /* Shorter for the tour: the outcome tiles and roll-out row stay on Live Caddie. */
-.intro-tour .intro-tour__decision .live-hero-outcomes,
-.intro-tour .intro-tour__decision .live-hero-outcome-detail,
 .intro-tour .intro-tour__decision .live-condition-after-landing { display: none; }
 
 .intro-tour .intro-tour__decision > * + * { margin-top: 10px; }

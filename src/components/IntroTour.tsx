@@ -104,7 +104,7 @@ function CaddieSample() {
         </div>
         <div className="live-club-hero">6i</div>
         <div className="live-aim-hero">3 yd left of the pin</div>
-        <p className="live-decision-reason">152 to the pin, into the wind and uphill: it plays 9 yd longer, and short right is sand.</p>
+        <p className="live-decision-reason">152 to the pin, into the wind and uphill: it plays 9 yd longer. Short right is sand, so the aim favors the left.</p>
         <ConditionsMathPanel
           evaluation={SAMPLE_EVALUATION}
           windMph={8}
@@ -297,6 +297,8 @@ type Slide = {
   kicker: string
   title: ReactNode
   line: ReactNode
+  /** Short tags under the line: what sets this card apart. */
+  points?: readonly { title: string; text: string }[]
   visual: ReactNode
 }
 
@@ -309,6 +311,11 @@ export default function IntroTour({ audience, onDone }: Props) {
       kicker: 'The caddie',
       title: <>Your caddie, <em>beside GSPro</em></>,
       line: 'Every shot: the club, the carry and the aim, adjusted for the wind, the lie, the slope and the roll GSPro will give you.',
+      points: [
+        { title: 'Your game', text: 'Picked from how far you carry each club and how you miss it, not tour averages.' },
+        { title: 'Hazard aware', text: 'It sees the bunkers, water and trees, and plays away from the miss that costs you.' },
+        { title: 'Course aware', text: 'The real hole, its elevation and the green you’re landing on, not a straight line to the flag.' },
+      ],
       visual: <CaddieSample />,
     },
     {
@@ -414,6 +421,13 @@ export default function IntroTour({ audience, onDone }: Props) {
             <span className="intro-tour__kicker">{index + 1} of {slides.length} · {slide.kicker}</span>
             <h1>{slide.title}</h1>
             <p>{slide.line}</p>
+            {slide.points ? (
+              <ul className="intro-tour__points">
+                {slide.points.map((point) => (
+                  <li key={point.title}><strong>{point.title}</strong> {point.text}</li>
+                ))}
+              </ul>
+            ) : null}
           </div>
           <div className="intro-tour__visual" ref={scroller}>
             {slide.visual}
