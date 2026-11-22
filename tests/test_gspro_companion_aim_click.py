@@ -26,11 +26,18 @@ WINDOW = {
 BALL, PIN, TARGET = (100.0, 50.0), (100.0, 250.0), (110.0, 200.0)
 
 
-def frame_with(ball_px=(140, 400), pin_px=(140, 60), marker=None, ball_bgr=(0, 0, 235)):
+def frame_with(ball_px=(140, 400), pin_px=(140, 60), marker=None, ball_bgr=(0, 0, 235), blue_marker=False, water=False):
     frame = np.full((H, W, 3), (40, 110, 50), np.uint8)
+    if water:  # the minimap's dark blue water: the blue marker's hue, much darker
+        cv2.rectangle(frame, (X0 + 20, Y0 + 120), (X0 + 110, Y0 + 300), (90, 30, 12), -1)
     cv2.circle(frame, (X0 + ball_px[0], Y0 + ball_px[1]), 5, ball_bgr, -1)
     cv2.circle(frame, (X0 + pin_px[0], Y0 + pin_px[1]), 5, (255, 255, 255), -1)
-    if marker is not None:
+    if marker is not None and blue_marker:
+        # Bellerive, 21 Nov: a blue disc with a white ring.
+        x, y = int(round(X0 + marker[0])), int(round(Y0 + marker[1]))
+        cv2.circle(frame, (x, y), 11, (255, 255, 255), -1)
+        cv2.circle(frame, (x, y), 8, (242, 127, 0), -1)
+    elif marker is not None:
         x, y = int(round(X0 + marker[0])), int(round(Y0 + marker[1]))
         cv2.circle(frame, (x, y), 9, (230, 40, 230), 2)  # magenta reticle
         cv2.line(frame, (x - 12, y), (x + 12, y), (230, 40, 230), 2)
@@ -76,6 +83,18 @@ class AimClickTests(unittest.TestCase):
         self.assertEqual(result["verified"], "mismatch")
         result, _ = run([frame_with(), frame_with()])
         self.assertEqual(result["verified"], "marker-not-seen")
+
+    def test_blue_aim_marker_is_verified_and_water_is_not(self):
+        # Bellerive, 21 Nov: GSPro drew its aim as a blue disc; every click read "check the aim".
+        preview = aim.aim_preview(frame_with(water=True), ball_world=BALL, pin_world=PIN, target_world=TARGET)
+        target = preview["minimap"]["target"]
+        result, _ = run([frame_with(water=True), frame_with(water=True, marker=target, blue_marker=True)])
+        self.assertEqual(result["verified"], "match", result)
+        tx, ty = target
+        result, _ = run([frame_with(water=True), frame_with(water=True, marker=(tx + 40, ty), blue_marker=True)])
+        self.assertEqual(result["verified"], "mismatch", result)
+        result, _ = run([frame_with(water=True), frame_with(water=True)])
+        self.assertEqual(result["verified"], "marker-not-seen", result)
 
     def test_a_purple_ball_is_not_mistaken_for_the_aim_marker(self):
         # Farmlinks, 19 Nov: a purple ball is the reticle's colour and read as "285 px off".
