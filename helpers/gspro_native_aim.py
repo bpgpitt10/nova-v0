@@ -258,6 +258,99 @@ def _pin_above(roi: np.ndarray, ball: Pixel) -> Pixel:
     raise failure or RuntimeError("Could not detect white pin marker.")
 
 
+#: GSPro's minimap zooms from a whole par 5 down to a green; outside this the pair is not a minimap.
+FREE_PAIR_YARDS_PER_PIXEL = (0.03, 1.2)
+#: Header band at the top of the minimap ("Fairway", "Green"...): white letters, never the pin.
+MINIMAP_HEADER = 0.115
+
+
+def _solid_round_dots(mask: np.ndarray, expected: float, shine: np.ndarray | None = None) -> list[tuple[float, Pixel]]:
+    """Every compact, solid, round dot of the mask's colour at the ball's size: (roundness, centre)."""
+    found: list[tuple[float, Pixel]] = []
+    for contour in cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]:
+        x, y, cw, ch = cv2.boundingRect(contour)
+        if not (0.5 * expected <= cw <= 1.8 * expected and 0.5 * expected <= ch <= 1.8 * expected):
+            continue
+        area = cv2.contourArea(contour)
+        perimeter = cv2.arcLength(contour, True)
+        circularity = 4 * math.pi * area / (perimeter * perimeter) if perimeter else 0.0
+        if circularity < 0.6:
+            continue
+        m = cv2.moments(contour)
+        if m["m00"] == 0:
+            continue
+        outline = np.zeros((ch, cw), np.uint8)
+        cv2.drawContours(outline, [contour], -1, 255, -1, offset=(-x, -y))
+        inside = cv2.countNonZero(outline)
+        fill = mask[y:y + ch, x:x + cw]
+        if shine is not None:
+            fill = cv2.bitwise_or(fill, shine[y:y + ch, x:x + cw])
+        if not inside or cv2.countNonZero(cv2.bitwise_and(outline, fill)) < 0.85 * inside:
+            continue
+        if cv2.countNonZero(mask[y:y + ch, x:x + cw]) < 0.6 * cw * ch:
+            continue
+        found.append((circularity, Pixel(m["m10"] / m["m00"], m["m01"] / m["m00"])))
+    return found
+
+
+def find_free_pair(roi: np.ndarray, hue: int | None) -> tuple[Pixel, Pixel]:
+    """Ball and pin wherever GSPro drew them: no "pin straight above the ball" assumed.
+
+    GSPro only draws the pair on one vertical line for a full shot down a hole.
+    Around the green it zooms in and the ball sits mid-map; on some par 3 tees
+    the whole hole is drawn at an angle (FarmLinks 3, 4 and 5, 21 Nov 2026).
+    There the pair is found by what the dots are: one round dot in the player's
+    ball colour and one round white dot of the same size. Bunkers are far too
+    big, hazard lines too long, letters are rings or not round. It needs the
+    player's colour from the banner, and exactly one of each dot: anything
+    less sure is refused.
+    """
+    if hue is None:
+        raise RuntimeError("Could not read the player's ball colour, so the ball can't be told from the map")
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    h, w = hsv.shape[:2]
+    expected = max(6.0, BALL_DOT_FRACTION * w)
+    top = int(MINIMAP_HEADER * h)
+    shine = cv2.inRange(hsv[:, :, 2], 170, 255)
+    # Inside the map itself: under the header, and off the crop's side edges, where dots from
+    # GSPro's putting grid on the main screen can show (FarmLinks 3 green, 21 Nov).
+    edge = 0.05 * w
+    below_header = lambda dots: [d for d in dots if d[1].y > top and edge < d[1].x < w - edge]  # noqa: E731
+    balls = below_header(_solid_round_dots(_hue_mask(hsv, hue), expected, shine))
+    if not balls:
+        balls = below_header(_solid_round_dots(_hue_mask(hsv, hue, spread=16, sat=150, val=55), expected, shine))
+    if len(balls) != 1:
+        raise RuntimeError("Could not find one ball dot in the player's colour on the minimap"
+                           if not balls else "More than one dot in the player's ball colour on the minimap")
+    ball = balls[0][1]
+    white = cv2.inRange(hsv, np.array([0, 0, 215]), np.array([179, 60, 255]))
+    pins = [d for d in below_header(_solid_round_dots(white, expected))
+            if math.hypot(d[1].x - ball.x, d[1].y - ball.y) >= MIN_BALL_PIN_PX]
+    if len(pins) != 1:
+        raise RuntimeError("Could not find GSPro's white pin dot on the minimap"
+                           if not pins else "More than one white dot that could be the pin on the minimap")
+    return ball, pins[0][1]
+
+
+def find_ball_and_pin_any(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, Pixel, str]:
+    """The pair and how it was found: "vertical" (GSPro's usual layout) or "free" (anywhere on the map)."""
+    try:
+        ball, pin = find_ball_and_pin(roi, hue)
+        if _lined_up(ball, pin):
+            return ball, pin, "vertical"
+        usual: Exception | None = RuntimeError("The pair found is not on one vertical line")
+        unaligned: tuple[Pixel, Pixel] | None = (ball, pin)
+    except Exception as error:  # the pin detector raises its own types
+        usual, unaligned = error, None
+    try:
+        ball, pin = find_free_pair(roi, hue)
+        return ball, pin, "free"
+    except RuntimeError as error:
+        if unaligned is not None:
+            return unaligned[0], unaligned[1], "vertical"   # as before: the alignment check refuses it
+        raise RuntimeError(f"{str(usual)[:70]}; {str(error)[:70]}") from error
+
+
 def find_ball_and_pin(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, Pixel]:
     """Pin and ball as a pair: a white marker in the upper part of the map with a ball dot under it.
 
@@ -287,10 +380,16 @@ def find_ball_and_pin(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, P
 
 
 def locate_minimap(frame_bgr: np.ndarray, roi=None):
+    """Find the minimap on this frame: (crop, (x0, y0), ball, pin, side, roi)."""
+    return locate_minimap_pair(frame_bgr, roi)[:6]
+
+
+def locate_minimap_pair(frame_bgr: np.ndarray, roi=None):
     """Find the minimap on this frame: bottom right first, then the same place on the left.
 
-    Returns (crop, (x0, y0), ball, pin, side, roi). The left position is the right
-    one mirrored; GSPro lets the player put the minimap on either side.
+    Returns (crop, (x0, y0), ball, pin, side, roi, pairing). The left position is the right
+    one mirrored; GSPro lets the player put the minimap on either side. `pairing` is
+    "vertical" or "free" (see find_ball_and_pin_any).
     """
     sides = (("given", roi),) if roi is not None else (("right", RIGHT_MINIMAP_ROI), ("left", LEFT_MINIMAP_ROI))
     looked: list[np.ndarray] = []
@@ -299,8 +398,8 @@ def locate_minimap(frame_bgr: np.ndarray, roi=None):
     for side, candidate in sides:
         crop, origin = crop_minimap(frame_bgr, candidate)
         try:
-            ball, pin = find_ball_and_pin(crop, hue)
-            return crop, origin, ball, pin, side, candidate
+            ball, pin, pairing = find_ball_and_pin_any(crop, hue)
+            return crop, origin, ball, pin, side, candidate, pairing
         except Exception as error:  # the pin detector raises its own types
             looked.append(crop)
             # Always name the error: some (MemoryError, a bare assert) have no message.
@@ -363,7 +462,7 @@ def aim_preview(frame_bgr: np.ndarray, *, ball_world, pin_world, target_world, r
     for value in (*ball_world, *pin_world, *target_world):
         if not math.isfinite(value):
             raise ValueError("Non-finite world coordinate")
-    crop, (x0, y0), ball_px, pin_px, side, used_roi = locate_minimap(frame_bgr, roi)
+    crop, (x0, y0), ball_px, pin_px, side, used_roi, pairing = locate_minimap_pair(frame_bgr, roi)
     separation = math.hypot(pin_px.x - ball_px.x, pin_px.y - ball_px.y)
     if separation < MIN_BALL_PIN_PX:
         raise RuntimeError("Ball and pin dots are too close on the minimap to aim precisely")
@@ -397,6 +496,12 @@ def aim_preview(frame_bgr: np.ndarray, *, ball_world, pin_world, target_world, r
             "ballPinPixels": round(separation, 1),
             "ballPinVerticalAlignment": round(alignment, 3),
             "alignedLikeGspro": alignment <= MAX_ALIGNMENT_RATIO,
+            # "free": the dots were found by colour and shape anywhere on the map (zoomed
+            # green, angled par 3). Trusted only at a zoom GSPro actually uses.
+            "pairing": pairing,
+            "pairTrusted": alignment <= MAX_ALIGNMENT_RATIO or (
+                pairing == "free"
+                and FREE_PAIR_YARDS_PER_PIXEL[0] <= frame.yards_per_pixel <= FREE_PAIR_YARDS_PER_PIXEL[1]),
             "yardsPerPixel": round(frame.yards_per_pixel, 3),
         },
         "previewPng": _png_base64(annotated),

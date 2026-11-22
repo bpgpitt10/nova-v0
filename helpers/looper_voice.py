@@ -93,6 +93,8 @@ CONFIRM_PHRASES = frozenset(("confirm", "yes", "do it", "yes do it"))
 ARM_SHOWN_PHRASES = frozenset((
     "arm", "arm it", "arm that", "arm that one", "that one", "lock it", "lock it in", "send it",
 ))
+# The same aim again, for whatever is on screen: the button's "tap to retry" (Brian, 21 Nov).
+RETRY_PHRASES = frozenset(("retry", "try again", "again", "redo", "re aim", "aim again", "do it again"))
 # Arm Looper's own pick, even if another club is being looked at.
 ARM_RECOMMENDED_PHRASES = frozenset((
     "your call", "your pick", "your club", "arm your pick", "arm your call",
@@ -105,6 +107,14 @@ AIM_LINE_PHRASES = {
     "best": "best", "best line": "best", "best aim": "best",
     "second best": "second", "second best line": "second", "second line": "second", "second": "second",
     "safest": "safest", "safest line": "safest", "safe line": "safest", "safe": "safest", "safe one": "safest",
+}
+# Chip shots around the green (Brian, 21 Nov): "Looper, pitch", "show me the flop shot".
+# Said alone it shows that chip; with "arm" in front it aims it. Not "lob": that is the lob wedge.
+CHIP_PHRASES = {
+    "bump and run": "bump", "bump": "bump", "bump run": "bump",
+    "chip": "chip", "chip shot": "chip",
+    "pitch": "pitch", "pitch shot": "pitch",
+    "flop": "flop", "flop shot": "flop",
 }
 AIM_RESET_PHRASES = frozenset((
     "reset aim", "aim reset", "aim center", "center", "center it", "center aim",
@@ -163,10 +173,11 @@ def grammar(clubs: frozenset[str] | None = None) -> list[str]:
     phrases: list[str] = list(WAKE_WORDS)
     phrases += [phrase for phrase, club in CLUB_PHRASES.items() if clubs is None or club in clubs]
     phrases += list(GSPRO_VIEWS)
-    for table in (CLEAR_PHRASES, CONFIRM_PHRASES, ARM_SHOWN_PHRASES, ARM_RECOMMENDED_PHRASES,
+    for table in (CLEAR_PHRASES, CONFIRM_PHRASES, ARM_SHOWN_PHRASES, ARM_RECOMMENDED_PHRASES, RETRY_PHRASES,
                   DETAILS_PHRASES, AIM_RESET_PHRASES):
         phrases += sorted(table)
     phrases += list(AIM_LINE_PHRASES)
+    phrases += list(CHIP_PHRASES)
     words: set[str] = set(FILLER_WORDS) | WIND_VERBS | AIM_VERBS | AIM_QUALIFIERS
     words |= CLUB_STEP_UP | CLUB_STEP_DOWN | {"wind", "club", "left", "right", "one"}
     phrases += sorted(words)
@@ -221,6 +232,8 @@ def _parse_words(rest: list[str]) -> dict | None:
     (filler words aside), so half-heard sentences do nothing."""
     spoken_all = " ".join(rest)
     # Whole phrases first: some contain words that are filler elsewhere ("do it").
+    if spoken_all in RETRY_PHRASES:
+        return {"action": "retry"}
     if spoken_all in CONFIRM_PHRASES:
         return {"action": "confirm"}
     words = [word for word in rest if word not in FILLER_WORDS]
@@ -229,6 +242,8 @@ def _parse_words(rest: list[str]) -> dict | None:
     spoken = " ".join(words)
     if spoken in CLEAR_PHRASES:
         return {"action": "clear"}
+    if spoken in RETRY_PHRASES:
+        return {"action": "retry"}
     if spoken in CONFIRM_PHRASES:
         return {"action": "confirm"}
     if spoken in ARM_SHOWN_PHRASES:
@@ -252,6 +267,8 @@ def _parse_words(rest: list[str]) -> dict | None:
     if view and not after_view:
         return {"action": "gspro", "key": view}
     club_words = words[1:] if words[0] == "arm" else words
+    if " ".join(club_words) in CHIP_PHRASES:
+        return {"action": "chip", "shot": CHIP_PHRASES[" ".join(club_words)], "arm": words[0] == "arm"}
     if " ".join(club_words) in AIM_LINE_PHRASES:
         return {"action": "aim-line", "line": AIM_LINE_PHRASES[" ".join(club_words)], "arm": words[0] == "arm"}
     club, after_club = _match_phrase(club_words, CLUB_PHRASES)
