@@ -86,6 +86,12 @@ class ParseCommandTest(unittest.TestCase):
                              ("flag", "pin"), ("shot camera", "shotcam"), ("putting mode", "putt")):
             self.assertEqual(voice.parse_command("looper " + wording), {"action": "gspro", "key": key}, wording)
 
+    def test_retry_does_the_same_aim_again(self):
+        for wording in ("retry", "try again", "again", "do it again", "aim again", "please retry"):
+            self.assertEqual(voice.parse_command("looper " + wording), {"action": "retry"}, wording)
+        self.assertEqual(voice.parse_command("looper do it"), {"action": "confirm"})
+        self.assertIn("retry", voice.grammar())
+
     def test_chip_shots_show_or_arm(self):
         # Brian, 21 Nov: "pitch" shows it, "show me the pitch shot" too; "arm" aims it.
         for wording, shot in (("pitch", "pitch"), ("show me the pitch shot", "pitch"), ("show me pitch", "pitch"),
