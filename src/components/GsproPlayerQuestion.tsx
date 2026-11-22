@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getCurrentLooperUser } from '../cloud/supabaseClient'
 import {
   GSPRO_PLAYER_EVENT,
@@ -7,6 +7,9 @@ import {
   type PlayerQuestion,
 } from '../lib/gsproPlayers'
 import './GsproPlayerQuestion.css'
+
+/** How long a new question waits before it shows, in case another round answers it first. */
+const QUESTION_SETTLE_MS = 4000
 
 /**
  * "Which one is you?": a GSPro round with more than one player (or a player this
@@ -20,8 +23,19 @@ export default function GsproPlayerQuestion() {
 
   const refresh = useCallback(async () => {
     const user = await getCurrentLooperUser().catch(() => null)
-    setQuestion(user ? loadPlayerQuestions(user.id).at(-1) ?? null : null)
+    const latest = user ? loadPlayerQuestions(user.id).at(-1) ?? null : null
+    // Rounds are sorted out one after another: a solo round a moment later can answer this one
+    // (21 Nov: the question flashed and closed). Show it only once it has waited a few seconds.
+    const waited = latest ? Date.now() - Date.parse(latest.askedAt) : 0
+    if (latest && waited < QUESTION_SETTLE_MS) {
+      setQuestion(null)
+      window.setTimeout(() => { void refreshRef.current() }, QUESTION_SETTLE_MS - waited + 50)
+      return
+    }
+    setQuestion(latest)
   }, [])
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
 
   useEffect(() => {
     void refresh()

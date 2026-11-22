@@ -1,5 +1,6 @@
 import { CompanionChip } from './CompanionChip'
 import { CompanionUpdateNotice } from './CompanionUpdateNotice'
+import { AccountGsproPlayer, useKnownGsproPlayers } from './AccountGsproPlayer'
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
 import authBackground from '../assets/Backgrounds/looper-entry-links.webp'
@@ -80,6 +81,7 @@ export default function LooperAuthGate({ children }: Props) {
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null)
   const [resendWaitUntil, setResendWaitUntil] = useState(0)
   const [, setResendTick] = useState(0)
+  const gsproPlayers = useKnownGsproPlayers(state === 'allowed' && user != null)
   const bootstrapRef = useRef<{ userId: string; promise: Promise<void> } | null>(null)
   const passwordResetFlowRef = useRef(isPasswordResetReturn())
   const authorizedUserIdRef = useRef<string | null>(null)
@@ -452,6 +454,7 @@ export default function LooperAuthGate({ children }: Props) {
   }
 
   if (state === 'allowed') {
+    const myName = (gsproPlayers ?? []).filter((player) => player.mine).map((player) => player.name).filter(Boolean).join(', ') || null
     return (
       <>
         {user ? <CompanionUpdateNotice /> : null}
@@ -460,10 +463,14 @@ export default function LooperAuthGate({ children }: Props) {
             <CompanionChip />
             <details className="looper-account-control__details">
               <summary className="looper-account-control__summary">
-                <span className="looper-account-control__email">{user.email ?? 'Account'}</span>
+                {/* Who's signed in, on every page: the GSPro name with the email (Brian, 21 Nov). */}
+                <span className="looper-account-control__email">
+                  {myName ? <><strong>{myName}</strong> ({user.email ?? 'account'})</> : user.email ?? 'Account'}
+                </span>
                 <span aria-hidden="true" className="looper-account-control__chevron">▾</span>
               </summary>
               <div className="looper-account-control__menu">
+                <AccountGsproPlayer players={gsproPlayers} />
                 <button
                   type="button"
                   className="looper-account-control__logout"

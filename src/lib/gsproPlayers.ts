@@ -214,9 +214,17 @@ export const myPartOfRound = async (
     return { round: null, waiting: true }
   }
   if (decision.kind === 'not-mine') return { round: null, waiting: false }
-  if (decision.claim) {
-    await savePlayerVerdicts(user.id, [{ player: decision.claim, verdict: 'mine' }]).catch((error) => {
-      console.warn('[GSPro players] first claim not saved yet; will retry.', error)
+  // The others in a round that is this account's: remembered as not-mine, so the account menu's
+  // "Change" can list every name this account has played with.
+  const others = round.players.filter((player) => player.key !== UNKNOWN && !decision.keys.has(player.key)
+    && !claims.has(player.key))
+  const verdicts = [
+    ...(decision.claim ? [{ player: decision.claim, verdict: 'mine' as const }] : []),
+    ...others.map((player) => ({ player, verdict: 'not-mine' as const })),
+  ]
+  if (verdicts.length) {
+    await savePlayerVerdicts(user.id, verdicts).catch((error) => {
+      console.warn('[GSPro players] claims not saved yet; will retry.', error)
     })
   }
   const mine = roundForPlayers(round, decision.keys)
@@ -241,4 +249,26 @@ export const resetPlayerClaims = async () => {
   cache.set(user.id, { at: Date.now(), claims: new Map() })
   writeLocal(`${CACHE_PREFIX}${user.id}`, [])
   announce()
+}
+
+/** Every GSPro player this account has seen, with whether it is theirs (account menu, "Change"). */
+export const knownGsproPlayers = async (): Promise<{ key: string; name: string | null; mine: boolean }[]> => {
+  const user = await getCurrentLooperUser()
+  if (!user) return []
+  const claims = await loadPlayerClaims(user.id)
+  return [...claims.entries()]
+    .filter(([key]) => !key.startsWith('name:'))
+    .map(([key, claim]) => ({ key, name: claim.name, mine: claim.verdict === 'mine' }))
+    .sort((a, b) => Number(b.mine) - Number(a.mine) || (a.name ?? '').localeCompare(b.name ?? ''))
+}
+
+/** "That's me": this player is the account's; every other known player is not. */
+export const chooseMyGsproPlayer = async (playerKey: string) => {
+  const user = await getCurrentLooperUser()
+  if (!user) return
+  const known = await knownGsproPlayers()
+  await savePlayerVerdicts(user.id, known.map((player) => ({
+    player: { key: player.key, name: player.name },
+    verdict: player.key === playerKey ? 'mine' as const : 'not-mine' as const,
+  })))
 }
