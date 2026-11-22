@@ -349,7 +349,7 @@ export default function RoundsPage({ pathname }: { pathname: string }) {
 
 // ---- list ---------------------------------------------------------------------
 
-type ListFilter = 'full' | 'all' | 'live-caddie'
+type ListFilter = 'full' | 'counts' | 'all' | 'live-caddie'
 
 /** Whether a round is in the stats; in Manage, tap to switch it. */
 function CountChip({ round, managing, onToggle }: { round: RoundSummary; managing: boolean; onToggle: () => void }) {
@@ -405,6 +405,9 @@ function RoundsList({
   const visible = onCourse.filter((round) => {
     if (filter === 'live-caddie') return isLiveCaddieRound(round) && round.status !== 'fragment'
     if (filter === 'all') return true
+    // Counts: every round that feeds Your game, including a partial one marked as counting
+    // (Brian, 21 Nov: 13 legit holes, then had to stop).
+    if (filter === 'counts') return round.counts
     return round.status === 'full' && round.counts
   })
   const shown = new Set(visible.map((round) => round.roundId))
@@ -442,7 +445,7 @@ function RoundsList({
           <p className="rounds-muted">Every round the companion saw, with each shot, lie and putt.</p>
         </div>
         <div className="rounds-segment" role="group" aria-label="Filter rounds">
-          {(['full', 'all', 'live-caddie'] as const).map((value) => (
+          {(['full', 'counts', 'all', 'live-caddie'] as const).map((value) => (
             <button
               aria-pressed={filter === value}
               className={filter === value ? 'is-active' : undefined}
@@ -450,7 +453,7 @@ function RoundsList({
               onClick={() => setFilter(value)}
               type="button"
             >
-              {value === 'full' ? 'Full rounds' : value === 'all' ? 'All' : 'Live Caddie rounds'}
+              {value === 'full' ? 'Full rounds' : value === 'counts' ? 'Counts' : value === 'all' ? 'All' : 'Live Caddie rounds'}
             </button>
           ))}
           <button
@@ -545,7 +548,7 @@ function RoundsList({
 
       {visible.length === 0 ? (
         <div className="rounds-card rounds-empty">
-          <p>No {filter === 'full' ? 'full ' : filter === 'live-caddie' ? 'Live Caddie ' : ''}rounds yet.</p>
+          <p>No {filter === 'full' ? 'full ' : filter === 'counts' ? 'counting ' : filter === 'live-caddie' ? 'Live Caddie ' : ''}rounds yet.</p>
           {filter !== 'all' && onCourse.length > 0 ? (
             <button className="rounds-link-button" onClick={() => setFilter('all')} type="button">Show all {onCourse.length} rounds</button>
           ) : null}
