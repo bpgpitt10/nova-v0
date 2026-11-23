@@ -448,6 +448,22 @@ function RootRouter() {
   )
 }
 
+// A page left open across a site update still points at the old build's files, which are gone:
+// the next screen it loads fails with "Failed to fetch dynamically imported module" (Start Round,
+// 23 Nov). Reload once to pick up the new build. Not twice in a minute, so a real outage can't loop.
+window.addEventListener('vite:preloadError', (event) => {
+  const KEY = 'looper.stale-build-reload-at'
+  try {
+    const last = Number(window.sessionStorage.getItem(KEY))
+    if (Number.isFinite(last) && last > 0 && Date.now() - last < 60_000) return
+    window.sessionStorage.setItem(KEY, String(Date.now()))
+  } catch {
+    return
+  }
+  event.preventDefault()
+  window.location.reload()
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <RootRouter />
