@@ -109,6 +109,24 @@ class ParseCommandTest(unittest.TestCase):
         self.assertIn("pitch", voice.grammar())
         self.assertIn("bump and run", voice.grammar())
 
+    def test_wedge_flights_show_or_arm(self):
+        # Brian, 23 Nov: the Wedge Lab's four flights, said the way the chips are.
+        for wording, shot in (("runner", "runner"), ("show me the runner", "runner"),
+                              ("flighted", "flighted"), ("the flighted shot", "flighted"), ("flight it", "flighted"),
+                              ("standard", "standard"), ("give me the stock shot", "standard"),
+                              ("high", "high"), ("show me the high one", "high")):
+            self.assertEqual(voice.parse_command("looper " + wording),
+                             {"action": "chip", "shot": shot, "arm": False}, wording)
+        for wording, shot in (("arm the standard", "standard"), ("arm flighted", "flighted"), ("arm the high shot", "high")):
+            self.assertEqual(voice.parse_command("looper " + wording),
+                             {"action": "chip", "shot": shot, "arm": True}, wording)
+        # Nothing else changed meaning: clubs, club steps and aim lines are as they were.
+        self.assertEqual(voice.parse_command("looper sand wedge"), {"action": "arm", "club": "SW"})
+        self.assertEqual(voice.parse_command("looper club up"), {"action": "club-step", "direction": "up"})
+        self.assertEqual(voice.parse_command("looper safest line"), {"action": "aim-line", "line": "safest", "arm": False})
+        for word in ("runner", "flighted", "standard", "high"):
+            self.assertIn(word, voice.grammar())
+
     def test_aim_lines_show_or_arm(self):
         for wording, line in (("second best", "second"), ("the safest line", "safest"), ("best line", "best"),
                               ("show me the safe line", "safest")):

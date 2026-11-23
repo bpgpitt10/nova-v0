@@ -1,6 +1,6 @@
 {
   "_how": "Published with each companion release, for the red update box on thelooper.golf. importantRelease: the newest release with a bug fix that affects play; everyone on an older companion gets the box. Leave it alone for a small release. bugFix and feature: one short line each (160 characters at most); the rest goes in the GitHub release notes. null importantRelease: no box.",
-  "importantRelease": "1.2.0",
-  "bugFix": "Auto Aim works on chips, par 3 tees and zoomed or angled minimaps, on either side of the screen and on Payne's Valley. Fewer false \"Check the aim\" warnings.",
-  "feature": "Voice: \"Looper, three wood\" arms a club, \"Looper, pitch\" shows a chip, \"Looper, retry\" aims again. Looper also reads GSPro's green and course settings."
+  "importantRelease": "1.2.1",
+  "bugFix": "Auto Aim on dull or shaded courses.",
+  "feature": "Your caddie listens now. Say \"Looper, three wood\" or \"Looper, arm the flop\" and GSPro is aimed for you, from the tee to a 20 yard chip."
 }

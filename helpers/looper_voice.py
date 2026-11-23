@@ -115,6 +115,14 @@ CHIP_PHRASES = {
     "chip": "chip", "chip shot": "chip",
     "pitch": "pitch", "pitch shot": "pitch",
     "flop": "flop", "flop shot": "flop",
+    # Partial wedges, 40 yd to the shortest club (Brian, 23 Nov): the four flights on the Wedge Lab
+    # card. Same command as a chip; the page shows whichever card the distance calls for.
+    # "flight it" and "flight" are how "flighted" tends to be heard.
+    "runner": "runner", "runner shot": "runner", "run it": "runner",
+    "flighted": "flighted", "flighted shot": "flighted", "flighted wedge": "flighted",
+    "flight it": "flighted", "flight": "flighted",
+    "standard": "standard", "standard shot": "standard", "stock": "standard", "stock shot": "standard",
+    "high": "high", "high shot": "high", "high one": "high",
 }
 AIM_RESET_PHRASES = frozenset((
     "reset aim", "aim reset", "aim center", "center", "center it", "center aim",

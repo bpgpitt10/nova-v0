@@ -129,6 +129,10 @@ jobs:
             "looper-armsecond" = "Looper, arm second best."
             "looper-safest" = "Caddie, safest line."
             "caddie-moreclub" = "Caddie, more club."
+            "looper-runner" = "Looper, runner."
+            "looper-flighted" = "Looper, flighted."
+            "looper-standard" = "Looper, standard."
+            "looper-high" = "Looper, show me the high shot."
             "chatter2"    = "Can you give me the wind on that one? I think I need more club, it went left."
             "chatter"     = "Nice shot. I think that one found the fairway bunker on the left."
           }

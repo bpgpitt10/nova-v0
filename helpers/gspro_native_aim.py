@@ -39,6 +39,8 @@ MAX_BALL_OFF_PIN_LINE = 0.15
 METERS_TO_YARDS = 1.0936132983377078
 # The red ball dot is ~18 px on a 3760 px wide window: ~3.3% of the minimap width.
 BALL_DOT_FRACTION = 0.033
+#: How far down the minimap GSPro draws the ball in its usual layout.
+BALL_USUAL_DOWN = (0.87, 0.94)
 MIN_BALL_PIN_PX = 60.0
 MAX_ALIGNMENT_RATIO = 0.08
 
@@ -153,7 +155,17 @@ def find_ball_dot(roi: np.ndarray, pin: Pixel, hue: int | None = None) -> Pixel:
     # Some courses (Payne's Valley) draw the dot as a lit ball: its top half is
     # dark (a purple dot's top is value 71). Look again with dark pixels of the
     # same strong colour allowed in.
-    return _best_ball_dot([_hue_mask(hsv, hue, spread=16, sat=150, val=55)], pin, h, w, expected, shine)
+    try:
+        return _best_ball_dot([_hue_mask(hsv, hue, spread=16, sat=150, val=55)], pin, h, w, expected, shine)
+    except RuntimeError:
+        pass
+    # A dull scene dims the ball as it dims the pin. Where GSPro puts the ball in its usual layout
+    # (35 real captures: 89.5% to 91.6% down in 33 of them), a round dot of the player's hue is the
+    # ball even when its colour is washed out. Only there: grass shares the green ball's hue.
+    usual = _hue_mask(hsv, hue, spread=18, sat=80, val=50)
+    usual[: int(BALL_USUAL_DOWN[0] * h), :] = 0
+    usual[int(BALL_USUAL_DOWN[1] * h):, :] = 0
+    return _best_ball_dot([usual], pin, h, w, expected, shine)
 
 
 def _best_ball_dot(masks, pin: Pixel, h: int, w: int, expected: float, shine: np.ndarray) -> Pixel:
@@ -250,12 +262,92 @@ def _pin_above(roi: np.ndarray, ball: Pixel) -> Pixel:
     x0, x1 = max(0, int(ball.x) - half), min(w, int(ball.x) + half)
     strip = roi[: int(PIN_MAX_DOWN * h), x0:x1]
     failure: Exception | None = None
-    for pin in _pin_candidates(strip, minimap_width=w):
-        pin = Pixel(pin.x + x0, pin.y)
-        if _lined_up(ball, pin):
-            return pin
-        failure = failure or RuntimeError("The white marker above the ball is not in line with it")
+    try:
+        for pin in _pin_candidates(strip, minimap_width=w):
+            pin = Pixel(pin.x + x0, pin.y)
+            if pin.y <= MINIMAP_HEADER * h:
+                continue   # white letters in the minimap's title, never the pin
+            if _lined_up(ball, pin):
+                return pin
+            failure = failure or RuntimeError("The white marker above the ball is not in line with it")
+    except Exception as error:  # the pin detector raises its own types when nothing is white enough
+        failure = failure or error
+    placed = _pin_by_location(roi, ball)
+    if placed is not None:
+        return placed
     raise failure or RuntimeError("Could not detect white pin marker.")
+
+
+#: Where GSPro draws the pin in its usual layout (35 real captures, 23 Nov 2026): 17.7% to 19.8%
+#: down the minimap in 33 of them, and never more than half a percent of the ball-to-pin distance
+#: off the ball's vertical line. A dot here is the pin whatever its colour. Off the tee GSPro's aim
+#: marker sits on the same line a little lower (24.6% down on two par 5s): outside this band.
+PIN_USUAL_DOWN = (0.165, 0.21)
+PIN_USUAL_OFF_LINE = 0.015
+#: A dot counts when it is this much brighter than the ground round it (0-255). Tried from the
+#: lowest up: a pin touching sand is one blob with it until the level passes the sand's brightness.
+BRIGHTER_BY = (22, 45, 70, 100)
+
+
+def _bright_round_dots(roi: np.ndarray, expected: float) -> list[Pixel]:
+    """Solid round dots of the ball's size that are brighter than the ground round them, any colour.
+
+    GSPro lights the minimap's dots with the scene: a pin can be white, grey in shade (Bethpage
+    Black, 23 Nov 2026: dimmer than the sand beside it) or tinted by a low sun. What stays true is
+    that it is a small round dot standing out from the grass under it. The ground is taken as the
+    middle brightness of a patch about four dots wide, so sand or a white line nearby doesn't hide it.
+    """
+    value = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)[:, :, 2]
+    patch = max(9, int(4 * expected)) | 1
+    ground = cv2.medianBlur(value, min(patch, 255))
+    above = value.astype(np.int16) - ground.astype(np.int16)
+    found: list[Pixel] = []
+    for level in BRIGHTER_BY:
+        mask = (above > level).astype(np.uint8) * 255
+        for _, dot in _solid_round_dots(mask, expected):
+            if all(math.hypot(dot.x - seen.x, dot.y - seen.y) > 0.5 * expected for seen in found):
+                found.append(dot)
+    return found
+
+
+def _in_aim_ring(hsv: np.ndarray, dot: Pixel, expected: float) -> bool:
+    """GSPro's aim marker: a dot inside a magenta ring. Never the pin."""
+    h, w = hsv.shape[:2]
+    r = int(round(1.2 * expected))
+    x0, x1 = max(0, int(dot.x) - r), min(w, int(dot.x) + r + 1)
+    y0, y1 = max(0, int(dot.y) - r), min(h, int(dot.y) + r + 1)
+    patch = hsv[y0:y1, x0:x1]
+    if patch.size == 0:
+        return False
+    magenta = cv2.inRange(patch, np.array([135, 110, 110]), np.array([172, 255, 255]))
+    return cv2.countNonZero(magenta) >= 0.06 * patch.shape[0] * patch.shape[1]
+
+
+def _pin_by_location(roi: np.ndarray, ball: Pixel) -> Pixel | None:
+    """The pin from where it has to be, not from its colour: straight above the ball.
+
+    One bright round dot on the ball's line at the usual height is the pin. With none there,
+    a single one anywhere on the line above the ball is taken. Two that could be it: neither.
+    GSPro's blue aim disc is never taken for the pin: aimed near the flag it hides the pin dot
+    (DPC Sodgrass 1, 23 Nov 2026) and its centre can be yards off it.
+    """
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    h, w = hsv.shape[:2]
+    expected = max(6.0, BALL_DOT_FRACTION * w)
+    half = max(12, int(PIN_STRIP_HALF_WIDTH * w))
+    # Room either side of the strip so the ground round a dot at its edge is still seen.
+    pad = int(3 * expected)
+    x0, x1 = max(0, int(ball.x) - half - pad), min(w, int(ball.x) + half + pad)
+    top, bottom = int(MINIMAP_HEADER * h), int(PIN_MAX_DOWN * h)
+    dots = [Pixel(dot.x + x0, dot.y + top) for dot in _bright_round_dots(roi[top:bottom, x0:x1], expected)]
+    on_line = [dot for dot in dots
+               if abs(dot.x - ball.x) <= PIN_USUAL_OFF_LINE * max(ball.y - dot.y, 1.0)
+               and ball.y - dot.y >= MIN_BALL_PIN_PX and not _in_aim_ring(hsv, dot, expected)]
+    usual = [dot for dot in on_line if PIN_USUAL_DOWN[0] * h <= dot.y <= PIN_USUAL_DOWN[1] * h]
+    if usual:
+        return usual[0] if len(usual) == 1 else None
+    # Zoomed in with the pair still on one vertical line: the pin is higher or lower than usual.
+    return on_line[0] if len(on_line) == 1 else None
 
 
 #: GSPro's minimap zooms from a whole par 5 down to a green; outside this the pair is not a minimap.
@@ -326,6 +418,13 @@ def find_free_pair(roi: np.ndarray, hue: int | None) -> tuple[Pixel, Pixel]:
     white = cv2.inRange(hsv, np.array([0, 0, 215]), np.array([179, 60, 255]))
     pins = [d for d in below_header(_solid_round_dots(white, expected))
             if math.hypot(d[1].x - ball.x, d[1].y - ball.y) >= MIN_BALL_PIN_PX]
+    if not pins:
+        # No white dot (a pin in shade or tinted light): any one round dot brighter than its ground
+        # that isn't the ball or GSPro's aim marker.
+        pins = [(0.0, dot) for dot in _bright_round_dots(roi, expected)
+                if dot.y > top and edge < dot.x < w - edge
+                and math.hypot(dot.x - ball.x, dot.y - ball.y) >= MIN_BALL_PIN_PX
+                and not _in_aim_ring(hsv, dot, expected)]
     if len(pins) != 1:
         raise RuntimeError("Could not find GSPro's white pin dot on the minimap"
                            if not pins else "More than one white dot that could be the pin on the minimap")
@@ -360,15 +459,18 @@ def find_ball_and_pin(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, P
     """
     failure: Exception | None = None
     unaligned: tuple[Pixel, Pixel] | None = None
-    for pin in _pin_candidates(roi):
-        try:
-            ball = _ball_under(roi, pin, hue)
-        except RuntimeError as error:
-            failure = failure or error
-            continue
-        if _lined_up(ball, pin):
-            return ball, pin
-        unaligned = unaligned or (ball, pin)
+    try:
+        for pin in _pin_candidates(roi):
+            try:
+                ball = _ball_under(roi, pin, hue)
+            except RuntimeError as error:
+                failure = failure or error
+                continue
+            if _lined_up(ball, pin):
+                return ball, pin
+            unaligned = unaligned or (ball, pin)
+    except Exception as error:  # no white marker anywhere (a pin in shade): the ball-first search still runs
+        failure = failure or error
     try:
         h, w = roi.shape[:2]
         ball = _ball_under(roi, Pixel(w / 2.0, PIN_TYPICAL_DOWN * h), hue)
