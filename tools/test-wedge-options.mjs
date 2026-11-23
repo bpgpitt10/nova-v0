@@ -40,6 +40,27 @@ try {
   // Firm links: everything runs more.
   assert.ok(byType(wedges(65, 22, 'firm', 'firm')).standard.runYds > o65.standard.runYds + 3)
 
+  // Trouble is judged exactly as for chips. A bunker from 45 to 59 yd, green from 59, pin at 65:
+  // a flight that would have to land in the sand, or within 2.5 yd past it, is Avoid and says why.
+  const bunkerLine = (carry) => ({ surface: carry < 45 ? 'fairway' : carry < 59 ? 'bunker' : 'green', gradeToHole: 0 })
+  const guarded = byType(chipOptions(65, bunkerLine, setting('medium', 'medium'), 6, 'wedge'))
+  assert.equal(guarded.runner.verdict, 'avoid')
+  assert.match(guarded.runner.reason, /runs about \d+ yd past/)
+  // Whatever is offered clears the sand by the same margin a chip must, and says it carries it.
+  for (const o of Object.values(guarded)) {
+    if (o.verdict === 'avoid') continue
+    assert.ok(o.flight.carryYds >= 61, `${o.type} clears the bunker`)
+    assert.equal(o.carries.surface, 'bunker')
+  }
+  assert.ok(Object.values(guarded).some((o) => o.verdict !== 'avoid'), 'something still gets there')
+  // Rough short of the green, or water beside a landing short of it: Avoid too.
+  const roughLine = (carry) => ({ surface: carry < 61 ? 'rough' : 'green', gradeToHole: 0 })
+  assert.equal(byType(chipOptions(65, roughLine, setting('medium', 'medium'), 4, 'wedge')).runner.verdict, 'avoid')
+  const waterBeside = (carry) => ({ surface: carry < 61 ? 'fairway' : 'green', gradeToHole: 0, sideTrouble: carry < 61 ? 'water' : null })
+  const beside = byType(chipOptions(65, waterBeside, setting('medium', 'medium'), 4, 'wedge'))
+  assert.equal(beside.flighted.verdict, 'avoid')
+  assert.match(beside.flighted.reason, /water right beside/)
+
   // Every distance in the zone gets a pick when there is green to land on.
   for (const d of [45, 55, 65, 75, 85, 95]) {
     const pick = defaultChip(wedges(d, 22), d)
