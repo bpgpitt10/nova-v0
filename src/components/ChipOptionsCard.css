@@ -255,6 +255,8 @@
   justify-content: space-between;
   gap: 10px;
   padding: 9px 14px;
+  /* The wide card doesn't clip the panel, so the tint rounds its own top corners. */
+  border-radius: 11px 11px 0 0;
   background: rgba(249, 115, 22, 0.1);
 }
 
