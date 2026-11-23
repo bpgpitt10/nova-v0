@@ -85,7 +85,9 @@ export default function NativePositionsBetaPanel({ courseId, courseKey, quietWhe
     return () => { alive = false }
   }, [gsproKey])
   const view = courseStatusView(on ? status : { state: 'off' }, loadability)
-  const needsFolder = canPickFolder && on && (status.state === 'no-folder' || status.state === 'gkd-not-found')
+  // Only when Looper has no GSPro folder at all. "Not installed" means the folder was read and the
+  // course isn't in it: connecting a folder again wouldn't help (Brian, 23 Nov, Adare Manor).
+  const needsFolder = canPickFolder && on && status.state === 'no-folder'
   const needsPermission = canPickFolder && on && status.state === 'needs-permission'
 
   if (quietWhenFull && view.tone === 'full' && !needsFolder && !needsPermission) return null
