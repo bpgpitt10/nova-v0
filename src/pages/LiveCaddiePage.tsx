@@ -27,6 +27,8 @@ import { connectToGsproLieObservation } from '../adapters/gsproLieObservation'
 import { connectToGsproWindObservation, requestGsproWindRefresh } from '../adapters/gsproWindObservation'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import {
+  courseRegistry,
+  COURSES_UPDATED_EVENT,
   courseUsesGsproHoles,
   getCourseCatalogEntry,
   resolveCourseIdFromGsproName,
@@ -433,6 +435,22 @@ export default function LiveCaddiePage() {
     window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
     return () => window.removeEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStartRound)
   }, [])
+
+  // ?drop=65 with no course picked on this site yet (a preview has its own memory): take one, so the
+  // link works on its own. &course=briarwood asks for one by name; otherwise the first with a map.
+  useEffect(() => {
+    if (previewDropYds() == null || courseId !== UNSELECTED_COURSE_ID) return
+    const pick = () => {
+      let wanted = ''
+      try { wanted = (new URLSearchParams(window.location.search).get('course') ?? '').trim().toLowerCase() } catch { /* no address */ }
+      const mapped = courseRegistry.filter((entry) => entry.source !== 'gspro-only')
+      const course = (wanted ? mapped.find((entry) => entry.name.toLowerCase().includes(wanted)) : null) ?? mapped[0]
+      if (course) setCourseId(course.id)
+    }
+    pick()
+    window.addEventListener(COURSES_UPDATED_EVENT, pick)
+    return () => window.removeEventListener(COURSES_UPDATED_EVENT, pick)
+  }, [courseId])
 
   const courseIdRef = useRef(courseId)
   courseIdRef.current = courseId
