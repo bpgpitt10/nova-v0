@@ -76,7 +76,18 @@ const carryWindowFor = (
   return { fromYds: from * playRatio, toYds, frontDoubtful, pastTrouble: troubleEnds != null && clear >= onto - 1e-9 ? trouble : null }
 }
 
-const UNDER_RANGE_EPSILON_YDS = 0.5
+/**
+ * Where the shortest club stops being a full swing (Brian, 23 Nov). A few yards
+ * under its carry is still that club with a little taken off, so the normal
+ * recommendation stays: within 5% of its carry, and never less than 3 yd.
+ * Below that it is a partial wedge and the player picks the shot.
+ * The top of the zone is each player's own shortest club, not a fixed 90 yd.
+ */
+export const FULL_CLUB_MARGIN_SHARE = 0.05
+export const FULL_CLUB_MARGIN_MIN_YDS = 3
+
+export const fullClubFloorYds = (shortestCarryYds: number) =>
+  shortestCarryYds - Math.max(FULL_CLUB_MARGIN_MIN_YDS, shortestCarryYds * FULL_CLUB_MARGIN_SHARE)
 
 const finite = (value: number | null | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value)
@@ -144,7 +155,7 @@ export const buildUnderRangeShotStrategy = ({
     : null
   const strategyTarget = greenGuidance?.target ?? target
   const targetDistanceYds = distance(ball, strategyTarget)
-  if (targetDistanceYds >= referenceEvaluation.modeledCarryYds - UNDER_RANGE_EPSILON_YDS) {
+  if (targetDistanceYds >= fullClubFloorYds(referenceEvaluation.modeledCarryYds)) {
     return null
   }
 
