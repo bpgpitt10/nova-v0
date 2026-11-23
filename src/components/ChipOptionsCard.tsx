@@ -109,7 +109,9 @@ export default function ChipOptionsCard({
   const playsFor = (option: ChipOption) => option.levelCarryYds * (wedge ? playRatio : 1)
   const swingYds = current == null ? null
     : wedge ? playsFor(current)
-      : current.swingLikeYds ?? (heightCounts ? current.levelCarryYds : null)
+      : current.swingLikeYds ?? current.levelCarryYds
+  // From sand, or landing well above or below the ball, the swing differs from the flight: yellow.
+  const swingDiffers = !wedge && current != null && (current.swingLikeYds != null || heightCounts)
   const playsDelta = current && wedge ? playsFor(current) - current.flight.carryYds : 0
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
   const lieOnly = current ? chipLieRead(current, distanceYds, lieLeftRightDeg, lieUpDownDeg) : null
@@ -129,16 +131,16 @@ export default function ChipOptionsCard({
           {swingYds != null && current ? (
             // From sand, or landing well above or below the ball, the number to play is the swing, not
             // the distance: big and yellow, like a putt's Plays like.
-            <div className="chip-options__swing">
-              <span>{wedge ? `${CHIP_LABEL[current.type]} · fly it` : 'Swing for'}</span>
-              <b>{Math.round(swingYds)} YD CARRY</b>
+            <div className={`chip-options__swing${swingDiffers ? ' is-swing' : ''}`}>
+              <span>{swingDiffers ? 'Swing for' : `${CHIP_LABEL[current.type]} · fly it`}</span>
+              <b>{yd(swingYds)} YD CARRY</b>
               <small>
                 {Math.round(distanceYds)} yd to the pin
-                {wedge ? ` · runs ${yd(current.runYds)}` : ''}
+                {swingDiffers ? '' : ` · runs ${yd(current.runYds)}`}
                 {wedge && Math.abs(playsDelta) >= 1
                   ? ` · lands ${Math.round(current.flight.carryYds)} out: wind, height and air ${playsDelta > 0 ? 'take off' : 'add'} ${Math.round(Math.abs(playsDelta))}`
                   : ''}
-                {wedge ? '' : <>
+                {!swingDiffers ? '' : <>
                 {heightCounts && current.landingRiseFt != null
                   ? ` · lands ${heightText(current.landingRiseFt)} ${current.landingRiseFt > 0 ? 'above' : 'below'} you`
                   : ''}
@@ -179,11 +181,7 @@ export default function ChipOptionsCard({
               <span className="chip-row__num">{yd(wedge ? playsFor(option) : option.flight.carryYds)}</span>
               <span className="chip-row__num">{yd(option.runYds)}</span>
               <span className="chip-row__tag">{tagFor(option)}</span>
-              {wedge ? (
-                <span className="chip-row__what">
-                  {WEDGE_NOTE[option.type as WedgeType].what} · usually {WEDGE_NOTE[option.type as WedgeType].usually}
-                </span>
-              ) : null}
+
             </button>
           ))}
         </div>
@@ -283,6 +281,19 @@ export default function ChipOptionsCard({
           <div className="chip-conditions__row">
             <span>Around the pin</span><b />
             <ul className="chip-conditions__notes">{pinNotes.map((note) => <li key={note}>{note}</li>)}</ul>
+          </div>
+        ) : null}
+        {/* Why this one is, or isn't, the shot: the tag on the row says what, this says why. */}
+        {current && current.reason && (current.verdict === 'not-needed' || current.verdict === 'short' || current.verdict === 'good') ? (
+          <div className="chip-conditions__row">
+            <span>{current.verdict === 'good' ? 'Why this one' : current.verdict === 'not-needed' ? 'Why not needed' : 'Why it lands short'}</span><b />
+            <em>{current.reason.replace(/^Not needed here: /, '').replace(/^./, (c) => c.toUpperCase())}</em>
+          </div>
+        ) : null}
+        {wedge && current ? (
+          <div className="chip-conditions__row">
+            <span>The {CHIP_LABEL[current.type].toLowerCase()} flight</span><b />
+            <em>{WEDGE_NOTE[current.type as WedgeType].what} · usually {WEDGE_NOTE[current.type as WedgeType].usually}</em>
           </div>
         ) : null}
         {/* The model's assumption, not a measurement: faded, and said so. */}

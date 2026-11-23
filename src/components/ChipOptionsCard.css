@@ -30,7 +30,7 @@
 }
 
 .chip-options__swing > b {
-  color: #eab308;
+  color: #f97316;
   font-size: clamp(44px, 4vw, 64px);
   font-weight: 600;
   letter-spacing: -0.04em;
@@ -499,4 +499,9 @@
   border-color: #e5484d;
   background: #e5484d;
   color: #ffffff;
+}
+
+/* The swing isn't the flight (sand, or landing well above or below): yellow, like a putt's Plays like. */
+.chip-options__swing.is-swing > b {
+  color: #eab308;
 }

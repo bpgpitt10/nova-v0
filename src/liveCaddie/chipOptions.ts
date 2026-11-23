@@ -459,12 +459,12 @@ export const chipOptions = (
   const flop = judged.find((j) => j.s.type === 'flop')
   if (flop && pick && pick !== flop && flop.verdict === 'fine') {
     flop.verdict = 'not-needed'
-    flop.reason = 'Not needed here: a lower shot lands on the green too.'
+    flop.reason = 'Not needed here: a lower shot lands on the green too, and the flop is the hardest distance to judge.'
   }
   const runner = judged.find((j) => j.s.type === 'runner')
   if (runner && pick && pick !== runner && (runner.verdict === 'fine' || runner.verdict === 'short')) {
     runner.verdict = 'not-needed'
-    runner.reason = 'Not needed here: a shot with loft lands on the green and stops.'
+    runner.reason = `Not needed here: a shot with loft lands on the green and stops. The runner has ${Math.round(runner.s.run)} yd of kick and roll-out to judge.`
   }
 
   return judged.map(({ s, verdict, reason }) => {

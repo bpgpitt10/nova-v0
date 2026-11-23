@@ -2680,7 +2680,7 @@ export default function LiveCaddiePage() {
                       {inTrees
                         ? 'IN THE TREES'
                         : chipLab
-                        ? isWedgeLab ? 'PARTIAL WEDGE · FLIGHT' : 'AROUND THE GREEN'
+                        ? isWedgeLab ? 'WEDGE LAB · 40 YD TO YOUR SHORTEST CLUB' : 'CHIPPING LAB · INSIDE 40 YD'
                         : evaluationPending
                         ? waitingForConditions ? 'READING WIND & LIE' : 'CALCULATING'
                         : isShotStrategy
