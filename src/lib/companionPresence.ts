@@ -1,4 +1,5 @@
 import { readLooperCompanionStatus } from '../adapters/looperCompanion'
+import { noteCompanionConnected } from './companionConnections'
 import {
   companionUpdateState,
   isWindowsBrowser,
@@ -62,6 +63,8 @@ export const checkCompanionPresence = async (latest: CompanionLatest | null): Pr
     const status = await readLooperCompanionStatus(2500)
     const release = (status as { release?: string }).release ?? status.version ?? null
     markCompanionSeen(release)
+    // On the account too, so support can tell "never installed" from "installed, never played".
+    noteCompanionConnected(release, status.gspro.status === 'connected')
     return {
       status: 'connected', release, gspro: status.gspro.status, latest,
       update: companionUpdateState(release, latest), seen: companionSeenBefore(), checkedAt: Date.now(),
