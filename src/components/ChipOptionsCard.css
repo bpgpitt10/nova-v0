@@ -377,7 +377,7 @@
     grid-column: 1;
     grid-row: 2;
     align-self: start;
-    margin-top: 10px;
+    margin-top: 20px;
   }
 
   .live-decision-card.live-decision-card > .chip-options__arm-wrap {
@@ -487,6 +487,10 @@
 
 .chip-options.is-wedge .chip-row.is-shown {
   border-color: #38bdf8;
+}
+
+/* A selected Avoid keeps its crosshatch, as on the chipping card. */
+.chip-options.is-wedge .chip-row.is-shown:not(.is-avoid) {
   background: rgba(56, 189, 248, 0.12);
 }
 
@@ -528,9 +532,4 @@
   border-color: #e5484d;
   background: #e5484d;
   color: #ffffff;
-}
-
-/* The swing isn't the flight (sand, or landing well above or below): yellow, like a putt's Plays like. */
-.chip-options__swing.is-swing > b {
-  color: #eab308;
 }

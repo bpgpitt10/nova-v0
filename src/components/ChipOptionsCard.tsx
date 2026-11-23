@@ -108,11 +108,12 @@ export default function ChipOptionsCard({
   // Landing a yard or more off level changes the swing: say it like sand does (Brian, 21 Nov).
   const heightCounts = current != null && Math.abs(current.levelCarryYds - current.flight.carryYds) >= 1
   // A wedge card leads with the carry to swing for, always: wind, height and air are in it.
-  const playsFor = (option: ChipOption) => option.levelCarryYds * (wedge ? playRatio : 1)
+  // The same number on the row as in the heading: the carry to swing for.
+  const playsFor = (option: ChipOption) => (wedge ? option.levelCarryYds * playRatio : option.swingLikeYds ?? option.levelCarryYds)
   const swingYds = current == null ? null
-    : wedge ? playsFor(current)
-      : current.swingLikeYds ?? current.levelCarryYds
-  // From sand, or landing well above or below the ball, the swing differs from the flight: yellow.
+    : playsFor(current)
+  // From sand, or landing well above or below the ball, the swing differs from the flight: the line
+  // under the number says why. Same name and colour either way (Brian, 23 Nov).
   const swingDiffers = !wedge && current != null && (current.swingLikeYds != null || heightCounts)
   const playsDelta = current && wedge ? playsFor(current) - current.flight.carryYds : 0
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
@@ -133,12 +134,12 @@ export default function ChipOptionsCard({
           {swingYds != null && current ? (
             // From sand, or landing well above or below the ball, the number to play is the swing, not
             // the distance: big and yellow, like a putt's Plays like.
-            <div className={`chip-options__swing${swingDiffers ? ' is-swing' : ''}`}>
-              <span>{swingDiffers ? 'Swing for' : `${CHIP_LABEL[current.type]} · fly it`}</span>
+            <div className="chip-options__swing">
+              <span>{CHIP_LABEL[current.type]} · fly it</span>
               <b>{yd(swingYds)} YD CARRY</b>
               <small>
                 {Math.round(distanceYds)} yd to the pin
-                {swingDiffers ? '' : ` · runs ${yd(current.runYds)}`}
+                {` · runs ${yd(current.runYds)}`}
                 {wedge && Math.abs(playsDelta) >= 1
                   ? ` · lands ${Math.round(current.flight.carryYds)} out: wind, height and air ${playsDelta > 0 ? 'take off' : 'add'} ${Math.round(Math.abs(playsDelta))}`
                   : ''}
@@ -180,7 +181,7 @@ export default function ChipOptionsCard({
               onClick={() => onShow(option.type)}
             >
               <span className="chip-row__name">{CHIP_LABEL[option.type]}<small>{option.launchDeg}&deg;</small></span>
-              <span className="chip-row__num">{yd(wedge ? playsFor(option) : option.flight.carryYds)}</span>
+              <span className="chip-row__num">{yd(playsFor(option))}</span>
               <span className="chip-row__num">{yd(option.runYds)}</span>
               <span className="chip-row__tag">{tagFor(option)}</span>
 
