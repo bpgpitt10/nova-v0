@@ -114,8 +114,6 @@ const CHIP_FIT = {
   rollShare: { at30Deg: 4.71498, per10Deg: 2.16021 },
 } as const
 const CHIP_LIMITS = { speedMph: [8, 46], descentDeg: [6, 50], spinRpm: [0, 6000] } as const
-/** Landing speeds (mph) over which a release goes from the chip fit to the approach fit. */
-export const CHIP_TO_APPROACH_MPH = [39.3, 40] as const
 
 type Landing = { speedMph: number; descentDeg: number; spinRpm: number }
 
@@ -131,6 +129,38 @@ export const chipReleaseLevel11 = (landing: Landing, conditions: GreenConditions
   const left = forward - settingValue(CHIP_FIT.grab, type, firmness) * down - CHIP_FIT.bite * spin ** CHIP_FIT.spinPower
   const releaseYds = Math.exp(settingValue(CHIP_FIT.lnRun, type, firmness)) * Math.sign(left) * Math.abs(left) ** CHIP_FIT.power
   const rollShare = 1 / (1 + Math.exp(-(CHIP_FIT.rollShare.at30Deg + CHIP_FIT.rollShare.per10Deg * (descent - 30) / 10)))
+  return { releaseYds, rollShare }
+}
+
+/**
+ * Partial wedges, fitted 23 Nov 2026 (tools/fixtures/wedge-release-2026-11-23.json): 50 shots that landed
+ * and stayed on the green at Briarwood West, four flights (16, 23, 29, 36 deg launch) with clean spin and
+ * a quarter less, on six green settings, stimp 8, 11 and 13. Nearly all carried 65 yd (landing 42 to 44
+ * mph); the fit also saw the 18 Nov approach shots that land under 50 mph, so it meets the full wedge.
+ * Mean miss 0.4 yd on the 50. Every landing was on a 3 to 6% upslope: the level numbers lean on the slope
+ * rule below. Bermuda soft is the base.
+ */
+const WEDGE_FIT = {
+  grab: { base: 0.31948, bentgrass: -0.08062, links: 0.0401, perFirmness: -0.0001 },
+  lnRun: { base: -1.0213, bentgrass: -0.61782, links: 0.36568, perFirmness: 0.2804 },
+  lnBite: { base: 0.98828, bentgrass: 0.20398, links: -0.14725, perFirmness: -0.03442 },
+  power: 1.03844,
+  rollShare: { at40Deg: 1.63131, per10Deg: 4.0, per1000Rpm: -1.16623 },
+} as const
+/** Landing speeds (mph): chips up to the first pair, the wedge fit between, the approach fit past the last. */
+export const WEDGE_BAND_MPH = [37, 41, 48, 52] as const
+
+/** A partial wedge's release on a level stimp-11 green, and how much of it is roll. */
+export const wedgeReleaseLevel11 = (landing: Landing, conditions: GreenConditions): { releaseYds: number; rollShare: number } => {
+  const type = TYPE_INDEX[conditions.courseType]
+  const firmness = FIRM_INDEX[conditions.greenFirmness]
+  const forward = landing.speedMph * Math.cos(rad(landing.descentDeg))
+  const down = landing.speedMph * Math.sin(rad(landing.descentDeg))
+  const spin = landing.spinRpm / 1000
+  const left = forward - settingValue(WEDGE_FIT.grab, type, firmness) * down - Math.exp(settingValue(WEDGE_FIT.lnBite, type, firmness)) * spin
+  const releaseYds = Math.exp(settingValue(WEDGE_FIT.lnRun, type, firmness)) * Math.sign(left) * Math.abs(left) ** WEDGE_FIT.power
+  const rollShare = 1 / (1 + Math.exp(-(WEDGE_FIT.rollShare.at40Deg + WEDGE_FIT.rollShare.per10Deg * (landing.descentDeg - 40) / 10
+    + WEDGE_FIT.rollShare.per1000Rpm * (spin - 6))))
   return { releaseYds, rollShare }
 }
 
@@ -153,13 +183,18 @@ export type GreenReleaseShape = Readonly<{ rollShare: number; chipWeight: number
 export const APPROACH_SHAPE: GreenReleaseShape = { rollShare: APPROACH_ROLL_SHARE, chipWeight: 0 }
 
 export const greenReleaseParts = (landing: Landing, conditions: GreenConditions): { releaseYds: number } & GreenReleaseShape => {
-  const [low, high] = CHIP_TO_APPROACH_MPH
-  const approachWeight = clamp((landing.speedMph - low) / (high - low), [0, 1])
+  const [chipEnds, wedgeStarts, wedgeEnds, approachStarts] = WEDGE_BAND_MPH
+  const pastChip = clamp((landing.speedMph - chipEnds) / (wedgeStarts - chipEnds), [0, 1])
+  const approachWeight = clamp((landing.speedMph - wedgeEnds) / (approachStarts - wedgeEnds), [0, 1])
+  const chipWeight = 1 - pastChip
+  const wedgeWeight = pastChip * (1 - approachWeight)
   const approach = approachWeight > 0 ? approachReleaseLevel11(landing, conditions) : 0
-  const chip = approachWeight < 1 ? chipReleaseLevel11(landing, conditions) : { releaseYds: 0, rollShare: 0 }
+  const chip = chipWeight > 0 ? chipReleaseLevel11(landing, conditions) : { releaseYds: 0, rollShare: 0 }
+  const wedge = wedgeWeight > 0 ? wedgeReleaseLevel11(landing, conditions) : { releaseYds: 0, rollShare: 0 }
   return {
-    releaseYds: approachWeight * approach + (1 - approachWeight) * chip.releaseYds,
-    rollShare: approachWeight * APPROACH_ROLL_SHARE + (1 - approachWeight) * chip.rollShare,
+    releaseYds: approachWeight * approach + chipWeight * chip.releaseYds + wedgeWeight * wedge.releaseYds,
+    rollShare: approachWeight * APPROACH_ROLL_SHARE + chipWeight * chip.rollShare + wedgeWeight * wedge.rollShare,
+    // Chips and partial wedges take the slope on their roll share; a full approach keeps the approach rule.
     chipWeight: 1 - approachWeight,
   }
 }

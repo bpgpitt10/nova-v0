@@ -20,10 +20,31 @@ import { sidehillLieShare, upDownLieShare } from './lieResponse'
 import { puttSpeedFor, rollOnGreen, type SlopeField } from './puttRead'
 import { sandSpeedFactor, sandSpinFactor } from './surfaceResponse'
 
-export type ChipType = 'bump' | 'chip' | 'pitch' | 'flop'
+/**
+ * Partial wedges (23 Nov): from the chip zone up to the player's shortest full club, the same card
+ * with four flights instead of four chips. Same sizing, same release model (its partial-wedge fit).
+ */
+export type WedgeType = 'runner' | 'flighted' | 'standard' | 'high'
+export type ChipType = 'bump' | 'chip' | 'pitch' | 'flop' | WedgeType
+export type ShotFamily = 'chip' | 'wedge'
 export const CHIP_TYPES: readonly ChipType[] = ['bump', 'chip', 'pitch', 'flop']
-export const CHIP_LAUNCH_DEG: Readonly<Record<ChipType, number>> = { bump: 12, chip: 20, pitch: 28, flop: 40 }
-export const CHIP_LABEL: Readonly<Record<ChipType, string>> = { bump: 'Bump and run', chip: 'Chip', pitch: 'Pitch', flop: 'Flop' }
+export const WEDGE_TYPES: readonly WedgeType[] = ['runner', 'flighted', 'standard', 'high']
+export const familyOf = (type: ChipType): ShotFamily => ((WEDGE_TYPES as readonly ChipType[]).includes(type) ? 'wedge' : 'chip')
+const typesOf = (family: ShotFamily): readonly ChipType[] => (family === 'wedge' ? WEDGE_TYPES : CHIP_TYPES)
+export const CHIP_LAUNCH_DEG: Readonly<Record<ChipType, number>> = {
+  bump: 12, chip: 20, pitch: 28, flop: 40, runner: 16, flighted: 23, standard: 29, high: 36,
+}
+export const CHIP_LABEL: Readonly<Record<ChipType, string>> = {
+  bump: 'Bump and run', chip: 'Chip', pitch: 'Pitch', flop: 'Flop',
+  runner: 'Runner', flighted: 'Flighted', standard: 'Standard', high: 'High',
+}
+/** What each wedge flight is, and the club it usually is (a hint, never a pick). */
+export const WEDGE_NOTE: Readonly<Record<WedgeType, Readonly<{ what: string; usually: string }>>> = {
+  runner: { what: 'Low, lands short, runs out', usually: 'PW or 9 iron' },
+  flighted: { what: 'Low, one hop and checks', usually: 'any wedge, ball back' },
+  standard: { what: 'Mid height, short release', usually: '50° to 56°' },
+  high: { what: 'Lands soft, stops', usually: '58° or 60°' },
+}
 /** Chip cards take over from the club recommendation inside this distance, off the green. */
 export const CHIP_ZONE_YDS = 40
 /** Looper's green ending closer than this to the pin, on the ball's side, is probably a short outline. */
@@ -62,6 +83,20 @@ const FLIGHT: Readonly<Record<ChipType, readonly (readonly number[])[]>> = {
   flop: [[15.4, 1805, 4.96, 14.8, 39.58, 1751], [17.0, 1987, 5.88, 16.24, 38.44, 1920], [18.5, 2162, 7.11, 17.76, 39.9, 2083],
     [20.9, 2453, 8.93, 20.56, 39.94, 2347], [22.3, 2609, 10.27, 20.57, 40.65, 2496], [23.6, 2768, 11.22, 21.8, 39.76, 2639],
     [28.2, 3298, 16.13, 25.56, 41.57, 3112], [39.6, 4635, 30.08, 32.76, 43.06, 4271], [46.0, 5388, 39.22, 36.78, 45.08, 4881]],
+  // Partial wedges, GSPro at Briarwood, 23 Nov. Each row is halfway between the clean-contact shot and
+  // the same shot with a quarter less spin (most players sit between the two until Looper has read
+  // their own). Measured from 42 to 66 yd carry (the runner to 80). The last row of each is not
+  // measured: the lofted flights are scaled up by what the measured full sand wedge (78.6 mph,
+  // 88.6 yd) adds to the standard flight, and the runner is carried on in a straight line.
+  runner: [[54.8, 2878, 41.72, 44.62, 20.78, 2698], [61.3, 3216, 52.16, 46.86, 20.84, 2984], [65.5, 3438, 59.8, 47.9, 21.42, 3168],
+    [66.6, 3496, 61.94, 48.12, 21.63, 3216], [68.7, 3602, 65.98, 48.5, 22.09, 3302], [76.0, 3990, 80.08, 49.51, 23.39, 3606],
+    [81.2, 4263, 90.0, 50.22, 24.31, 3819]],
+  flighted: [[50.5, 5960, 43.25, 39.45, 29.96, 5500], [56.8, 6712, 53.91, 41.16, 31.16, 6122], [59.5, 7028, 58.64, 42.0, 31.95, 6366],
+    [63.4, 7488, 65.19, 42.73, 32.95, 6730], [80.1, 8661, 88.03, 47.02, 35.99, 7528]],
+  standard: [[48.9, 5862, 44.08, 38.69, 36.67, 5356], [55.3, 6632, 54.58, 40.76, 38.15, 5976], [57.5, 6884, 58.21, 41.46, 38.84, 6174],
+    [61.8, 7410, 65.4, 42.39, 40.14, 6584], [78.1, 8571, 88.32, 46.64, 43.83, 7366]],
+  high: [[48.5, 4874, 44.94, 38.8, 43.84, 4407], [55.0, 5540, 55.18, 41.47, 45.39, 4934], [56.8, 5712, 58.02, 42.4, 45.91, 5060],
+    [61.3, 6176, 65.23, 43.79, 47.18, 5416], [77.5, 7143, 88.08, 48.18, 51.52, 6058]],
 }
 
 export type ChipFlight = Readonly<{
@@ -80,9 +115,11 @@ export type ChipFlight = Readonly<{
 export const chipFlight = (type: ChipType, carryYds: number, launchDeltaDeg = 0): ChipFlight => {
   const base = measuredChipFlight(type, carryYds)
   if (Math.abs(launchDeltaDeg) < 0.25) return base
-  const launch = Math.max(CHIP_LAUNCH_DEG.bump, Math.min(CHIP_LAUNCH_DEG.flop, CHIP_LAUNCH_DEG[type] + launchDeltaDeg))
-  const upper = CHIP_TYPES.find((t) => CHIP_LAUNCH_DEG[t] >= launch) ?? 'flop'
-  const lower = CHIP_TYPES[Math.max(0, CHIP_TYPES.indexOf(upper) - 1)]
+  const types = typesOf(familyOf(type))
+  const highest = types[types.length - 1]
+  const launch = Math.max(CHIP_LAUNCH_DEG[types[0]], Math.min(CHIP_LAUNCH_DEG[highest], CHIP_LAUNCH_DEG[type] + launchDeltaDeg))
+  const upper = types.find((t) => CHIP_LAUNCH_DEG[t] >= launch) ?? highest
+  const lower = types[Math.max(0, types.indexOf(upper) - 1)]
   if (upper === lower) return base
   const a = measuredChipFlight(lower, base.carryYds)
   const b = measuredChipFlight(upper, base.carryYds)
@@ -105,8 +142,10 @@ export const chipFlight = (type: ChipType, carryYds: number, launchDeltaDeg = 0)
 /** The flight as GSPro measured it from a level lie, interpolated between the measured shots. */
 const measuredChipFlight = (type: ChipType, carryYds: number): ChipFlight => {
   const rows = FLIGHT[type]
-  const c = Math.max(rows[0][2] * 0.5, Math.min(rows[rows.length - 1][2], carryYds))
+  const c = Math.max(rows[0][2] * 0.5, Math.min(longestCarry(type), carryYds))
   let i = rows.findIndex((row) => row[2] >= c)
+  // Past the last row (wedges only): carry the last stretch on in a straight line.
+  if (i < 0) i = rows.length - 1
   if (i <= 0) i = 1
   const [a, b] = [rows[i - 1], rows[i]]
   // Below the shortest shot, scale down from it (speed and spin roughly as carry^0.53).
@@ -119,6 +158,15 @@ const measuredChipFlight = (type: ChipType, carryYds: number): ChipFlight => {
     spinRpm: lerp(1) * shrink,
     landing: { speedMph: lerp(3) * shrink, descentDeg: lerp(4), spinRpm: lerp(5) * shrink },
   }
+}
+
+/**
+ * The longest carry each shot is sized to. Chips stop at their last measured shot. Wedges go a little
+ * past theirs, for a player whose shortest full club carries more than 90 yd.
+ */
+const longestCarry = (type: ChipType) => {
+  const last = FLIGHT[type][FLIGHT[type].length - 1][2]
+  return familyOf(type) === 'wedge' ? last * 1.15 : last
 }
 
 export type LandingSurface = 'green' | 'fairway' | 'fringe' | 'rough' | 'deep-rough' | 'bunker' | 'water' | 'other'
@@ -292,7 +340,7 @@ const releaseFor = (type: ChipType, carry: number, probe: LandingProbe, setting:
 /** Size a chip type to finish at the hole `distanceYds` away. */
 export const sizeChip = (type: ChipType, distanceYds: number, probe: LandingProbe, setting: ChipSetting) => {
   let lo = FLIGHT[type][0][2] * 0.5
-  let hi = Math.min(distanceYds, FLIGHT[type][FLIGHT[type].length - 1][2])
+  let hi = Math.min(distanceYds, longestCarry(type))
   if (releaseFor(type, hi, probe, setting).run + hi < distanceYds) return { ...releaseFor(type, hi, probe, setting), short: true, tooHot: false }
   // Even the softest one runs well past: the slope or the ground won't let this shot stop at the hole.
   const softest = releaseFor(type, lo, probe, setting)
@@ -340,8 +388,9 @@ export const chipOptions = (
   probe: LandingProbe,
   setting: ChipSetting,
   greenToWorkWithYds: number | null,
+  family: ShotFamily = 'chip',
 ): ChipOption[] => {
-  const sized = CHIP_TYPES.map((type) => ({ type, ...sizeChip(type, distanceYds, probe, setting) }))
+  const sized = typesOf(family).map((type) => ({ type, ...sizeChip(type, distanceYds, probe, setting) }))
   const greenStarts = greenToWorkWithYds == null ? null : distanceYds - greenToWorkWithYds
   const finish = (s: (typeof sized)[number]) => s.flight.carryYds + s.run
 
@@ -386,21 +435,36 @@ export const chipOptions = (
 
   // Looper's pick: the lowest shot that lands on the green and stops.
   // One that stops at the hole first; one that runs a little past only if none does.
-  const pick = judged.find((j) => j.verdict === 'fine' && finish(j.s) <= distanceYds + 1)
-    ?? judged.find((j) => j.verdict === 'fine')
+  //
+  // Partial wedges: the stock flight first. Standard when it lands on the green and stops; then
+  // flighted, then high; the runner only when nothing with loft does (it needs 15 yd of green or
+  // more to run across, or firm ground short of it: Brian, 23 Nov).
+  const order = family === 'wedge'
+    ? (['standard', 'flighted', 'high', 'runner'] as ChipType[]).map((type) => judged.find((j) => j.s.type === type)!)
+    : judged
+  const pick = order.find((j) => j.verdict === 'fine' && finish(j.s) <= distanceYds + 1)
+    ?? order.find((j) => j.verdict === 'fine')
   if (pick) {
     pick.verdict = 'good'
     const past = Math.round(finish(pick.s) - distanceYds)
+    const others = judged.some((j) => j !== pick && j.verdict === 'fine')
     pick.reason = past >= 1
-      ? `The only shot that lands on the green: it runs about ${past} yd past.`
-      : pick.s.type === 'flop'
-        ? 'The only shot that lands on the green and stops.'
-        : 'Lands on the green and stops: the lowest shot that does.'
+      ? `${others ? 'Lands' : 'The only shot that lands'} on the green: it runs about ${past} yd past.`
+      : family === 'wedge'
+        ? others ? 'Lands on the green and stops.' : 'The only flight that lands on the green and stops.'
+        : pick.s.type === 'flop'
+          ? 'The only shot that lands on the green and stops.'
+          : 'Lands on the green and stops: the lowest shot that does.'
   }
   const flop = judged.find((j) => j.s.type === 'flop')
   if (flop && pick && pick !== flop && flop.verdict === 'fine') {
     flop.verdict = 'not-needed'
     flop.reason = 'Not needed here: a lower shot lands on the green too.'
+  }
+  const runner = judged.find((j) => j.s.type === 'runner')
+  if (runner && pick && pick !== runner && (runner.verdict === 'fine' || runner.verdict === 'short')) {
+    runner.verdict = 'not-needed'
+    runner.reason = 'Not needed here: a shot with loft lands on the green and stops.'
   }
 
   return judged.map(({ s, verdict, reason }) => {

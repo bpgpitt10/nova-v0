@@ -116,7 +116,7 @@ import ScreenOnlyCaddie from '../components/ScreenOnlyCaddie'
 import PuttReadCard from '../components/PuttReadCard'
 import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
 import ChipOptionsCard, { type ChipAimState } from '../components/ChipOptionsCard'
-import { CHIP_LABEL, CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_LABEL, CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface, type ShotFamily } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
@@ -183,6 +183,9 @@ const unitFromTo = (from: CoursePointYds, to: CoursePointYds): CoursePointYds =>
   const length = Math.hypot(dx, dy)
   return length > 1e-9 ? [dx / length, dy / length] : [0, 1]
 }
+
+/** Wedge cards go at the pin: they show only when Shot Strategy's own target is this close to it. */
+const WEDGE_TARGET_NEAR_PIN_YDS = 12
 
 const defaultTarget = (hole: CourseHoleGeometry): CoursePointYds => {
   const pin = hole.markers.pin
@@ -1184,8 +1187,8 @@ export default function LiveCaddiePage() {
   const chipLieUpDownDeg = lieObservation?.status === 'READY'
     && typeof lieObservation.upDownDegrees === 'number' && Number.isFinite(lieObservation.upDownDegrees)
     ? lieObservation.upDownDegrees : null
-  const chipLab = chipLabOn && chipLie && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
-    ? (() => {
+  // The same card serves the chips (inside 40 yd) and the partial wedges (40 yd to the shortest full club).
+  const buildShortGame = (family: ShotFamily, hole: CourseHoleGeometry, pinEstimate: CoursePointYds, chipDistanceYds: number) => {
         const dx = (pinEstimate[0] - ball[0]) / chipDistanceYds
         const dy = (pinEstimate[1] - ball[1]) / chipDistanceYds
         const along = (carry: number): CoursePointYds => [ball[0] + dx * carry, ball[1] + dy * carry]
@@ -1205,6 +1208,8 @@ export default function LiveCaddiePage() {
           ? hudReading.elevationFt : null
         const mapRiseFt = pinElevation != null && ballTerrain ? pinElevation - ballTerrain.elevationFt : null
         const riseFt = hudRiseFt ?? mapRiseFt
+        // A wedge's height is in its "plays like" number (with the wind and the air), not here.
+        const sizeForHeight = family === 'chip'
         // GSPro's green against Looper's map on the same line: where the map is steeper than GSPro's
         // green (Royal New Kent 2, 21 Nov: 2.5 times), its break is too big by about the same share.
         const heightScale = hudRiseFt != null && mapRiseFt != null && Math.abs(mapRiseFt) >= 0.3 && Math.sign(hudRiseFt) === Math.sign(mapRiseFt)
@@ -1243,9 +1248,10 @@ export default function LiveCaddiePage() {
         }
         const options = chipOptions(
           chipDistanceYds,
-          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry), riseFt: landingRiseFt(carry) }),
+          (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry), riseFt: sizeForHeight ? landingRiseFt(carry) : null }),
           { green, fairway, fromRough, fromSand: chipFromSand, lieUpDownDeg: chipLieUpDownDeg },
           greenStarts == null ? null : chipDistanceYds - greenStarts,
+          family,
         )
         const grass = { soft: 'Bentgrass', medium: 'Bermuda', firm: 'Links' }[green.courseType]
         const conditions = `${grass} · ${green.greenFirmness} green, ${fairway.fairwayFirmness} fairway`
@@ -1266,8 +1272,11 @@ export default function LiveCaddiePage() {
           riseFt,
           breakScale: heightScale,
           riseSource: hudRiseFt != null ? 'GSPro' as const : mapRiseFt != null ? 'green map' as const : null,
+          family,
         }
-      })()
+  }
+  const chipZoneLab = chipLabOn && chipLie && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
+    ? buildShortGame('chip', hole, pinEstimate, chipDistanceYds)
     : null
   const greenGuidance = !isGreenSurface && hole && greenDetail && trustedLivePin
     && liveMatchesHole && liveSnapshot?.ballSource !== 'world-provisional'
@@ -1518,6 +1527,19 @@ export default function LiveCaddiePage() {
       })
     : null
   const isShotStrategy = Boolean(shotStrategy)
+  // Partial wedges: where Shot Strategy shows (under the shortest full club), past the chip zone,
+  // going at the pin from grass. Sand and deep rough keep the Shot Strategy card: not measured.
+  const wedgeLab = chipLabOn && !chipZoneLab && shotStrategy && hole && pinEstimate && chipLie && !chipFromSand
+    && chipDistanceYds != null && chipDistanceYds > CHIP_ZONE_YDS
+    && pointDistance(shotStrategy.target, pinEstimate) <= WEDGE_TARGET_NEAR_PIN_YDS
+    ? buildShortGame('wedge', hole, pinEstimate, chipDistanceYds)
+    : null
+  const chipLab = chipZoneLab ?? wedgeLab
+  const isWedgeLab = chipLab?.family === 'wedge'
+  // Wind, height and air, from the same ledger Shot Strategy shows: the carry to swing for, and the aim.
+  const wedgePlayRatio = isWedgeLab && shotStrategy && shotStrategy.targetDistanceYds > 1
+    ? shotStrategy.effectiveDistanceYds / shotStrategy.targetDistanceYds : 1
+  const wedgeWindAimLeftFt = isWedgeLab && shotStrategy ? shotStrategy.effectiveLateralChangeYds * 3 : 0
   const recommendation = isShotStrategy ? null : evaluations[0] ?? null
   // Caddie vs you: what the engine saw for its pick and the alternatives, kept
   // with the Arm so Rounds can price a club change in strokes, not just name it.
@@ -1751,7 +1773,7 @@ export default function LiveCaddiePage() {
     if (!option || !pinEstimate || chipDistanceYds == null) return
     const fail = (message: string) => setChipAim({ shot: chipShotKey, type, state: 'not-aimed', message })
     const lieOnly = chipLieRead(option, chipDistanceYds, hasLiveLie ? lieLeftRightDeg : null, hasLiveLie ? lieUpDownDeg : null)
-    const lieRead = { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (chipBreak?.[type] ?? 0) }
+    const lieRead = { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (chipBreak?.[type] ?? 0) + wedgeWindAimLeftFt }
     // Always click, even for a straight line: GSPro's aim may not be on the pin.
     if (!trustedLivePin) return fail("Aim by hand: GSPro hasn't reported this pin yet (it does after your first shot).")
     if (!companionCanAim) {
@@ -1877,7 +1899,7 @@ export default function LiveCaddiePage() {
       const type = command.shot as ChipType | undefined
       if (!chipLab) { voiceMissed('Chip options show inside 40 yards of the green.', heard); return }
       const option = chipLab.options.find((o) => o.type === type)
-      if (!type || !option) { voiceMissed("Didn't catch which chip", heard); return }
+      if (!type || !option) { voiceMissed(isWedgeLab ? 'From here it is a flight: tap Runner, Flighted, Standard or High.' : "Didn't catch which chip", heard); return }
       setArmedChip({ shot: chipShotKey, type })
       if (command.arm) {
         aimChip(type)
@@ -2658,7 +2680,7 @@ export default function LiveCaddiePage() {
                       {inTrees
                         ? 'IN THE TREES'
                         : chipLab
-                        ? 'AROUND THE GREEN'
+                        ? isWedgeLab ? 'PARTIAL WEDGE · FLIGHT' : 'AROUND THE GREEN'
                         : evaluationPending
                         ? waitingForConditions ? 'READING WIND & LIE' : 'CALCULATING'
                         : isShotStrategy
@@ -2701,6 +2723,8 @@ export default function LiveCaddiePage() {
                       aim={chipAim && chipAim.shot === chipShotKey ? chipAim : null}
                       pinNotes={shotStrategy ? chipPinNotes(shotStrategy) : []}
                       greenEdgeUncertain={chipLab.greenEdgeUncertain}
+                      playRatio={wedgePlayRatio}
+                      windAimLeftFt={wedgeWindAimLeftFt}
                     />
                   ) : (<>
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
@@ -2931,7 +2955,7 @@ export default function LiveCaddiePage() {
                   pinEstimate={pinEstimate}
                   candidate={isShotStrategy || !inspectedCandidate ? null
                     : aimClick ? { ...inspectedCandidate, aimPoint: aimClick } : inspectedCandidate}
-                  strategyAimPoint={isShotStrategy ? shotStrategy?.target ?? null : null}
+                  strategyAimPoint={isShotStrategy && !isWedgeLab ? shotStrategy?.target ?? null : null}
                   show95={show95}
                   showRiskTail={showRiskTail}
                   showPracticeShots={showPracticeShots}

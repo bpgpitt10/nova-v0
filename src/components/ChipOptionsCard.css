@@ -431,3 +431,72 @@
 .chip-row.is-shown.is-avoid {
   border-color: #f97316;
 }
+
+/* Partial wedges (40 yd to the shortest full club): the same card in sky blue, a line under each flight. */
+.chip-row__what {
+  grid-column: 1 / -1;
+  color: #8e9b90;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chip-row.is-avoid .chip-row__what {
+  color: #6b776d;
+}
+
+.chip-options.is-wedge .chip-options__swing > b {
+  color: #38bdf8;
+}
+
+.chip-options.is-wedge .chip-options__swing > span {
+  color: #7dd3fc;
+}
+
+.chip-options.is-wedge .chip-row:hover {
+  border-color: #1f4a5e;
+}
+
+.chip-options.is-wedge .chip-row.is-shown {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.chip-options.is-wedge .chip-row.is-good .chip-row__tag,
+.chip-options.is-wedge .chip-row.is-nearest .chip-row__tag {
+  color: #38bdf8;
+}
+
+.chip-options.is-wedge .chip-options__reason {
+  color: #bfe6f7;
+}
+
+.chip-conditions.is-wedge .chip-conditions__title {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.chip-conditions.is-wedge .chip-conditions__title span {
+  color: #7dd3fc;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm.is-aimed {
+  background: #38bdf8;
+  color: #04121a;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm.is-unconfirmed {
+  border: 2px solid #38bdf8;
+  background: #0d130e;
+  color: #7dd3fc;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm.is-failed {
+  border-color: #e5484d;
+  background: #e5484d;
+  color: #ffffff;
+}

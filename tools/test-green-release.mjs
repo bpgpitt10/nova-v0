@@ -26,6 +26,7 @@ try {
   }
   const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length
   const p90 = (list) => [...list].sort((a, b) => a - b)[Math.floor(list.length * 0.9)]
+  // The 39 that land under 52 mph take the partial-wedge fit, wholly or in part (23 Nov).
   assert.ok(mean(fromLanding) < 0.85 && p90(fromLanding) < 1.8, `landing: mean ${mean(fromLanding)}, p90 ${p90(fromLanding)}`)
   assert.ok(mean(fromLaunch) < 0.95 && p90(fromLaunch) < 1.9, `launch: mean ${mean(fromLaunch)}, p90 ${p90(fromLaunch)}`)
 
@@ -67,7 +68,7 @@ try {
   // 5. Stimp (20 Nov): only the roll share of a release changes, as the putting model's friction.
   const { stimpReleaseFactor, releaseConditionFactor, puttRollFriction, greenReleaseShape, chipReleaseLevel11, APPROACH_SHAPE } =
     await load('/src/liveCaddie/greenReleaseModel.ts')
-  const landing = { speedMph: 50, descentDeg: 44, spinRpm: 6000 }
+  const landing = { speedMph: 54, descentDeg: 44, spinRpm: 6000 }  // past the wedge band: the approach fit alone
   const bermuda = { courseType: 'medium', greenFirmness: 'medium' }
   const at11 = greenReleaseFromLanding(landing, bermuda)
   assert.equal(greenReleaseFromLanding(landing, { ...bermuda, stimp: 11 }), at11)
@@ -101,6 +102,7 @@ try {
 
   // 7. Chips (20 Nov): landed and stayed on the green, every grass, firmness and stimp 8 to 13, 5 to 40 yd.
   const chips = JSON.parse(readFileSync(new URL('./fixtures/chip-release-2026-11-20.json', import.meta.url), 'utf8'))
+  const wedges = JSON.parse(readFileSync(new URL('./fixtures/wedge-release-2026-11-23.json', import.meta.url), 'utf8'))
   const chipMiss = { clean: [], rough: [], fairway: [] }
   const chipRelease = ([type, firmness, stimp, speedMph, descentDeg, spinRpm, grade]) => {
     const conditions = { courseType: NAME[type], greenFirmness: NAME[firmness], stimp }
@@ -114,7 +116,19 @@ try {
   assert.ok(mean(chipMiss.clean) < 0.5, `chips: mean ${mean(chipMiss.clean)}`)
   assert.ok(mean(chipMiss.rough) < 0.7, `chips from the rough (not in the fit): mean ${mean(chipMiss.rough)}`)
   assert.ok(mean(chipMiss.fairway) < 1.3, `chips landing in the fairway (not in the fit): mean ${mean(chipMiss.fairway)}`)
-  // The approach fit alone gave a 7 yd chip a third of its release; the chip fit is used below 39.3 mph.
+  // Partial wedges (23 Nov): four flights carrying about 65 yd onto six green settings.
+  const wedgeMiss = { green: [], fairway: [] }
+  for (const shot of wedges.green) wedgeMiss.green.push(Math.abs(chipRelease(shot) - shot[7]))
+  for (const shot of wedges.fairway) wedgeMiss.fairway.push(Math.abs(chipRelease(shot) - shot[7]))
+  assert.equal(wedges.green.length, 50)
+  assert.ok(mean(wedgeMiss.green) < 0.6 && Math.max(...wedgeMiss.green) < 3, `wedges: mean ${mean(wedgeMiss.green)}, worst ${Math.max(...wedgeMiss.green)}`)
+  // Less spin releases further, and a firmer green or links releases further, for the same partial wedge.
+  const partial = { speedMph: 42, descentDeg: 40, spinRpm: 7500 }
+  const partialAt = (courseType, greenFirmness, spinRpm = partial.spinRpm) => greenReleaseFromLanding({ ...partial, spinRpm }, { courseType, greenFirmness, stimp: 11 })
+  assert.ok(partialAt('medium', 'medium', 5600) > partialAt('medium', 'medium') + 1)
+  assert.ok(partialAt('soft', 'firm') < partialAt('medium', 'firm') && partialAt('medium', 'firm') < partialAt('firm', 'firm'))
+  assert.ok(partialAt('medium', 'soft') < partialAt('medium', 'medium') && partialAt('medium', 'medium') < partialAt('medium', 'firm'))
+  // The approach fit alone gave a 7 yd chip a third of its release; the chip fit is used below 37 mph.
   const sevenYardChip = { speedMph: 21.9, descentDeg: 17.9, spinRpm: 1617 }
   const sevenLevel = greenReleaseFromLanding(sevenYardChip, { ...bermuda, stimp: 11 })
   const sevenOnTheSlope = greenReleaseOnSlope(sevenLevel, 0.028, 11, greenReleaseShape(sevenYardChip, bermuda))
@@ -126,6 +140,7 @@ try {
   assert.ok(chipReleaseLevel11({ speedMph: 35, descentDeg: 30, spinRpm: 5500 }, bermuda).releaseYds
     < chipReleaseLevel11({ speedMph: 35, descentDeg: 30, spinRpm: 3000 }, bermuda).releaseYds)
 
+  console.log(`wedges ok (${wedges.green.length} on the green: ${mean(wedgeMiss.green).toFixed(2)} yd, worst ${Math.max(...wedgeMiss.green).toFixed(2)}; ${wedges.fairway.length} landing in the fairway ${mean(wedgeMiss.fairway).toFixed(2)})`)
   console.log(`chips ok (${chips.green.length} on the green: ${mean(chipMiss.clean).toFixed(2)} yd; rough ${mean(chipMiss.rough).toFixed(2)}; `
     + `${chips.fairway.length} landing in the fairway ${mean(chipMiss.fairway).toFixed(2)}; approach stimp shots ${mean(stimpMiss).toFixed(2)})`)
   console.log(`green release ok (131 landings: ${mean(fromLanding).toFixed(2)} yd from landing numbers, ${mean(fromLaunch).toFixed(2)} yd from launch)`)
