@@ -132,3 +132,43 @@
 
 .faq-header p.faq-support { margin-top: 6px; color: #cfd8cd; }
 .faq-support a, .faq-contact a { color: #cfb36e; }
+
+/* What's new: first thing on the page, quieter than "How to get going" below it. */
+.faq-new {
+  margin-top: 24px;
+  padding: 18px clamp(16px, 2.4vw, 28px) 6px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 14px;
+  background: rgba(16, 32, 38, 0.5);
+}
+.faq-new h2 { margin: 0 0 6px; color: #7dd3fc; font-size: 20px; font-weight: 600; }
+.faq-new-date {
+  margin-left: 10px;
+  color: #9fb09f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.faq-new ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 28px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.faq-new li { padding: 12px 0; border-top: 1px solid rgba(49, 66, 51, 0.78); }
+.faq-new h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.faq-new p { margin: 0 0 6px; color: #cfd8cd; font-size: 14px; line-height: 1.55; }
+.faq-new-needs {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  border-radius: 999px;
+  color: #7dd3fc;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}

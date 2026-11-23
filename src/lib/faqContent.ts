@@ -21,6 +21,53 @@ export type StartStep = Readonly<{
   link?: Readonly<{ href: string; label: string }>
 }>
 
+export type WhatsNewItem = Readonly<{
+  title: string
+  body: string
+  /** What the player needs for it, when it isn't just the site: "Companion 1.2.1". */
+  needs?: string
+  link?: Readonly<{ href: string; label: string }>
+}>
+
+/**
+ * The latest enhancements, first thing on the FAQ (Brian, 23 Nov). The companion's update box
+ * links here, so this is where "what else changed" lives. Newest first; keep it to about six,
+ * dropping the oldest as new ones go in, and move the date.
+ */
+export const WHATS_NEW: Readonly<{ updated: string; items: readonly WhatsNewItem[] }> = {
+  updated: 'November 23, 2026',
+  items: [
+    {
+      title: 'Talk to your caddie',
+      body: 'Say “Looper, three wood” and the club is armed and GSPro is aimed for you. Around the green say “Looper, pitch” or “arm the flop”; on a part wedge say “standard”, “flighted”, “runner” or “high”. “Looper, retry” aims again.',
+      needs: 'Companion 1.2.1',
+      link: { href: '#voice', label: 'Everything you can say' },
+    },
+    {
+      title: 'Wedge Lab: 40 yards to your shortest club',
+      body: 'The awkward distance now has its own card. Four ways to play it (Runner, Flighted, Standard, High), each with how far to fly it and how far it runs on today’s greens. Looper picks one and says why the others are not needed or should be avoided.',
+    },
+    {
+      title: 'Chipping Lab: inside 40 yards',
+      body: 'Bump and run, chip, pitch and flop, each sized to finish at the hole. The card leads with the carry to fly it, reads the slope from where the ball lands, and when nothing stops at the hole it shows the shot that finishes nearest.',
+    },
+    {
+      title: 'Auto Aim on more courses',
+      body: 'Auto Aim finds your ball and the pin by where they sit on GSPro’s minimap, not by exact colors, so it works on dull or shaded courses where it used to say aim by hand.',
+      needs: 'Companion 1.2.1',
+    },
+    {
+      title: 'Trees on a wedge',
+      body: 'Each wedge flight is checked against the trees Looper has on its map. One that would fly into them is marked Avoid and a higher flight takes its place. In the trees, the card says so and leaves the line out to you.',
+    },
+    {
+      title: 'A two-minute tour',
+      body: 'Five cards on what Looper does and how it learns your game.',
+      link: { href: '/tour', label: 'Take the tour' },
+    },
+  ],
+}
+
 /**
  * The path a new player follows, shown open at the top of the FAQ (Brian,
  * 18 Nov: "this is how you get going"). Assumes they have signed in.
@@ -199,6 +246,9 @@ export const FAQ_SECTIONS: readonly FaqSection[] = [
             ['Looper, arm it', 'arm that · lock it in · send it. Arms the club and line on screen.'],
             ['Looper, your call', 'your pick · the play. Arms Looper\u2019s recommended club.'],
             ['Looper, clear', 'cancel · disarm · never mind · stop'],
+            ['Looper, retry', 'try again · aim again. Aims GSPro again for what is on screen.'],
+            ['Looper, pitch', 'bump and run · chip · flop · show me the pitch shot. Inside 40 yards: shows that chip. “Arm the pitch” aims it.'],
+            ['Looper, standard', 'runner · flighted · high · the stock shot. From 40 yards to your shortest club: shows that wedge flight. “Arm the standard” aims it. Needs Companion 1.2.1.'],
             ['Looper, arm second best', 'arm best · arm safest · arm the safe line. Arms that aim line for the club on screen.'],
             ['Looper, second best', 'best · safest · safe line. Shows that line without arming it.'],
             ['Looper, aim left five', 'five left · left five yards · move it left five. Moves from the current line, to the nearest line Looper has numbers for.'],
