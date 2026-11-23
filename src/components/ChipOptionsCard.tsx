@@ -1,4 +1,4 @@
-import { CHIP_LABEL, chipLieRead, defaultChip, type ChipOption, type ChipType, type LandingSurface } from '../liveCaddie/chipOptions'
+import { CHIP_LABEL, WEDGE_NOTE, chipLieRead, defaultChip, familyOf, type ChipOption, type ChipType, type LandingSurface, type WedgeType } from '../liveCaddie/chipOptions'
 import './ChipOptionsCard.css'
 
 /**
@@ -38,6 +38,12 @@ type Props = {
   pinNotes?: readonly string[]
   /** Looper's green outline ends close to the pin (or misses it): where GSPro's green starts is unsure. */
   greenEdgeUncertain?: boolean
+  /**
+   * Partial wedges only. What the wind, height and air do to the carry: the swing to make is the
+   * carry times this (1.05: plays 5% longer). And how far left (+) to aim for the wind, feet.
+   */
+  playRatio?: number
+  windAimLeftFt?: number | null
 }
 
 const SURFACE: Readonly<Record<LandingSurface, string>> = {
@@ -54,7 +60,8 @@ const BREAK_STRAIGHT_FT = 0.25
 const yd = (value: number) => (value < 10 ? value.toFixed(1) : String(Math.round(value)))
 const heightText = (ft: number) => {
   const a = Math.abs(ft)
-  return a >= 3 ? `${Math.round(a)} ft` : `${Math.floor(a)} ft ${Math.round((a % 1) * 12)} in`.replace(/^0 ft /, '')
+  const inches = Math.round(a * 12)
+  return a >= 3 ? `${Math.round(a)} ft` : `${Math.floor(inches / 12)} ft ${inches % 12} in`.replace(/^0 ft /, '')
 }
 const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs(value) / 3)} yd` : `${Math.max(1, Math.round(Math.abs(value)))} ft`)
 
@@ -67,10 +74,15 @@ export default function ChipOptionsCard({
   distanceYds, options, shown, onShow, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
   pinNotes = [], greenEdgeUncertain = false, riseFt = null, riseSource = null, breakLeftFt = null,
+  playRatio = 1, windAimLeftFt = null,
 }: Props) {
+  // Four flights from 40 yd to the shortest full club, in place of the four chips (23 Nov).
+  const wedge = options.length > 0 && familyOf(options[0].type) === 'wedge'
+  const word = wedge ? 'shot' : 'chip'
+  const windFt = wedge ? windAimLeftFt ?? 0 : 0
   const riseText = riseFt == null ? null
     : Math.abs(riseFt) < 0.25 ? 'level'
-      : `${riseFt > 0 ? '▲' : '▼'} ${Math.floor(Math.abs(riseFt))} ft ${Math.round((Math.abs(riseFt) % 1) * 12)} in`
+      : `${riseFt > 0 ? '▲' : '▼'} ${Math.floor(Math.round(Math.abs(riseFt) * 12) / 12)} ft ${Math.round(Math.abs(riseFt) * 12) % 12} in`
   // A shot "landing short" of an outline we doubt may well land on GSPro's green: don't call it short.
   // Sand and water short of the green are still real.
   const edgeUnclear = (option: ChipOption) => greenEdgeUncertain && option.verdict === 'short'
@@ -86,6 +98,7 @@ export default function ChipOptionsCard({
     : current === nearest && current.verdict === 'avoid'
       ? `Nothing finishes cleanly by Looper's map. This comes closest: ${current.reason ?? ''}`.trim()
       : current.verdict === 'avoid' ? current.reason
+        : current === nearest && current.verdict === 'fine' && current.reason ? current.reason
         : current === nearest ? 'Nothing lands on the green and stops: the highest shot is the best guess.'
         : current.carries
           ? fromSand && current.carries.surface === 'bunker'
@@ -94,13 +107,20 @@ export default function ChipOptionsCard({
           : null
   // Landing a yard or more off level changes the swing: say it like sand does (Brian, 21 Nov).
   const heightCounts = current != null && Math.abs(current.levelCarryYds - current.flight.carryYds) >= 1
+  // A wedge card leads with the carry to swing for, always: wind, height and air are in it.
+  // The same number on the row as in the heading: the carry to swing for.
+  const playsFor = (option: ChipOption) => (wedge ? option.levelCarryYds * playRatio : option.swingLikeYds ?? option.levelCarryYds)
   const swingYds = current == null ? null
-    : current.swingLikeYds ?? (heightCounts ? current.levelCarryYds : null)
+    : playsFor(current)
+  // From sand, or landing well above or below the ball, the swing differs from the flight: the line
+  // under the number says why. Same name and colour either way (Brian, 23 Nov).
+  const swingDiffers = !wedge && current != null && (current.swingLikeYds != null || heightCounts)
+  const playsDelta = current && wedge ? playsFor(current) - current.flight.carryYds : 0
   const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
   const lieOnly = current ? chipLieRead(current, distanceYds, lieLeftRightDeg, lieUpDownDeg) : null
   const breakFt = current ? breakLeftFt?.[current.type] ?? null : null
   // The aim line is the two together; each row below shows its own share.
-  const lie = lieOnly ? { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (breakFt ?? 0) } : null
+  const lie = lieOnly ? { ...lieOnly, aimLeftFt: lieOnly.aimLeftFt + (breakFt ?? 0) + windFt } : null
   const aimOff = lie && Math.abs(lie.aimLeftFt) >= 1
   const lieAimOff = lieOnly != null && Math.abs(lieOnly.aimLeftFt) >= 1
   const sideText = lieLeftRightDeg == null ? 'not read' : Math.abs(lieLeftRightDeg) < 0.25 ? 'level'
@@ -109,20 +129,26 @@ export default function ChipOptionsCard({
     : `${Math.abs(lieUpDownDeg).toFixed(1)}° ${lieUpDownDeg > 0 ? 'up' : 'down'}`
   return (
     <>
-      <section className="chip-options" aria-label="Chip options">
+      <section className={`chip-options${wedge ? ' is-wedge' : ''}`} aria-label={wedge ? 'Wedge flights' : 'Chip options'}>
         <div className="chip-options__head">
           {swingYds != null && current ? (
             // From sand, or landing well above or below the ball, the number to play is the swing, not
             // the distance: big and yellow, like a putt's Plays like.
             <div className="chip-options__swing">
-              <span>Swing for</span>
-              <b>{Math.round(swingYds)} YD CARRY</b>
+              <span>{CHIP_LABEL[current.type]} · fly it</span>
+              <b>{yd(swingYds)} YD CARRY</b>
               <small>
                 {Math.round(distanceYds)} yd to the pin
+                {` · runs ${yd(current.runYds)}`}
+                {wedge && Math.abs(playsDelta) >= 1
+                  ? ` · lands ${Math.round(current.flight.carryYds)} out: wind, height and air ${playsDelta > 0 ? 'take off' : 'add'} ${Math.round(Math.abs(playsDelta))}`
+                  : ''}
+                {!swingDiffers ? '' : <>
                 {heightCounts && current.landingRiseFt != null
                   ? ` · lands ${heightText(current.landingRiseFt)} ${current.landingRiseFt > 0 ? 'above' : 'below'} you`
                   : ''}
                 {current.swingLikeYds != null ? ` · the sand takes it down to ${yd(current.flight.carryYds)}` : ` · flies ${yd(current.flight.carryYds)} on this ground`}
+                </>}
               </small>
             </div>
           ) : (
@@ -141,9 +167,9 @@ export default function ChipOptionsCard({
             </p>
           ) : null}
         </div>
-        <div className="chip-options__rows" role="radiogroup" aria-label="Chips">
+        <div className="chip-options__rows" role="radiogroup" aria-label={wedge ? 'Flights' : 'Chips'}>
           <div className="chip-options__cols" aria-hidden="true">
-            <span>Shot</span><span>Fly</span><span>Run</span><span />
+            <span>{wedge ? 'Flight' : 'Shot'}</span><span>Fly</span><span>Run</span><span />
           </div>
           {options.map((option) => (
             <button
@@ -155,9 +181,10 @@ export default function ChipOptionsCard({
               onClick={() => onShow(option.type)}
             >
               <span className="chip-row__name">{CHIP_LABEL[option.type]}<small>{option.launchDeg}&deg;</small></span>
-              <span className="chip-row__num">{yd(option.flight.carryYds)}</span>
+              <span className="chip-row__num">{yd(playsFor(option))}</span>
               <span className="chip-row__num">{yd(option.runYds)}</span>
               <span className="chip-row__tag">{tagFor(option)}</span>
+
             </button>
           ))}
         </div>
@@ -165,11 +192,12 @@ export default function ChipOptionsCard({
         {onlyLine ? <p className="chip-options__reason">{onlyLine}</p> : null}
         <p className="chip-options__note">
           {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with.' : ''}
+          {wedge ? `${comfortable ? ' ' : ''}New: flights and run are modeled from GSPro test shots, not your own swings yet.` : ''}
         </p>
       </section>
 
       {onAim && current ? (
-        <div className="chip-options__arm-wrap">
+        <div className={`chip-options__arm-wrap${wedge ? ' is-wedge' : ''}`}>
           <button
             type="button"
             className={`chip-options__arm${!aimedThis || !aim ? '' : aim.state === 'aimed' ? ' is-aimed'
@@ -191,9 +219,9 @@ export default function ChipOptionsCard({
         </div>
       ) : null}
 
-      <aside className="chip-conditions" aria-label="What is moving this chip">
+      <aside className={`chip-conditions${wedge ? ' is-wedge' : ''}`} aria-label={`What is moving this ${word}`}>
         <div className="chip-conditions__title">
-          <span>What’s moving this chip</span>
+          <span>What’s moving this {word}</span>
           <b>{current ? CHIP_LABEL[current.type] : '—'}</b>
         </div>
         {/* Under the ball first (up/down then side, as GSPro lists them), then the green, then the strike. */}
@@ -221,11 +249,26 @@ export default function ChipOptionsCard({
               : /rough/.test(surface) ? 'about a third less spin: runs a little more' : 'no change'}
           </em>
         </div>
+        {wedge ? (
+          <div className="chip-conditions__row">
+            <span>Wind, height and air</span>
+            <b>{Math.abs(playsDelta) < 1 ? 'no change' : `${playsDelta > 0 ? '+' : '−'}${Math.round(Math.abs(playsDelta))} yd`}</b>
+            <em className={Math.abs(windFt) >= 3 ? 'is-off' : ''}>
+              {Math.abs(playsDelta) < 1 ? 'the carry is the number' : 'included in Fly'}
+              {Math.abs(windFt) >= 3 ? ` · wind moves it ${windFt > 0 ? 'right' : 'left'}: ${feet(windFt)} ${windFt > 0 ? 'left' : 'right'}` : ''}
+            </em>
+          </div>
+        ) : null}
         <div className="chip-conditions__row">
           <span>To the hole</span>
           <b>{riseText ?? '—'}</b>
           <em>
-            {riseFt == null ? '—'
+            {/* The run is what the slope changes, so say the slope it rolls over: from where this shot
+                lands to the hole. That can fall away even when the hole is above the ball. */}
+            {current?.runGrade != null && Math.abs(current.runGrade) >= 0.005
+              ? `${(Math.abs(current.runGrade) * 100).toFixed(1)}% ${current.runGrade > 0 ? 'uphill' : 'downhill'} from where it lands: runs ${current.runGrade > 0 ? 'less' : 'more'} · included in Run`
+              : current?.runGrade != null ? 'level from where it lands: no change'
+              : riseFt == null ? '—'
               : Math.abs(riseFt) < 0.25 ? 'no change'
                 : `${(Math.abs(riseFt) / (distanceYds * 3) * 100).toFixed(1)}% ${riseFt > 0 ? 'uphill: runs less' : 'downhill: runs more'}${hasGreenMap || riseSource === 'GSPro' ? ' · included in Run' : ''}`}
           </em>
@@ -253,6 +296,13 @@ export default function ChipOptionsCard({
           <span>Modeled ball data</span>
           <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
           <em>{current ? `${Math.round(current.swingFlight.ballSpeedMph)} mph · ${Math.round(current.swingFlight.spinRpm / 50) * 50} rpm` : '—'}</em>
+          {/* In the same faded text: what the flight is, and why it is or isn't the shot here. */}
+          {wedge && current ? (
+            <em>{WEDGE_NOTE[current.type as WedgeType].what} · usually {WEDGE_NOTE[current.type as WedgeType].usually}</em>
+          ) : null}
+          {current && current.reason && (current.verdict === 'not-needed' || current.verdict === 'short' || current.verdict === 'good') ? (
+            <em>{current.reason}</em>
+          ) : null}
         </div>
       </aside>
     </>

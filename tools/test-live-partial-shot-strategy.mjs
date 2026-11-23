@@ -81,6 +81,10 @@ try {
   // Target not on the green: no window.
   assert.equal(windowShot([greenAt(70)]).carryWindow, null)
   assert.equal(shot(88),null,'at modeled floor, full shot ranking returns')
+  // A few yards under the shortest club (88 here) is still that club: 5% of its carry, at least 3 yd.
+  assert.equal(shot(85),null,'3 yd under the shortest club is still a full-club pick')
+  assert.equal(shot(84),null,'within 5% (4.4 yd) is still a full-club pick')
+  assert.ok(shot(83),'5 yd under is a partial wedge: Shot Strategy')
   assert.equal(shot(95),null,'above floor, full shot ranking returns')
   assert.equal(buildUnderRangeShotStrategy({
     evaluations:[{...evaluation,supportShots:0}],

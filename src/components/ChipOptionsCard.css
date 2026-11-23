@@ -30,7 +30,7 @@
 }
 
 .chip-options__swing > b {
-  color: #eab308;
+  color: #f97316;
   font-size: clamp(44px, 4vw, 64px);
   font-weight: 600;
   letter-spacing: -0.04em;
@@ -255,6 +255,8 @@
   justify-content: space-between;
   gap: 10px;
   padding: 9px 14px;
+  /* The wide card doesn't clip the panel, so the tint rounds its own top corners. */
+  border-radius: 11px 11px 0 0;
   background: rgba(249, 115, 22, 0.1);
 }
 
@@ -357,6 +359,33 @@
     min-height: clamp(620px, calc(100vh - 128px), 760px);
   }
 
+  /* The chipping and wedge labs share one fixed layout, so the tag, the flight name and the big
+     number sit in exactly the same place on both: the tag, the card (which takes any spare height),
+     the button. The club card's seven named rows shared spare height out differently per mode. */
+  .live-decision-card.live-decision-card:has(> .chip-options) {
+    grid-template-areas: none !important;
+    grid-template-rows: auto 1fr auto !important;
+  }
+
+  .live-decision-card.live-decision-card:has(> .chip-options) > .live-decision-label-row {
+    grid-area: auto;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .live-decision-card.live-decision-card > .chip-options {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    margin-top: 20px;
+  }
+
+  .live-decision-card.live-decision-card > .chip-options__arm-wrap {
+    grid-area: auto;
+    grid-column: 1;
+    grid-row: 3;
+  }
+
   /* Like the net adjustment table: sits at the bottom of the card, as tall as its rows need (never
      shorter than the baseline, so it doesn't jump from chip to chip), up to the card's full height. */
   .live-decision-card > .chip-conditions {
@@ -430,4 +459,77 @@
 
 .chip-row.is-shown.is-avoid {
   border-color: #f97316;
+}
+
+/* Partial wedges (40 yd to the shortest full club): the same card in sky blue, a line under each flight. */
+.chip-row__what {
+  grid-column: 1 / -1;
+  color: #8e9b90;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chip-row.is-avoid .chip-row__what {
+  color: #6b776d;
+}
+
+.chip-options.is-wedge .chip-options__swing > b {
+  color: #38bdf8;
+}
+
+.chip-options.is-wedge .chip-options__swing > span {
+  color: #7dd3fc;
+}
+
+.chip-options.is-wedge .chip-row:hover {
+  border-color: #1f4a5e;
+}
+
+.chip-options.is-wedge .chip-row.is-shown {
+  border-color: #38bdf8;
+}
+
+/* A selected Avoid keeps its crosshatch, as on the chipping card. */
+.chip-options.is-wedge .chip-row.is-shown:not(.is-avoid) {
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.chip-options.is-wedge .chip-row.is-good .chip-row__tag,
+.chip-options.is-wedge .chip-row.is-nearest .chip-row__tag {
+  color: #38bdf8;
+}
+
+.chip-options.is-wedge .chip-options__reason {
+  color: #bfe6f7;
+}
+
+.chip-conditions.is-wedge .chip-conditions__title {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.chip-conditions.is-wedge .chip-conditions__title span {
+  color: #7dd3fc;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm.is-aimed {
+  background: #38bdf8;
+  color: #04121a;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm.is-unconfirmed {
+  border: 2px solid #38bdf8;
+  background: #0d130e;
+  color: #7dd3fc;
+}
+
+.chip-options__arm-wrap.is-wedge .chip-options__arm.is-failed {
+  border-color: #e5484d;
+  background: #e5484d;
+  color: #ffffff;
 }
