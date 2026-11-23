@@ -131,9 +131,10 @@ def chip_flight(kind: str, carry: float) -> tuple[float, float, float]:
 # speed for a 65 yd carry. Standard is Brian's own lob-wedge partials on Briarwood (23 Nov: 28.7° launch,
 # about 137 rpm per mph, 62.2 mph for 65 yd; carry grows as speed^1.6 across 50 to 77 yd). Flighted is his
 # three attempts for launch and speed, with a clean flighted wedge's spin. High scales his 37° shot. Runner
-# is an estimate (a punched pitching wedge). The lab's first shot of each flight corrects the speed.
+# is a punched pitching wedge: its spin is an estimate, its speed is from the first lab sitting. Flighted,
+# standard and high all carried 65 to 66 yd in that sitting.
 WEDGE_FLIGHTS: dict[str, dict[str, float]] = {
-    "runner": {"vla": 16.0, "rpm_per_mph": 60.0, "speed65": 76.0},
+    "runner": {"vla": 16.0, "rpm_per_mph": 60.0, "speed65": 66.6},  # 76 mph carried 80 yd in GSPro (23 Nov)
     "flighted": {"vla": 23.0, "rpm_per_mph": 135.0, "speed65": 63.8},
     "standard": {"vla": 29.0, "rpm_per_mph": 137.0, "speed65": 62.2},
     "high": {"vla": 36.0, "rpm_per_mph": 115.0, "speed65": 61.6},

@@ -716,12 +716,14 @@ def lie_summary(rows: list[dict[str, Any]]) -> list[str]:
 
 def hit_spot(path: Any, writer: Any, flush, *, labels: dict[str, Any], spot: int, typed: str,
              spot_shots: list[tuple[str, dict[str, float]]], round_file: Path, log_file: Path, db_path: Path,
-             notes_file: Path, gap: float, record_wait: float, sleep=time.sleep, test: str = "lie") -> tuple[list[dict[str, Any]], bool]:
+             notes_file: Path, gap: float, record_wait: float, sleep=time.sleep, test: str = "lie",
+             chip_plays: dict[str, float] | None = None) -> tuple[list[dict[str, Any]], bool]:
     """Hit `spot_shots` from where the ball is now and record each one. (rows, still connected)."""
     rows: list[dict[str, Any]] = []
     origin: tuple[float, float, float] | None = None
     plays = None  # carry here as a share of the same shot's flat, sea-level carry (hill, altitude, lie)
-    chip_plays: dict[str, float] = {}  # per chip type: carried over what the speed scale said
+    # Per chip type: carried over what the speed scale said. Passed in, it carries on from set to set.
+    chip_plays = chip_plays if chip_plays is not None else {}
     for index, (name, shot) in enumerate(spot_shots, start=1):
         planned = shot
         if "_chip" in shot:
@@ -802,6 +804,7 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
     """Spot after spot: the player drops the ball and presses Enter, three shots are hit and recorded."""
     rows: list[dict[str, Any]] = []
     spot = first_spot
+    wedge_plays: dict[str, float] = {}  # each wedge flight's carry correction, kept across sets (a set is one shot a flight)
     while True:
         try:
             typed = read_line(f"\nSpot {spot}: drop the ball, then Enter to hit 3 shots. Type the slope first if it is not flat (2 up 3 left). "
@@ -829,7 +832,7 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
             print(f"  Wedge set at stimp {labels['stimp']:g}, carrying {', '.join(f'{c:g}' for c in carries)} yd: {len(spot_shots)} shots.")
             spot_rows, connected = hit_spot(path, writer, flush, labels=labels, spot=spot, typed=typed, spot_shots=spot_shots,
                                             round_file=round_file, log_file=log_file, db_path=db_path, notes_file=notes_file,
-                                            gap=gap, record_wait=record_wait, sleep=sleep, test="wedge")
+                                            gap=gap, record_wait=record_wait, sleep=sleep, test="wedge", chip_plays=wedge_plays)
             for line in chip_summary(spot_rows):
                 print(line)
             rows.extend(spot_rows)
