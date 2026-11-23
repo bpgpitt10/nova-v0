@@ -1942,9 +1942,9 @@ export default function LiveCaddiePage() {
     // "arm the pitch") aims the one on screen, exactly as its button does (Brian, 21 Nov).
     if (command.action === 'chip') {
       const type = command.shot as ChipType | undefined
-      if (!chipLab) { voiceMissed('Chip options show inside 40 yards of the green.', heard); return }
+      if (!chipLab) { voiceMissed('Shot options show when you are closer than your shortest club.', heard); return }
       const option = chipLab.options.find((o) => o.type === type)
-      if (!type || !option) { voiceMissed(isWedgeLab ? 'From here it is a flight: tap Runner, Flighted, Standard or High.' : "Didn't catch which chip", heard); return }
+      if (!type || !option) { voiceMissed(isWedgeLab ? 'From here say runner, flighted, standard or high.' : type ? 'Inside 40 yards say bump, chip, pitch or flop.' : "Didn't catch which chip", heard); return }
       setArmedChip({ shot: chipShotKey, type })
       if (command.arm) {
         aimChip(type)
@@ -2329,7 +2329,7 @@ export default function LiveCaddiePage() {
                 data-voice-miss={voiceEnabled && voiceMiss ? 'true' : undefined}
                 title={voiceEnabled && voiceStatus.state === 'unavailable'
                   ? voiceReasonText(voiceStatus.reason)
-                  : 'Say "Looper" or "Caddie", then: "three wood", "arm it", "clear", "aim left five", "reset aim", "club up", "refresh wind", "flyover", "scorecard", "green grid"'}>
+                  : 'Say "Looper" or "Caddie", then: "three wood", "arm it", "clear", "aim left five", "reset aim", "club up", "refresh wind", "pitch" or "flop" around the green, "standard" or "flighted" on a part wedge, "flyover", "scorecard", "green grid"'}>
                 {voiceNote ?? voiceLabel}
               </button>
             ) : null}
