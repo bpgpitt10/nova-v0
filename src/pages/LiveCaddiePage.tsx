@@ -2713,7 +2713,7 @@ export default function LiveCaddiePage() {
           <>
             <section className="live-caddie-main-grid">
               <aside className="live-decision-column">
-                <article className={`live-decision-card${isShotStrategy ? ' strategy-mode' : ''}`}>
+                <article className={`live-decision-card${isShotStrategy && !chipLab ? ' strategy-mode' : ''}`}>
                   <div className="live-decision-label-row">
                     <span className="live-recommended-pill">
                       {inTrees
@@ -2897,10 +2897,10 @@ export default function LiveCaddiePage() {
                     </span>
                   </button>
                   )}
-                  {armedHere && aimResult && aimResult.outcome !== 'aimed' ? (
+                  {!chipLab && armedHere && aimResult && aimResult.outcome !== 'aimed' ? (
                     <p className={`live-arm-note${aimResult.outcome === 'not-sent' || aimResult.outcome === 'clicked-mismatch' ? ' is-failed' : ''}`}>{aimResult.message}</p>
                   ) : null}
-                  {safePick && !armedHere ? (
+                  {safePick && !armedHere && !chipLab ? (
                     // One line, two states. Before the tap it offers the safe play; after
                     // the tap the card shows the safe play, so the line offers the way back.
                     <button

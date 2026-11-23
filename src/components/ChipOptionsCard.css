@@ -359,6 +359,33 @@
     min-height: clamp(620px, calc(100vh - 128px), 760px);
   }
 
+  /* The chipping and wedge labs share one fixed layout, so the tag, the flight name and the big
+     number sit in exactly the same place on both: the tag, the card (which takes any spare height),
+     the button. The club card's seven named rows shared spare height out differently per mode. */
+  .live-decision-card.live-decision-card:has(> .chip-options) {
+    grid-template-areas: none !important;
+    grid-template-rows: auto 1fr auto !important;
+  }
+
+  .live-decision-card.live-decision-card:has(> .chip-options) > .live-decision-label-row {
+    grid-area: auto;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .live-decision-card.live-decision-card > .chip-options {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    margin-top: 10px;
+  }
+
+  .live-decision-card.live-decision-card > .chip-options__arm-wrap {
+    grid-area: auto;
+    grid-column: 1;
+    grid-row: 3;
+  }
+
   /* Like the net adjustment table: sits at the bottom of the card, as tall as its rows need (never
      shorter than the baseline, so it doesn't jump from chip to chip), up to the card's full height. */
   .live-decision-card > .chip-conditions {
