@@ -237,10 +237,67 @@ class AimMathTests(unittest.TestCase):
         self.assertAlmostEqual(preview["minimap"]["pin"][0], 141, delta=2)
         self.assertAlmostEqual(preview["minimap"]["pin"][1], 90, delta=2)
         self.assertTrue(preview["checks"]["alignedLikeGspro"])
-        # Two grey dots on the ball's line: neither is taken.
-        cv2.circle(img, (x0 + 141, y0 + 160), 5, (126, 126, 126), -1)
+        # A second dot further down the line (a marker, a sprinkler): the one at the pin's usual height is the pin.
+        lower = img.copy()
+        cv2.circle(lower, (x0 + 141, y0 + 200), 5, (126, 126, 126), -1)
+        again = aim.aim_preview(lower, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+        self.assertAlmostEqual(again["minimap"]["pin"][1], 90, delta=2)
+        # Two dots at the pin's usual height: neither is taken.
+        two = np.full((H, W, 3), (40, 80, 45), np.uint8)
+        cv2.circle(two, (x0 + 141, y0 + 425), 5, (0, 0, 150), -1)
+        cv2.circle(two, (x0 + 141, y0 + 82), 5, (126, 126, 126), -1)
+        cv2.circle(two, (x0 + 141, y0 + 97), 5, (126, 126, 126), -1)
+        with self.assertRaises(aim.AimReadError):
+            aim.aim_preview(two, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+
+    def _dull_map(self):
+        img = np.full((H, W, 3), (40, 80, 45), np.uint8)
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(img, (x0 + 141, y0 + 425), 5, (0, 0, 150), -1)   # the ball
+        return img, x0, y0
+
+    def test_the_pin_is_where_it_has_to_be_whatever_its_colour(self):
+        """Location first (Brian, 23 Nov): a pin tinted by a low sun is neither white nor grey."""
+        img, x0, y0 = self._dull_map()
+        cv2.circle(img, (x0 + 141, y0 + 90), 5, (90, 150, 215), -1)   # warm orange light on the pin
+        preview = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+        self.assertEqual(preview["status"], "ready")
+        self.assertAlmostEqual(preview["minimap"]["pin"][1], 90, delta=2)
+
+    def test_the_aim_marker_on_the_line_is_not_the_pin(self):
+        """GSPro's aim marker (a dot in a magenta ring) often sits on the ball-to-pin line off the tee."""
+        img, x0, y0 = self._dull_map()
+        cv2.circle(img, (x0 + 141, y0 + 90), 5, (126, 126, 126), -1)                 # the pin, in shade
+        cv2.circle(img, (x0 + 141, y0 + 110), 5, (150, 150, 150), -1)                # the marker's dot...
+        cv2.circle(img, (x0 + 141, y0 + 110), 8, (255, 0, 255), 2)                   # ...in its magenta ring
+        preview = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+        self.assertAlmostEqual(preview["minimap"]["pin"][1], 90, delta=2)
+
+    def test_the_title_letters_are_never_the_pin(self):
+        img, x0, y0 = self._dull_map()
+        cv2.putText(img, "Fairway", (x0 + 90, y0 + 32), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
         with self.assertRaises(aim.AimReadError):
             aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+
+    def test_gspro_aim_disc_hiding_the_pin_is_not_guessed_at(self):
+        """Aimed near the flag, GSPro's blue disc hides the pin (DPC Sodgrass 1): refuse, don't guess."""
+        img, x0, y0 = self._dull_map()
+        cv2.circle(img, (x0 + 149, y0 + 90), 12, (255, 255, 255), -1)
+        cv2.circle(img, (x0 + 149, y0 + 90), 9, (255, 120, 0), -1)
+        with self.assertRaises(aim.AimReadError):
+            aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+
+    def test_a_shaded_pin_on_a_zoomed_or_angled_map(self):
+        """Around the green the pair isn't on one vertical line; the pin can be just as dull there."""
+        img = np.full((H, W, 3), (40, 80, 45), np.uint8)
+        cv2.rectangle(img, (int(W * 0.03), int(H * 0.03)), (int(W * 0.15), int(H * 0.05)), (40, 40, 220), -1)  # red player banner
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.circle(img, (x0 + 90, y0 + 300), 5, (0, 0, 235), -1)       # ball, mid-map
+        cv2.circle(img, (x0 + 200, y0 + 160), 5, (126, 126, 126), -1)  # pin, up and to the right, in shade
+        crop, _, ball, pin, _, _, pairing = aim.locate_minimap_pair(img)
+        self.assertEqual(pairing, "free")
+        self.assertAlmostEqual(pin.x, 200, delta=2)
+        self.assertAlmostEqual(pin.y, 160, delta=2)
 
     def test_no_minimap_says_so_and_shows_what_it_saw(self):
         img = np.full((H, W, 3), (30, 40, 30), np.uint8)
