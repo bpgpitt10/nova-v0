@@ -60,7 +60,8 @@ const BREAK_STRAIGHT_FT = 0.25
 const yd = (value: number) => (value < 10 ? value.toFixed(1) : String(Math.round(value)))
 const heightText = (ft: number) => {
   const a = Math.abs(ft)
-  return a >= 3 ? `${Math.round(a)} ft` : `${Math.floor(a)} ft ${Math.round((a % 1) * 12)} in`.replace(/^0 ft /, '')
+  const inches = Math.round(a * 12)
+  return a >= 3 ? `${Math.round(a)} ft` : `${Math.floor(inches / 12)} ft ${inches % 12} in`.replace(/^0 ft /, '')
 }
 const feet = (value: number) => (Math.abs(value) >= 9.5 ? `${Math.round(Math.abs(value) / 3)} yd` : `${Math.max(1, Math.round(Math.abs(value)))} ft`)
 
@@ -81,7 +82,7 @@ export default function ChipOptionsCard({
   const windFt = wedge ? windAimLeftFt ?? 0 : 0
   const riseText = riseFt == null ? null
     : Math.abs(riseFt) < 0.25 ? 'level'
-      : `${riseFt > 0 ? '▲' : '▼'} ${Math.floor(Math.abs(riseFt))} ft ${Math.round((Math.abs(riseFt) % 1) * 12)} in`
+      : `${riseFt > 0 ? '▲' : '▼'} ${Math.floor(Math.round(Math.abs(riseFt) * 12) / 12)} ft ${Math.round(Math.abs(riseFt) * 12) % 12} in`
   // A shot "landing short" of an outline we doubt may well land on GSPro's green: don't call it short.
   // Sand and water short of the green are still real.
   const edgeUnclear = (option: ChipOption) => greenEdgeUncertain && option.verdict === 'short'
@@ -97,6 +98,7 @@ export default function ChipOptionsCard({
     : current === nearest && current.verdict === 'avoid'
       ? `Nothing finishes cleanly by Looper's map. This comes closest: ${current.reason ?? ''}`.trim()
       : current.verdict === 'avoid' ? current.reason
+        : current === nearest && current.verdict === 'fine' && current.reason ? current.reason
         : current === nearest ? 'Nothing lands on the green and stops: the highest shot is the best guess.'
         : current.carries
           ? fromSand && current.carries.surface === 'bunker'
@@ -260,7 +262,12 @@ export default function ChipOptionsCard({
           <span>To the hole</span>
           <b>{riseText ?? '—'}</b>
           <em>
-            {riseFt == null ? '—'
+            {/* The run is what the slope changes, so say the slope it rolls over: from where this shot
+                lands to the hole. That can fall away even when the hole is above the ball. */}
+            {current?.runGrade != null && Math.abs(current.runGrade) >= 0.005
+              ? `${(Math.abs(current.runGrade) * 100).toFixed(1)}% ${current.runGrade > 0 ? 'uphill' : 'downhill'} from where it lands: runs ${current.runGrade > 0 ? 'less' : 'more'} · included in Run`
+              : current?.runGrade != null ? 'level from where it lands: no change'
+              : riseFt == null ? '—'
               : Math.abs(riseFt) < 0.25 ? 'no change'
                 : `${(Math.abs(riseFt) / (distanceYds * 3) * 100).toFixed(1)}% ${riseFt > 0 ? 'uphill: runs less' : 'downhill: runs more'}${hasGreenMap || riseSource === 'GSPro' ? ' · included in Run' : ''}`}
           </em>

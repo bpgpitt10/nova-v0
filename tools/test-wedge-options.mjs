@@ -61,6 +61,16 @@ try {
   assert.equal(beside.flighted.verdict, 'avoid')
   assert.match(beside.flighted.reason, /water right beside/)
 
+  // Every shot ruled out only for running past (a bunker to carry, the pin just over it): the one that
+  // finishes nearest is the shot there is, so it is the best guess and not Avoid (Brian, 23 Nov).
+  const overSand = (carry) => ({ surface: carry < 4 ? 'fairway' : carry < 14 ? 'bunker' : 'green', gradeToHole: -0.03 })
+  const tight = chipOptions(25, overSand, setting('medium', 'medium'), 11)
+  assert.equal(tight.filter((o) => o.verdict !== 'avoid').length, 1)
+  assert.equal(byType(tight).flop.verdict, 'fine')
+  assert.match(byType(tight).flop.reason, /finishes nearest/)
+  assert.equal(defaultChip(tight, 25).type, 'flop')
+  assert.match(byType(tight).bump.reason, /run through the bunker/)
+
   // Every distance in the zone gets a pick when there is green to land on.
   for (const d of [45, 55, 65, 75, 85, 95]) {
     const pick = defaultChip(wedges(d, 22), d)

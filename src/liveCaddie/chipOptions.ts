@@ -57,6 +57,8 @@ export const GREEN_EDGE_DOUBT_YDS = 7
  */
 export const defaultChip = (options: readonly ChipOption[], distanceYds?: number): ChipOption | null =>
   options.find((o) => o.verdict === 'good')
+  // No pick, but one shot is left standing (everything else ruled out): that one.
+  ?? options.find((o) => o.verdict === 'fine')
   ?? [...options].reverse().find((o) => o.verdict === 'short')
   // Every one is avoid (Bellerive 4, 21 Nov: an 8 yd chip to a pin on the edge of Looper's green):
   // still show something to aim, the one that finishes nearest the hole, since the map can be off.
@@ -218,6 +220,8 @@ export type ChipOption = Readonly<{
   swingLikeYds: number | null
   /** Height of the landing spot above (+) or below (-) the ball, feet; null when not known. */
   landingRiseFt: number | null
+  /** Slope the run rolls over, landing spot to hole (rise over run, + uphill); null when not known. */
+  runGrade: number | null
   /** The carry this swing flies on level ground: more than `flight.carryYds` when landing uphill. */
   levelCarryYds: number
   /** The ball as it leaves the lie for that swing (ball data). */
@@ -305,6 +309,15 @@ const troubleBefore = (carry: number, probe: LandingProbe) => {
     }
   }
   return end == null || surface == null ? null : { end, surface }
+}
+
+/** Sand, water or rough the ball would have to roll through between landing and the hole. */
+const troubleOnTheRun = (carry: number, distanceYds: number, probe: LandingProbe): LandingSurface | null => {
+  for (let at = carry + 0.5; at < distanceYds; at += 0.5) {
+    const kind = probe(at).surface
+    if (BAD_LANDING[kind] && kind !== 'other') return kind
+  }
+  return null
 }
 
 const releaseFor = (type: ChipType, carry: number, probe: LandingProbe, setting: ChipSetting) => {
@@ -396,6 +409,7 @@ export const chipOptions = (
 
   const judged = sized.map((s) => {
     const bad = BAD_LANDING[s.landsOn]
+    const inTheWay = bad ? null : troubleOnTheRun(s.flight.carryYds, distanceYds, probe)
     const side = probe(s.flight.carryYds).sideTrouble ?? null
     const onGreen = s.landsOn === 'green' && (greenStarts == null || s.flight.carryYds - greenStarts >= ONTO_GREEN_YDS - 0.25)
     let verdict: ChipOption['verdict']
@@ -406,6 +420,9 @@ export const chipOptions = (
     } else if (bad) {
       verdict = 'avoid'
       reason = `${bad} or too close to it to trust.`
+    } else if (inTheWay) {
+      verdict = 'avoid'
+      reason = `Would have to run through the ${SURFACE_NAME[inTheWay]}.`
     } else if (s.short) {
       verdict = 'avoid'
       reason = 'Can’t get there with this shot.'
@@ -467,6 +484,19 @@ export const chipOptions = (
     runner.reason = `Not needed here: a shot with loft lands on the green and stops. The runner has ${Math.round(runner.s.run)} yd of kick and roll-out to judge.`
   }
 
+  // Every shot ruled out, and at least one only for running past: the one that finishes nearest is
+  // the shot there is to hit, so it isn't Avoid (Brian, 23 Nov: a flop over a bunker that runs 4 yd by).
+  if (judged.every((j) => j.verdict === 'avoid')) {
+    const ranPast = judged.filter((j) => !BAD_LANDING[j.s.landsOn] && !j.s.short && finish(j.s) > distanceYds
+      && !troubleOnTheRun(j.s.flight.carryYds, distanceYds, probe)
+      && !(setting.fromSand && (j.s.type === 'bump' || j.s.type === 'chip')))
+    const nearest = ranPast.sort((a, b) => finish(a.s) - finish(b.s))[0]
+    if (nearest) {
+      nearest.verdict = 'fine'
+      nearest.reason = `Nothing stops at the hole from here. This finishes nearest: about ${Math.round(finish(nearest.s) - distanceYds)} yd past.`
+    }
+  }
+
   return judged.map(({ s, verdict, reason }) => {
     const trouble = verdict === 'avoid' && BAD_LANDING[s.landsOn] ? null : troubleBefore(s.flight.carryYds, probe)
     const carryNote = trouble
@@ -490,6 +520,7 @@ export const chipOptions = (
       swingLikeYds: setting.fromSand && verdict !== 'avoid'
         ? carryForSpeed(s.type, rawSpeedFromSand(swingFlight.ballSpeedMph)) : null,
       landingRiseFt,
+      runGrade: s.grade ?? null,
       levelCarryYds,
       swingFlight,
     }
