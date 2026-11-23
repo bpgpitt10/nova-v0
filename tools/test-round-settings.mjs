@@ -12,7 +12,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
 
 try {
   const { normalizeRoundConditions, hasRoundConditions, roundConditionsComplete, NO_ROUND_CONDITIONS } = await load('/src/liveCaddie/roundConditions.ts')
-  const { roundSettingsFor } = await load('/src/lib/roundSettings.ts')
+  const { roundSettingsFor, gsproLogSettingsFor } = await load('/src/lib/roundSettings.ts')
 
   // Picks come from <select> values: strings, with '' / null for "Not sure".
   assert.deepEqual(normalizeRoundConditions({ courseType: 'medium', greenFirmness: 'soft', fairwayFirmness: 'firm', stimp: '11' }),
@@ -36,13 +36,29 @@ try {
   assert.deepEqual(roundSettingsFor(active, '2026-11-18T23:05:00.000Z', now), {
     schema: 'looper-round-settings-v1', source: 'start-round', recordedAt: active.startedAt, teeSet: 'Yellow', pinDay: 'Thursday',
     courseType: 'medium', greenFirmness: 'soft', fairwayFirmness: 'soft', stimp: 11,
+    conditionsFromGspro: false, altitudeFt: null,
   })
+  // Once GSPro's log has been read for the round, that is recorded with its altitude.
+  const seenRound = roundSettingsFor({ ...active, conditionsFromGspro: true, gsproAltitudeFt: 2851 }, '2026-11-18T23:05:00.000Z', now)
+  assert.equal(seenRound.conditionsFromGspro, true)
+  assert.equal(seenRound.altitudeFt, 2851)
   // A round already under way before Start Round (yesterday's file) does not.
   assert.equal(roundSettingsFor(active, '2026-11-18T20:00:00.000Z', now), null)
   // Nothing picked, no active round, or a Start Round from another day: nothing to save.
   assert.equal(roundSettingsFor({ ...active, conditions: NO_ROUND_CONDITIONS }, '2026-11-18T23:05:00.000Z', now), null)
   assert.equal(roundSettingsFor(null, '2026-11-18T23:05:00.000Z', now), null)
   assert.equal(roundSettingsFor(active, '2026-11-19T13:00:00.000Z', Date.parse('2026-11-19T13:01:00.000Z')), null)
+
+  // No Start a Round: GSPro's log alone, for the round being played now. Stimp is never known.
+  const seen = { courseType: 'firm', greenFirmness: 'firm', fairwayFirmness: 'medium', altitudeFt: 120, shotCount: 3 }
+  assert.deepEqual(gsproLogSettingsFor(seen, '2026-11-19T00:28:00.000Z', now), {
+    schema: 'looper-round-settings-v1', source: 'gspro-log', recordedAt: '2026-11-19T00:28:00.000Z', teeSet: null, pinDay: null,
+    courseType: 'firm', greenFirmness: 'firm', fairwayFirmness: 'medium', stimp: null,
+    conditionsFromGspro: true, altitudeFt: 120,
+  })
+  // An older round in the archive is not the one the log is about; nothing seen, nothing saved.
+  assert.equal(gsproLogSettingsFor(seen, '2026-11-18T22:00:00.000Z', now), null)
+  assert.equal(gsproLogSettingsFor(null, '2026-11-19T00:28:00.000Z', now), null)
   console.log('round settings ok')
 } finally {
   await server?.close()

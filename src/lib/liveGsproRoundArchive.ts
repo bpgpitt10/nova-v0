@@ -519,8 +519,9 @@ export const captureAndPersistLiveGsproCourseRound = async (
       console.warn('[GSPro course archive] cloud sync failed; local archive retained.', error)
     })
   }
-  // After the round row exists: the conditions picked at Start a Round, from the browser that started it.
-  await syncRoundSettingsToCloud(finalRound.roundId, finalRound.firstObservedAt).catch((error) => {
+  // After the round row exists: the conditions picked at Start a Round, from the browser that started it;
+  // without one, what GSPro's own log says for the round being played.
+  await syncRoundSettingsToCloud(finalRound.roundId, finalRound.firstObservedAt, finalRound.lastObservedAt).catch((error) => {
     console.warn('[GSPro course archive] round settings not saved yet; will retry.', error)
   })
 
