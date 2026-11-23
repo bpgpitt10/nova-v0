@@ -44,6 +44,8 @@ type Props = {
    */
   playRatio?: number
   windAimLeftFt?: number | null
+  /** The ball is in mapped trees: the numbers hold, the line out is the player's to find. */
+  inTrees?: boolean
 }
 
 const SURFACE: Readonly<Record<LandingSurface, string>> = {
@@ -74,7 +76,7 @@ export default function ChipOptionsCard({
   distanceYds, options, shown, onShow, hasGreenMap, fromSand = false,
   lieLeftRightDeg = null, lieUpDownDeg = null, surface = '', onAim, aim = null,
   pinNotes = [], greenEdgeUncertain = false, riseFt = null, riseSource = null, breakLeftFt = null,
-  playRatio = 1, windAimLeftFt = null,
+  playRatio = 1, windAimLeftFt = null, inTrees = false,
 }: Props) {
   // Four flights from 40 yd to the shortest full club, in place of the four chips (23 Nov).
   const wedge = options.length > 0 && familyOf(options[0].type) === 'wedge'
@@ -161,6 +163,11 @@ export default function ChipOptionsCard({
               : 'at the pin'}
             {fromSand ? <em>Sand adjusted</em> : null}
           </div>
+          {inTrees ? (
+            <p className="chip-options__edge">
+              In the trees. Looper has the read; find your own line out.
+            </p>
+          ) : null}
           {greenEdgeUncertain ? (
             <p className="chip-options__edge">
               Check where GSPro&rsquo;s green starts. Confirm your aim.
@@ -296,6 +303,10 @@ export default function ChipOptionsCard({
           <span>Modeled ball data</span>
           <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
           <em>{current ? `${Math.round(current.swingFlight.ballSpeedMph)} mph · ${Math.round(current.swingFlight.spinRpm / 50) * 50} rpm` : '—'}</em>
+          {/* Only when mapped trees are within a few yards of this flight: one quiet line. */}
+          {current?.treesClose && current.verdict !== 'avoid' ? (
+            <em>Trees close on {current.treesClose === 'both' ? 'both sides' : `the ${current.treesClose}`} of this line.</em>
+          ) : null}
           {/* In the same faded text: what the flight is, and why it is or isn't the shot here. */}
           {wedge && current ? (
             <em>{WEDGE_NOTE[current.type as WedgeType].what} · usually {WEDGE_NOTE[current.type as WedgeType].usually}</em>

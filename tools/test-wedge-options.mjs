@@ -71,6 +71,31 @@ try {
   assert.equal(defaultChip(tight, 25).type, 'flop')
   assert.match(byType(tight).bump.reason, /run through the bunker/)
 
+  // Trees (Brian, 23 Nov). A flight the mapped trees block is Avoid and the pick moves to one that clears;
+  // trees only close to the line are a note, not a verdict. Chips are never checked.
+  const lowOnesBlocked = { ...setting('medium', 'medium'), flightTrees: (f) => (f.launchDeg < 30 ? 'blocked' : 'close-right') }
+  const treed = byType(chipOptions(65, line(53), lowOnesBlocked, 12, 'wedge'))
+  assert.equal(treed.standard.verdict, 'avoid')
+  assert.match(treed.standard.reason, /trees/)
+  assert.equal(treed.high.verdict, 'good')
+  assert.equal(treed.high.treesClose, 'right')
+  assert.equal(treed.standard.treesClose, null)
+  assert.ok(chipOptions(18, line(4), lowOnesBlocked, 14).every((o) => o.treesClose == null && !/trees/.test(o.reason ?? '')))
+
+  const { flightTreesFor, wedgePeakYds } = await server.ssrLoadModule('/src/liveCaddie/labTrees.ts')
+  assert.ok(Math.abs(wedgePeakYds(55, 29, 38) - 9.8) < 0.6, 'GSPro: 55 yd at 29° peaks about 29 ft')
+  const prov = { source: 'osm', confidence: 'high' }
+  const rough = { id: 'r', kind: 'rough', polygons: [[[-80, -10], [80, -10], [80, 120], [-80, 120]]], provenance: prov }
+  const holeWith = (woods) => ({ holeNumber: 1, markers: { tee: [0, -300], pin: [0, 65] }, surfaces: [rough],
+    contextLayers: [{ id: 'w', kind: 'woods', polygons: woods, provenance: prov }] })
+  const flight = { carryYds: 60, launchDeg: 29, descentDeg: 39 }
+  // A stand of trees across the line 20 to 40 yd out: a 60 yd wedge is under their tops there.
+  assert.equal(flightTreesFor(holeWith([[[-30, 20], [30, 20], [30, 40], [-30, 40]]]), [0, 0], [0, 65])(flight), 'blocked')
+  // The same stand well off to the side: nothing to say.
+  assert.equal(flightTreesFor(holeWith([[[40, 20], [70, 20], [70, 40], [40, 40]]]), [0, 0], [0, 65])(flight), null)
+  // No trees mapped: nothing.
+  assert.equal(flightTreesFor(holeWith([]), [0, 0], [0, 65])(flight), null)
+
   // Every distance in the zone gets a pick when there is green to land on.
   for (const d of [45, 55, 65, 75, 85, 95]) {
     const pick = defaultChip(wedges(d, 22), d)
