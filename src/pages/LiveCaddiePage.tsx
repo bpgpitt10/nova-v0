@@ -613,11 +613,13 @@ export default function LiveCaddiePage() {
         const dropYds = previewDropYds()
         const dropPin = loaded.markers.pin ?? defaultTarget(loaded)
         const teeToPin = pointDistance(loaded.markers.tee, dropPin)
-        setBall(dropYds != null && teeToPin > dropYds
+        const dropped: CoursePointYds | null = dropYds != null && teeToPin > dropYds
           ? [dropPin[0] + (loaded.markers.tee[0] - dropPin[0]) * (dropYds / teeToPin),
             dropPin[1] + (loaded.markers.tee[1] - dropPin[1]) * (dropYds / teeToPin)]
-          : loaded.markers.tee)
-        setTarget(defaultTarget(loaded))
+          : null
+        setBall(dropped ?? loaded.markers.tee)
+        // A dropped ball is going at the pin, not at the tee shot's landing area.
+        setTarget(dropped ? chooseLiveLandingTarget(loaded, dropped, dropPin) : defaultTarget(loaded))
       })
       .catch((error) => {
         if (!active) return
@@ -1058,7 +1060,8 @@ export default function LiveCaddiePage() {
     ?? (liveMatchesHole && liveSnapshot?.surface
       ? liveSnapshot.surface
       : hole
-        ? classifyPoint(hole, ball).kind
+        // A dropped ball (?drop=) is never a tee shot, even when it sits on a forward tee box.
+        ? (previewDropYds() != null && classifyPoint(hole, ball).kind === 'tee' ? 'fairway' : classifyPoint(hole, ball).kind)
         : 'unknown')
   const nextShotNumber = liveMatchesHole
     ? liveSnapshot?.nextShotNumber ?? (surface === 'tee' ? 1 : null)
