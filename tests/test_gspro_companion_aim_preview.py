@@ -220,6 +220,28 @@ class AimMathTests(unittest.TestCase):
         self.assertAlmostEqual(pin.x, 286, delta=3)
         self.assertAlmostEqual(pin.y, 168, delta=3)
 
+    def test_a_pin_in_shade_beside_brighter_sand_and_a_white_boundary(self):
+        """Bethpage Black 1 (23 Nov 2026): the pin is a grey ball, dimmer than the bunkers
+        either side of it, with GSPro's thick white boundary line across the map. Nothing
+        on the map is white enough to be the usual pin, so the grey dot above the ball is it."""
+        img = np.full((H, W, 3), (40, 80, 45), np.uint8)
+        x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])
+        cv2.ellipse(img, (x0 + 118, y0 + 80), (16, 9), 30, 0, 360, (172, 172, 172), -1)   # sand, brighter than the pin
+        cv2.ellipse(img, (x0 + 164, y0 + 112), (13, 8), -20, 0, 360, (172, 172, 172), -1)
+        cv2.polylines(img, [np.array([[x0 + 150, y0 + 40], [x0 + 190, y0 + 110], [x0 + 120, y0 + 230],
+                                       [x0 + 175, y0 + 440]], np.int32)], False, (255, 255, 255), 6)
+        cv2.circle(img, (x0 + 141, y0 + 90), 5, (126, 126, 126), -1)                     # the pin, in shade
+        cv2.circle(img, (x0 + 141, y0 + 425), 5, (0, 0, 150), -1)                        # the ball, dim too
+        preview = aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+        self.assertEqual(preview["status"], "ready")
+        self.assertAlmostEqual(preview["minimap"]["pin"][0], 141, delta=2)
+        self.assertAlmostEqual(preview["minimap"]["pin"][1], 90, delta=2)
+        self.assertTrue(preview["checks"]["alignedLikeGspro"])
+        # Two grey dots on the ball's line: neither is taken.
+        cv2.circle(img, (x0 + 141, y0 + 160), 5, (126, 126, 126), -1)
+        with self.assertRaises(aim.AimReadError):
+            aim.aim_preview(img, ball_world=(100.0, 50.0), pin_world=(100.0, 250.0), target_world=(105.0, 200.0))
+
     def test_no_minimap_says_so_and_shows_what_it_saw(self):
         img = np.full((H, W, 3), (30, 40, 30), np.uint8)
         x0, y0 = int(W * aim.RIGHT_MINIMAP_ROI[0]), int(H * aim.RIGHT_MINIMAP_ROI[1])

@@ -250,12 +250,43 @@ def _pin_above(roi: np.ndarray, ball: Pixel) -> Pixel:
     x0, x1 = max(0, int(ball.x) - half), min(w, int(ball.x) + half)
     strip = roi[: int(PIN_MAX_DOWN * h), x0:x1]
     failure: Exception | None = None
-    for pin in _pin_candidates(strip, minimap_width=w):
-        pin = Pixel(pin.x + x0, pin.y)
-        if _lined_up(ball, pin):
-            return pin
-        failure = failure or RuntimeError("The white marker above the ball is not in line with it")
+    try:
+        for pin in _pin_candidates(strip, minimap_width=w):
+            pin = Pixel(pin.x + x0, pin.y)
+            if _lined_up(ball, pin):
+                return pin
+            failure = failure or RuntimeError("The white marker above the ball is not in line with it")
+    except Exception as error:  # the pin detector raises its own types when nothing is white enough
+        failure = failure or error
+    shaded = _shaded_pin_above(roi, ball)
+    if shaded is not None:
+        return shaded
     raise failure or RuntimeError("Could not detect white pin marker.")
+
+
+#: A pin in shade: how grey it may be, and how much brighter than the ground round it.
+SHADED_PIN_MAX_SATURATION = 60
+SHADED_PIN_MIN_VALUE = 105
+
+
+def _shaded_pin_above(roi: np.ndarray, ball: Pixel) -> Pixel | None:
+    """A pin too dim to count as white, straight above the ball.
+
+    GSPro lights the minimap's dots with the scene: on a dull hole the pin is a grey
+    ball, dimmer than the sand beside it (Bethpage Black 1, 23 Nov 2026: pin value
+    about 125, bunkers 170, the white boundary line brighter still). It is still the
+    only solid round grey dot of the ball's size on the ball's line. Sand is too big
+    or not round, lines too long. Exactly one such dot, or none is taken.
+    """
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    h, w = hsv.shape[:2]
+    expected = max(6.0, BALL_DOT_FRACTION * w)
+    grey = cv2.inRange(hsv, np.array([0, 0, SHADED_PIN_MIN_VALUE]), np.array([179, SHADED_PIN_MAX_SATURATION, 255]))
+    top = int(MINIMAP_HEADER * h)
+    dots = [dot for _, dot in _solid_round_dots(grey, expected)
+            if top < dot.y < PIN_MAX_DOWN * h and _lined_up(ball, dot)
+            and ball.y - dot.y >= MIN_BALL_PIN_PX]
+    return dots[0] if len(dots) == 1 else None
 
 
 #: GSPro's minimap zooms from a whole par 5 down to a green; outside this the pair is not a minimap.
@@ -360,15 +391,18 @@ def find_ball_and_pin(roi: np.ndarray, hue: int | None = None) -> tuple[Pixel, P
     """
     failure: Exception | None = None
     unaligned: tuple[Pixel, Pixel] | None = None
-    for pin in _pin_candidates(roi):
-        try:
-            ball = _ball_under(roi, pin, hue)
-        except RuntimeError as error:
-            failure = failure or error
-            continue
-        if _lined_up(ball, pin):
-            return ball, pin
-        unaligned = unaligned or (ball, pin)
+    try:
+        for pin in _pin_candidates(roi):
+            try:
+                ball = _ball_under(roi, pin, hue)
+            except RuntimeError as error:
+                failure = failure or error
+                continue
+            if _lined_up(ball, pin):
+                return ball, pin
+            unaligned = unaligned or (ball, pin)
+    except Exception as error:  # no white marker anywhere (a pin in shade): the ball-first search still runs
+        failure = failure or error
     try:
         h, w = roi.shape[:2]
         ball = _ball_under(roi, Pixel(w / 2.0, PIN_TYPICAL_DOWN * h), hue)
