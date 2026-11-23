@@ -31,7 +31,7 @@ export type VoiceCommand = {
   /** aim-line: 'best' | 'second' | 'safest', and whether to arm it or only show it */
   line?: string
   arm?: boolean
-  /** chip: 'bump' | 'chip' | 'pitch' | 'flop'. Shows it; with `arm`, aims it too. */
+  /** chip: 'bump' | 'chip' | 'pitch' | 'flop', or a wedge flight: 'runner' | 'flighted' | 'standard' | 'high'. Shows it; with `arm`, aims it too. */
   shot?: string
 }
 
