@@ -184,6 +184,16 @@ const unitFromTo = (from: CoursePointYds, to: CoursePointYds): CoursePointYds =>
   return length > 1e-9 ? [dx / length, dy / length] : [0, 1]
 }
 
+/** ?drop=65 on the Live Caddie address: yards short of the pin to drop the ball, for looking at a card without GSPro. */
+const previewDropYds = () => {
+  try {
+    const value = Number(new URLSearchParams(window.location.search).get('drop'))
+    return Number.isFinite(value) && value >= 2 && value <= 300 ? value : null
+  } catch {
+    return null
+  }
+}
+
 /** Wedge cards go at the pin: they show only when Shot Strategy's own target is this close to it. */
 const WEDGE_TARGET_NEAR_PIN_YDS = 12
 
@@ -580,7 +590,15 @@ export default function LiveCaddiePage() {
       .then((loaded) => {
         if (!active) return
         setHole(loaded)
-        setBall(loaded.markers.tee)
+        // ?drop=65: look at a card without GSPro, the ball dropped that many yards short of the pin
+        // on the tee's line. A live GSPro position replaces it as soon as one arrives.
+        const dropYds = previewDropYds()
+        const dropPin = loaded.markers.pin ?? defaultTarget(loaded)
+        const teeToPin = pointDistance(loaded.markers.tee, dropPin)
+        setBall(dropYds != null && teeToPin > dropYds
+          ? [dropPin[0] + (loaded.markers.tee[0] - dropPin[0]) * (dropYds / teeToPin),
+            dropPin[1] + (loaded.markers.tee[1] - dropPin[1]) * (dropYds / teeToPin)]
+          : loaded.markers.tee)
         setTarget(defaultTarget(loaded))
       })
       .catch((error) => {
