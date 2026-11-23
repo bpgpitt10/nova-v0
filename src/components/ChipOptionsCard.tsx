@@ -283,24 +283,18 @@ export default function ChipOptionsCard({
             <ul className="chip-conditions__notes">{pinNotes.map((note) => <li key={note}>{note}</li>)}</ul>
           </div>
         ) : null}
-        {/* Why this one is, or isn't, the shot: the tag on the row says what, this says why. */}
-        {current && current.reason && (current.verdict === 'not-needed' || current.verdict === 'short' || current.verdict === 'good') ? (
-          <div className="chip-conditions__row">
-            <span>{current.verdict === 'good' ? 'Why this one' : current.verdict === 'not-needed' ? 'Why not needed' : 'Why it lands short'}</span><b />
-            <em>{current.reason.replace(/^Not needed here: /, '').replace(/^./, (c) => c.toUpperCase())}</em>
-          </div>
-        ) : null}
-        {wedge && current ? (
-          <div className="chip-conditions__row">
-            <span>The {CHIP_LABEL[current.type].toLowerCase()} flight</span><b />
-            <em>{WEDGE_NOTE[current.type as WedgeType].what} · usually {WEDGE_NOTE[current.type as WedgeType].usually}</em>
-          </div>
-        ) : null}
         {/* The model's assumption, not a measurement: faded, and said so. */}
         <div className="chip-conditions__row is-modeled">
           <span>Modeled ball data</span>
           <b>{current ? `${Math.round(current.launchDeg + (lie?.launchDeltaDeg ?? 0))}° launch` : '—'}</b>
           <em>{current ? `${Math.round(current.swingFlight.ballSpeedMph)} mph · ${Math.round(current.swingFlight.spinRpm / 50) * 50} rpm` : '—'}</em>
+          {/* In the same faded text: what the flight is, and why it is or isn't the shot here. */}
+          {wedge && current ? (
+            <em>{WEDGE_NOTE[current.type as WedgeType].what} · usually {WEDGE_NOTE[current.type as WedgeType].usually}</em>
+          ) : null}
+          {current && current.reason && (current.verdict === 'not-needed' || current.verdict === 'short' || current.verdict === 'good') ? (
+            <em>{current.reason}</em>
+          ) : null}
         </div>
       </aside>
     </>
