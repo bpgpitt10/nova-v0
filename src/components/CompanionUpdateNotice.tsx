@@ -54,6 +54,12 @@ export function CompanionUpdateNotice() {
         </strong>
         {notice.bugFix ? <span className="companion-update-notice__line">Bug fix: {notice.bugFix}</span> : null}
         {notice.feature ? <span className="companion-update-notice__line">New: {notice.feature}</span> : null}
+        {/* Everything else that changed lives at the top of the FAQ (Brian, 23 Nov). */}
+        {notice.bugFix || notice.feature ? (
+          <span className="companion-update-notice__line">
+            <a className="companion-update-notice__more" href="/faq#whats-new">See everything new in the FAQ →</a>
+          </span>
+        ) : null}
         {required && !notice.bugFix ? (
           <span className="companion-update-notice__line">
             This companion{notice.installed ? ` (${notice.installed})` : ''} is too old for this version of Looper.

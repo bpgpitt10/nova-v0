@@ -84,3 +84,9 @@
     top: 52px;
   }
 }
+
+.companion-update-notice__more {
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: underline;
+}

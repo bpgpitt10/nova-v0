@@ -1,4 +1,4 @@
-import { FAQ_SECTIONS, GETTING_STARTED } from '../lib/faqContent'
+import { FAQ_SECTIONS, GETTING_STARTED, WHATS_NEW } from '../lib/faqContent'
 import looperLogoWhite from '../assets/LooperLogo.webp'
 import './FaqPage.css'
 
@@ -17,6 +17,19 @@ export default function FaqPage() {
             <p className="faq-support">Still stuck? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Copy the support code from Live Caddie&rsquo;s Details if you have one.</p>
           </div>
         </header>
+        {/* The latest enhancements, always first (Brian, 23 Nov): the companion's update box links here. */}
+        <section aria-labelledby="faq-new-title" className="faq-new" id="whats-new">
+          <h2 id="faq-new-title">What&rsquo;s new <span className="faq-new-date">Updated {WHATS_NEW.updated}</span></h2>
+          <ul>
+            {WHATS_NEW.items.map((item) => (
+              <li key={item.title}>
+                <h3>{item.title}{item.needs ? <span className="faq-new-needs">Needs {item.needs}</span> : null}</h3>
+                <p>{item.body}</p>
+                {item.link ? <a className="faq-link" href={item.link.href}>{item.link.label} →</a> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
         <section aria-labelledby="faq-start-title" className="faq-start" id="start-here">
           <h2 id="faq-start-title">How to get going</h2>
           <p className="faq-start-lead">You have signed in. Here is the path from there, in the order that works best.</p>
