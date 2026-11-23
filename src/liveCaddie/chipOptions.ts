@@ -196,6 +196,12 @@ export type ChipSetting = Readonly<{
   fromSand?: boolean
   /** Slope under the ball along the shot, degrees (+ uphill): changes the launch, so the run. */
   lieUpDownDeg?: number | null
+  /**
+   * Partial wedges only: what the mapped trees do to a flight (labTrees.ts). Chips fly too low and
+   * short for trees on the line to count.
+   */
+  flightTrees?: (flight: Readonly<{ carryYds: number; launchDeg: number; descentDeg: number }>) =>
+    'blocked' | 'close-left' | 'close-right' | 'close-both' | null
 }>
 
 const ROUGH = { speed: 0.97, spin: 0.68 }
@@ -220,6 +226,8 @@ export type ChipOption = Readonly<{
   swingLikeYds: number | null
   /** Height of the landing spot above (+) or below (-) the ball, feet; null when not known. */
   landingRiseFt: number | null
+  /** Mapped trees within a few yards of this flight's line, and which side; null when clear or not checked. */
+  treesClose: 'left' | 'right' | 'both' | null
   /** Slope the run rolls over, landing spot to hole (rise over run, + uphill); null when not known. */
   runGrade: number | null
   /** The carry this swing flies on level ground: more than `flight.carryYds` when landing uphill. */
@@ -410,6 +418,9 @@ export const chipOptions = (
   const judged = sized.map((s) => {
     const bad = BAD_LANDING[s.landsOn]
     const inTheWay = bad ? null : troubleOnTheRun(s.flight.carryYds, distanceYds, probe)
+    const trees = family === 'wedge' && setting.flightTrees
+      ? setting.flightTrees({ carryYds: s.flight.carryYds, launchDeg: CHIP_LAUNCH_DEG[s.type], descentDeg: s.flight.landing.descentDeg })
+      : null
     const side = probe(s.flight.carryYds).sideTrouble ?? null
     const onGreen = s.landsOn === 'green' && (greenStarts == null || s.flight.carryYds - greenStarts >= ONTO_GREEN_YDS - 0.25)
     let verdict: ChipOption['verdict']
@@ -420,6 +431,9 @@ export const chipOptions = (
     } else if (bad) {
       verdict = 'avoid'
       reason = `${bad} or too close to it to trust.`
+    } else if (trees === 'blocked') {
+      verdict = 'avoid'
+      reason = 'Flies into the trees on this line.'
     } else if (inTheWay) {
       verdict = 'avoid'
       reason = `Would have to run through the ${SURFACE_NAME[inTheWay]}.`
@@ -447,7 +461,9 @@ export const chipOptions = (
           ? `Lands ${Math.max(1, Math.round(greenStarts - s.flight.carryYds))} yd short of the green and runs on: the bank decides it.`
           : 'Lands short of the green and runs on: the bank decides it.'
     }
-    return { s, verdict: verdict as ChipOption['verdict'], reason }
+    const treesClose = trees === 'close-left' ? 'left' as const : trees === 'close-right' ? 'right' as const
+      : trees === 'close-both' ? 'both' as const : null
+    return { s, verdict: verdict as ChipOption['verdict'], reason, treesClose }
   })
 
   // Looper's pick: the lowest shot that lands on the green and stops.
@@ -497,7 +513,7 @@ export const chipOptions = (
     }
   }
 
-  return judged.map(({ s, verdict, reason }) => {
+  return judged.map(({ s, verdict, reason, treesClose }) => {
     const trouble = verdict === 'avoid' && BAD_LANDING[s.landsOn] ? null : troubleBefore(s.flight.carryYds, probe)
     const carryNote = trouble
       ? setting.fromSand && trouble.surface === 'bunker'
@@ -520,6 +536,7 @@ export const chipOptions = (
       swingLikeYds: setting.fromSand && verdict !== 'avoid'
         ? carryForSpeed(s.type, rawSpeedFromSand(swingFlight.ballSpeedMph)) : null,
       landingRiseFt,
+      treesClose,
       runGrade: s.grade ?? null,
       levelCarryYds,
       swingFlight,

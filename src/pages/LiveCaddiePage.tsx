@@ -120,6 +120,7 @@ import { slopeFieldFromGreenRead } from '../liveCaddie/puttRead'
 import ChipOptionsCard, { type ChipAimState } from '../components/ChipOptionsCard'
 import { CHIP_LABEL, CHIP_ZONE_YDS, GREEN_EDGE_DOUBT_YDS, chipBreakAimFt, defaultChip, chipLieRead, chipOptions, type ChipType, type LandingSurface, type ShotFamily } from '../liveCaddie/chipOptions'
 import { isChipLabEnabled } from '../liveCaddie/chipLabSwitch'
+import { flightTreesFor } from '../liveCaddie/labTrees'
 import { serializeDecisionOptions } from '../liveCaddie/decisionOptions'
 import { useQuickBagPrior } from '../lib/useQuickBag'
 import { startingBagClubs } from '../liveCaddie/quickBagProfiles'
@@ -1288,7 +1289,10 @@ export default function LiveCaddiePage() {
         const options = chipOptions(
           chipDistanceYds,
           (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry), riseFt: sizeForHeight ? landingRiseFt(carry) : null }),
-          { green, fairway, fromRough, fromSand: chipFromSand, lieUpDownDeg: chipLieUpDownDeg },
+          {
+            green, fairway, fromRough, fromSand: chipFromSand, lieUpDownDeg: chipLieUpDownDeg,
+            ...(family === 'wedge' ? { flightTrees: flightTreesFor(hole, ball, pinEstimate) } : {}),
+          },
           greenStarts == null ? null : chipDistanceYds - greenStarts,
           family,
         )
@@ -1312,6 +1316,8 @@ export default function LiveCaddiePage() {
           breakScale: heightScale,
           riseSource: hudRiseFt != null ? 'GSPro' as const : mapRiseFt != null ? 'green map' as const : null,
           family,
+          // In mapped trees: the card says so and leaves the line out to the player.
+          inTrees: ballInTrees(hole, ball, pinEstimate),
         }
   }
   const chipZoneLab = chipLabOn && chipLie && hole && pinEstimate && chipDistanceYds != null && chipDistanceYds <= CHIP_ZONE_YDS && chipDistanceYds > 1
@@ -2762,6 +2768,7 @@ export default function LiveCaddiePage() {
                       aim={chipAim && chipAim.shot === chipShotKey ? chipAim : null}
                       pinNotes={shotStrategy ? chipPinNotes(shotStrategy) : []}
                       greenEdgeUncertain={chipLab.greenEdgeUncertain}
+                      inTrees={chipLab.inTrees}
                       playRatio={wedgePlayRatio}
                       windAimLeftFt={wedgeWindAimLeftFt}
                     />
