@@ -30,6 +30,10 @@ remember: press Enter to take the suggested answer. Four tests:
                      one shot each. Set green firmness and stimp in GSPro and
                      repeat the set for each (3 firmnesses x 3 stimps). Your own
                      chip numbers go in chips.json next to this file.
+                     Type "wedge 65 stimp 11" from about 70 yd out for the
+                     partial-wedge set: runner, flighted, standard and high,
+                     each with clean spin and with a quarter less, all carrying
+                     65 yd (8 shots). Any carry from 40 to 90: wedge 50, wedge 80.
 
 Everything from one sitting goes into one file, looper_lab_<time>.csv.
 
@@ -89,7 +93,8 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from test_shots import BAG, OPEN_CONNECT_PORT, UNEEKOR_HOST, UNEEKOR_PORT, OpenConnectPath, pause_before_close  # noqa: E402
+from test_shots import (BAG, LOW_SPIN, OPEN_CONNECT_PORT, UNEEKOR_HOST, UNEEKOR_PORT, WEDGE_FLIGHTS, WEDGE_RANGE_YD,  # noqa: E402
+                        WEDGE_REF_CARRY, WEDGE_SPEED_POWER, OpenConnectPath, pause_before_close)
 
 SETTINGS = ("soft", "medium", "firm")
 FIELDS = [
@@ -633,25 +638,48 @@ def read_chip_carries(typed: str) -> tuple[float, ...]:
     return carries if carries and all(1 <= c <= 70 for c in carries) else CHIP_CARRIES_YD
 
 
-def chip_set(types: dict[str, dict[str, float]], carries: tuple[float, ...] = CHIP_CARRIES_YD) -> list[tuple[str, dict[str, float]]]:
+def chip_set(types: dict[str, dict[str, float]], carries: tuple[float, ...] = CHIP_CARRIES_YD,
+             power: float = CHIP_SPEED_POWER) -> list[tuple[str, dict[str, float]]]:
     """Every type to every carry, one shot each, grouped by type so each type's first chip corrects the rest."""
     return [(f"{name} {carry:g} yd", {"speed": ref["speed"], "vla": ref["vla"], "hla": 0.0, "spin": ref["spin"], "axis": 0.0,
                                       "_chip": name, "_ref_speed": ref["speed"], "_ref_spin": ref["spin"],
-                                      "_ref_carry": ref["carry"], "_target": carry})
+                                      "_ref_carry": ref["carry"], "_target": carry, "_power": power})
             for name, ref in types.items() for carry in carries]
+
+
+# Partial-wedge sets (Brian, 23 Nov): 40 yd to the shortest club, where the chip fit and the approach fit
+# disagree. Four flights (test_shots.WEDGE_FLIGHTS), each with clean spin and with a quarter less, so the
+# fit sees launch, descent and spin move apart. Speed and spin scale together, like the chip set.
+WEDGE_CARRIES_YD = (65.0,)
+
+
+def wedge_types() -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for name, flight in WEDGE_FLIGHTS.items():
+        spin = flight["speed65"] * flight["rpm_per_mph"]
+        out[name] = {"speed": flight["speed65"], "vla": flight["vla"], "spin": round(spin), "carry": WEDGE_REF_CARRY}
+        out[f"{name} low"] = {**out[name], "spin": round(spin * LOW_SPIN)}
+    return out
+
+
+def read_wedge_carries(typed: str) -> tuple[float, ...]:
+    """'wedge' -> 65 yd; 'wedge 50' or 'wedge 50 65 80' -> those (40 to 90 yd)."""
+    found = re.search(r"\bwedge\b((?:\s+\d{2}(?:\.\d)?)+)", typed, re.I)
+    carries = tuple(float(x) for x in found[1].split()) if found else ()
+    return carries if carries and all(WEDGE_RANGE_YD[0] <= c <= WEDGE_RANGE_YD[1] for c in carries) else WEDGE_CARRIES_YD
 
 
 def chip_speed(shot: dict[str, float], plays: float | None) -> dict[str, float]:
     """Ball speed for the carry wanted. `plays` = what this type actually carried over what the scale said (None at first)."""
     plays = plays if plays and 0.3 < plays < 3.0 else 1.0
-    scale = min(3.2, max(0.3, (shot["_target"] / (shot["_ref_carry"] * plays)) ** (1.0 / CHIP_SPEED_POWER)))
+    scale = min(3.2, max(0.3, (shot["_target"] / (shot["_ref_carry"] * plays)) ** (1.0 / shot.get("_power", CHIP_SPEED_POWER))))
     # A shorter chip is a slower swing: less spin too (TrackMan: ~500 rpm per 5 mph of club speed).
     return {"speed": round(shot["_ref_speed"] * scale, 1), "vla": shot["vla"], "hla": 0.0,
             "spin": round(shot.get("_ref_spin", shot["spin"]) * scale), "axis": 0.0}
 
 
 def chip_expected_carry(shot: dict[str, float], sent_speed: float) -> float:
-    return shot["_ref_carry"] * (sent_speed / shot["_ref_speed"]) ** CHIP_SPEED_POWER
+    return shot["_ref_carry"] * (sent_speed / shot["_ref_speed"]) ** shot.get("_power", CHIP_SPEED_POWER)
 
 
 def chip_summary(rows: list[dict[str, Any]]) -> list[str]:
@@ -780,13 +808,35 @@ def lie_session(path: Any, read_line, writer: Any, flush, *, labels: dict[str, A
                               "Add g and the yards to the pin (g 145) to also hit 2 of your clubs at the green; "
                               "gg 145 hits only the green, 6 shots. Type stimp 11 once to record the stimp. "
                               "Start with the word all to hit all 25 designed shots from here. "
-                              "chip hits the chip set (4 types to 5, 10 and 16 yd; chip 30 45 60 for pitches). q to finish. ").strip()
+                              "chip hits the chip set (4 types to 5, 10 and 16 yd; chip 30 45 60 for pitches). "
+                              "wedge 65 hits the partial-wedge set (4 flights, clean and low spin, 8 shots; any carry 40 to 90). "
+                              "q to finish. ").strip()
         except EOFError:
             break
         if typed.lower() in ("q", "quit"):
             break
         spot_shots = lie_shots_for_spot(spot)
         stimp_typed = re.search(r"\bstimp\s*(\d{1,2}(?:\.\d)?)", typed, re.I)
+        if re.search(r"\bwedge\b", typed, re.I):
+            # Partial-wedge set: every flight, clean and low spin, to each carry. Stimp must be typed, as for chips.
+            if stimp_typed:
+                labels = {**labels, "stimp": float(stimp_typed[1])}
+            if not labels.get("stimp"):
+                print("  Type the stimp GSPro is set to with the wedge set (wedge 65 stimp 11). GSPro does not write it anywhere.")
+                continue
+            carries = read_wedge_carries(typed)
+            spot_shots = chip_set(wedge_types(), carries, WEDGE_SPEED_POWER)
+            print(f"  Wedge set at stimp {labels['stimp']:g}, carrying {', '.join(f'{c:g}' for c in carries)} yd: {len(spot_shots)} shots.")
+            spot_rows, connected = hit_spot(path, writer, flush, labels=labels, spot=spot, typed=typed, spot_shots=spot_shots,
+                                            round_file=round_file, log_file=log_file, db_path=db_path, notes_file=notes_file,
+                                            gap=gap, record_wait=record_wait, sleep=sleep, test="wedge")
+            for line in chip_summary(spot_rows):
+                print(line)
+            rows.extend(spot_rows)
+            if not connected:
+                return rows
+            spot += 1
+            continue
         if re.search(r"\bchip\b", typed, re.I):
             # Chip set: every chip type to each carry, one shot each. Green firmness comes from GSPro's log;
             # the stimp GSPro does not write anywhere, so it must be typed.
