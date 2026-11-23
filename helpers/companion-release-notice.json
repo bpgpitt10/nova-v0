@@ -1,6 +1,6 @@
 {
   "_how": "Published with each companion release, for the red update box on thelooper.golf. importantRelease: the newest release with a bug fix that affects play; everyone on an older companion gets the box. Leave it alone for a small release. bugFix and feature: one short line each (160 characters at most); the rest goes in the GitHub release notes. null importantRelease: no box.",
   "importantRelease": "1.2.1",
-  "bugFix": "Auto Aim now finds the ball and pin by where they sit on GSPro's minimap, so it works on dull or shaded courses like Bethpage Black.",
-  "feature": "Voice for part wedges: \"Looper, standard\", \"flighted\", \"runner\" or \"high\" shows that flight; \"arm the standard\" aims it."
+  "bugFix": "Auto Aim on dull or shaded courses.",
+  "feature": "Voice: arm clubs, chips and wedge flights by name, or say \"retry\". Auto Aim on chips and par 3 tees. Looper reads GSPro's green and course settings."
 }
