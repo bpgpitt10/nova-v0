@@ -264,9 +264,11 @@ def _pin_above(roi: np.ndarray, ball: Pixel) -> Pixel:
     raise failure or RuntimeError("Could not detect white pin marker.")
 
 
-#: A pin in shade: how grey it may be, and how much brighter than the ground round it.
+#: A pin in shade. Where it is settles it (a round dot of the ball's size straight above the ball),
+#: so the colour test is loose: any grey, from near-white down to just above the ground's brightness
+#: (Brian, 23 Nov: lean on the location, not on an exact colour).
 SHADED_PIN_MAX_SATURATION = 60
-SHADED_PIN_MIN_VALUE = 105
+SHADED_PIN_MIN_VALUE = 85
 
 
 def _shaded_pin_above(roi: np.ndarray, ball: Pixel) -> Pixel | None:
