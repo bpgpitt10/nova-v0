@@ -1,0 +1,1098 @@
+=== [triggs-memorial:find] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/find_course.py --name-regex Triggs.*Memorial --lat 41.834 --lon -71.4592 --radius-m 8000 --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model --osm-id 43150786 --osm-type way
+[{"type": "way", "id": 43150786, "name": "Triggs Memorial Golf Course", "areaHa": 55.4, "nameMatch": true}, {"type": "way", "id": 185319906, "name": "Button Hole", "areaHa": 10.7, "nameMatch": false}, {"type": "way", "id": 1516694005, "name": "Met Links", "areaHa": 46.8, "nameMatch": false}, {"type": "relation", "id": 10547414, "name": "Louisquisset Golf Club", "areaHa": 24.0, "nameMatch": false}, {"type": "relation", "id": 12040815, "name": "Wannamoisett Country Club", "areaHa": 44.5, "nameMatch": false}]
+grew bbox with 4079 vertices from nearby golf features
+{"bboxLonLat": [-71.4674705762147, 41.82443632514927, -71.45216462378531, 41.84292817485073], "crs": "EPSG:26919", "osm": {"type": "way", "id": 43150786, "name": "Triggs Memorial Golf Course", "areaHa": 55.4, "found": "near"}, "demProvider": "usgs-3dep"} {"name": "ARRA-LFTNE_RhodeIsland_2011", "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/ARRA-LFTNE_RhodeIsland_2011/ept.json", "count": 9901691046, "year": 2011}
+=== [triggs-memorial:find] rc=0 seconds=70.8
+=== [triggs-memorial:import] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/import_course_canonical.py --config config/course-geometry/triggs-memorial-v1.json --slug triggs-memorial --reason one-click-course-load
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 11 canonical imported course registration(s).
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/fetch_osm_course_snapshot_core.py --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/triggs-memorial-v1.json --output /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/osm-snapshot.json
+{
+  "course": "Triggs Memorial",
+  "featureProvider": "openstreetmap-core-map",
+  "filteredElements": 216,
+  "filteredFeatureTagCounts": {
+    "golf=bunker": 70,
+    "golf=cartpath": 20,
+    "golf=driving_range": 1,
+    "golf=fairway": 20,
+    "golf=green": 19,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 4,
+    "golf=rough": 1,
+    "golf=tee": 43,
+    "golf=water_hazard": 5,
+    "landuse=grass": 49,
+    "natural=sand": 65,
+    "natural=water": 9,
+    "natural=wood": 14
+  },
+  "holeRefs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "mapEndpoint": "https://api.openstreetmap.org/api/0.6/map?bbox=-71.46522380,41.83160770,-71.45337310,41.84217120",
+  "output": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/osm-snapshot.json",
+  "rawIncludedFeatureTagCounts": {
+    "golf=bunker": 70,
+    "golf=cartpath": 20,
+    "golf=driving_range": 1,
+    "golf=fairway": 20,
+    "golf=green": 19,
+    "golf=hole": 18,
+    "golf=lateral_water_hazard": 4,
+    "golf=rough": 1,
+    "golf=tee": 43,
+    "golf=water_hazard": 5,
+    "landuse=grass": 49,
+    "natural=sand": 65,
+    "natural=water": 9,
+    "natural=wood": 16
+  },
+  "rawIncludedFeatures": 217,
+  "rawMapElements": 14943,
+  "sourceEndpoint": "https://api.openstreetmap.org/api/0.6/way/43150786/full"
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/diagnose_course_route_orientation.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/osm-snapshot.json
+hole,startTeeGap,endTeeGap,startGreenGap,endGreenGap,preferred,forwardScore,reverseScore
+1,12.0,41.5,84.8,0.4,forward,12.5,126.3
+2,0.0,40.9,41.5,1.1,forward,1.1,82.3
+3,0.0,59.8,48.3,0.7,forward,0.7,108.1
+4,0.0,61.0,64.7,4.1,forward,4.1,125.6
+5,0.0,27.1,81.9,2.1,forward,2.1,109.1
+6,0.0,30.4,45.9,1.4,forward,1.4,76.3
+7,0.0,24.6,55.5,2.2,forward,2.2,80.1
+8,0.0,60.7,33.5,3.1,forward,3.1,94.2
+9,0.0,64.9,32.2,2.9,forward,2.9,97.1
+10,0.0,29.1,74.4,1.3,forward,1.3,103.4
+11,0.0,44.6,37.5,1.7,forward,1.7,82.1
+12,0.0,31.5,51.8,2.6,forward,2.6,83.3
+13,0.0,36.4,42.9,3.5,forward,3.5,79.3
+14,0.0,33.1,64.5,1.4,forward,1.4,97.7
+15,0.0,31.2,80.6,0.2,forward,0.2,111.9
+16,0.0,54.5,48.9,1.5,forward,1.5,103.4
+17,0.0,27.5,66.5,4.3,forward,4.3,94.0
+18,0.0,59.5,38.3,2.0,forward,2.0,97.8
+
+TEE OWNERSHIP H1 targetGreenOsmId=676498567
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+676498562,16.7,376.5,11.9,1,11.9
+1550961571,12.0,402.1,12.0,1,12.0
+676498563,35.6,358.7,24.3,1,24.3
+1550961570,370.6,47.1,41.5,2,0.0
+1550961569,429.8,64.2,59.8,2,9.3
+676924912,351.6,121.8,105.2,9,0.3
+1551632004,383.7,118.8,113.0,9,0.0
+676923742,395.0,134.8,128.2,6,0.0
+1551632008,410.9,136.9,132.4,6,2.7
+1551631982,214.3,503.0,214.3,10,2.7
+677171124,215.4,517.9,215.4,10,0.0
+1551638915,218.7,479.6,218.7,10,0.6
+677223412,373.1,257.7,233.6,18,6.0
+1558289698,431.9,278.5,267.8,18,0.0
+1551631991,332.1,510.7,332.0,14,12.5
+676927042,345.8,532.3,345.8,14,0.0
+
+TEE OWNERSHIP H9 targetGreenOsmId=676924907
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1551632004,0.0,397.6,0.0,9,0.0
+676924912,32.8,356.8,0.3,9,0.3
+676923742,8.9,397.5,8.9,6,0.0
+1551632008,17.4,416.8,17.4,6,2.7
+676498563,350.6,73.5,54.9,1,24.3
+676498562,369.7,71.0,59.3,1,11.9
+1550961570,63.6,402.9,62.0,2,0.0
+1550961571,398.5,70.5,64.7,1,12.0
+1550961569,84.1,449.4,84.1,2,9.3
+677223412,141.4,346.1,122.5,18,6.0
+1551631982,448.2,133.9,129.5,10,2.7
+1551638915,423.9,135.4,133.7,10,0.6
+1558289698,152.4,406.9,151.3,18,0.0
+677223419,165.4,432.6,165.4,18,17.5
+1551631991,422.2,257.2,246.3,14,12.5
+676927042,441.8,271.6,261.0,14,0.0
+1550771769,272.0,648.0,272.0,8,6.2
+1551631983,278.6,510.2,278.6,11,11.1
+
+TEE OWNERSHIP H11 targetGreenOsmId=677171139
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1551632003,0.0,329.6,0.0,11,0.0
+677171135,71.6,255.3,0.4,11,0.4
+1551631983,10.2,342.7,11.1,11,11.1
+677171142,272.7,73.9,41.1,12,10.3
+677171141,311.1,51.5,44.1,12,0.0
+1551632013,309.6,67.9,57.5,17,0.0
+677173978,65.8,306.8,58.9,13,25.7
+1551631981,338.0,86.1,75.5,7,0.0
+677173977,135.1,259.4,94.7,13,0.0
+676926126,305.6,107.0,98.8,7,0.6
+677193854,215.4,172.4,103.9,17,11.0
+677173976,156.5,253.1,115.3,13,13.8
+677223419,116.7,418.9,116.7,18,17.5
+1558289698,136.4,444.7,136.4,18,0.0
+677176198,321.6,181.9,167.9,16,21.8
+1551632010,250.1,243.1,185.9,8,0.0
+677176195,247.1,265.3,192.3,16,0.0
+677223412,192.5,506.1,192.5,18,6.0
+
+TEE OWNERSHIP H13 targetGreenOsmId=677173984
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+677173977,0.0,435.5,0.0,13,0.0
+677173976,13.8,449.6,13.8,13,13.8
+677173978,75.1,370.8,25.7,13,25.7
+1551632003,133.7,349.8,75.2,11,0.0
+1551631983,146.4,336.9,75.4,11,11.1
+677171135,105.9,422.1,96.8,11,0.4
+677173988,371.7,128.1,104.4,15,20.2
+677176196,104.4,498.8,104.4,16,10.3
+677176195,104.8,512.8,104.8,16,0.0
+1558289698,279.0,294.1,148.1,18,0.0
+1551631994,440.3,155.4,149.1,15,0.0
+677223419,259.5,312.6,152.3,18,17.5
+677223412,332.4,255.1,161.0,18,6.0
+677171142,185.3,614.7,185.3,12,10.3
+677176198,189.4,624.3,189.4,16,21.8
+677171141,220.3,661.0,220.3,12,0.0
+677193854,230.9,563.2,230.9,17,11.0
+1551632013,272.1,670.4,272.1,17,0.0
+
+TEE OWNERSHIP H15 targetGreenOsmId=677173993
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1551631994,0.0,445.8,0.0,15,0.0
+677173988,81.6,380.2,20.2,15,20.2
+677173986,37.5,492.2,37.5,14,33.1
+677173977,442.7,85.6,69.0,13,0.0
+676927042,105.6,494.8,105.6,14,0.0
+1551631991,124.5,490.9,124.0,14,12.5
+677173978,404.9,150.0,125.0,13,25.7
+1551632003,406.2,220.4,180.8,11,0.0
+1551631983,398.2,226.6,182.5,11,11.1
+1551638915,250.3,604.4,250.3,10,0.6
+1551631982,261.1,634.3,261.1,10,2.7
+1558289698,400.5,358.4,268.1,18,0.0
+677171124,269.1,651.6,269.1,10,0.0
+677223419,414.1,340.4,269.4,18,17.5
+677223412,380.4,404.8,275.4,18,6.0
+676498563,439.7,706.2,439.7,1,24.3
+676498562,443.9,723.8,443.9,1,11.9
+
+TEE OWNERSHIP H16 targetGreenOsmId=677176201
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+677176195,0.0,285.4,0.0,16,0.0
+677176196,10.3,300.8,10.3,16,10.3
+677176198,121.1,182.8,21.8,16,21.8
+677171141,212.2,66.2,42.1,12,0.0
+677171142,191.0,109.5,88.0,12,10.3
+677173976,91.6,289.8,91.6,13,13.8
+1551632013,306.3,111.3,95.5,17,0.0
+677173977,101.7,298.5,101.7,13,0.0
+1551631981,333.9,117.7,105.2,7,0.0
+676926126,330.8,149.8,140.8,7,0.6
+677173978,183.5,352.6,183.5,13,25.7
+677171135,213.4,306.3,213.2,11,0.4
+677193854,305.2,227.0,221.9,17,11.0
+1551632003,244.8,380.6,244.8,11,0.0
+1551631983,256.7,393.7,256.7,11,11.1
+1551632010,385.5,293.6,281.8,8,0.0
+1550771769,400.3,336.2,329.6,8,6.2
+677223419,370.7,473.2,370.7,18,17.5
+
+TEE OWNERSHIP H17 targetGreenOsmId=1300778934
+osmId,startGap,greenDistance,currentRouteGap,nearestRouteHole,nearestRouteGap
+1551632013,0.0,396.9,0.0,17,0.0
+677193854,126.3,271.5,11.0,17,11.0
+1551631981,21.6,416.7,21.6,7,0.0
+677223419,388.9,33.2,26.7,18,17.5
+676926126,34.9,378.1,28.5,7,0.6
+1558289698,415.0,38.7,28.9,18,0.0
+1551632010,175.3,267.3,87.4,8,0.0
+1550771769,225.6,222.4,93.9,8,6.2
+677171141,109.1,435.3,109.1,12,0.0
+677171135,248.3,199.4,109.7,11,0.4
+1551632003,316.1,148.1,112.1,11,0.0
+677171142,116.9,392.0,115.0,12,10.3
+1551631983,331.7,142.0,116.1,11,11.1
+677173978,310.7,218.4,176.9,13,25.7
+1551632002,225.0,346.4,189.2,4,0.0
+1550981721,237.7,337.6,194.9,4,0.3
+677173977,270.9,290.0,201.3,13,0.0
+677173976,276.2,307.7,219.8,13,13.8
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/build_osm_course_package_canonical.py --osm /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/osm-snapshot.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/triggs-memorial-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/geometry.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/validation-v1.json
+{
+  "all_ready": true,
+  "compiler": "build_osm_course_package_v4",
+  "course": "Triggs Memorial",
+  "manifest": "/home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/validation-v1.json",
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/geometry.json",
+  "ready_holes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ]
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/fetch_course_dem.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/geometry.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/course-dem.tif --metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/dem-source-v1.json --provider usgs-3dep --resolution-meters 1.0
+{
+  "bytes": 7931970,
+  "courseId": "triggs-memorial-providence-rhode-island-usa",
+  "exportResolutionMeters": 1.0,
+  "height": 1391,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/course-dem.tif",
+  "provider": "USGS 3DEP",
+  "width": 1394
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/build_course_terrain.py --course-package /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/geometry.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/course-dem.tif --source-metadata /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/dem-source-v1.json --output /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/terrain.json --spacing-yards 10.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_terrain.py:147: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+{
+  "courseId": "triggs-memorial-providence-rhode-island-usa",
+  "holes": 18,
+  "output": "/home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/terrain.json",
+  "schemaVersion": "looper-course-terrain-v1",
+  "source": {
+    "crs": "EPSG:3857",
+    "dataset": "USGS 3DEP Bare Earth DEM Dynamic Service",
+    "exportUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=-7955498.211%2C5135982.858%2C-7954104.289%2C5137372.866&bboxSR=3857&imageSR=3857&size=1394%2C1391&format=tiff&pixelType=F32&interpolation=RSP_BilinearInterpolation&returnSquarePixels=true&f=image",
+    "note": "Exported from the USGS 3DEP multi-resolution bare-earth service at the requested/runtime pixel size; the service selects the best available underlying 3DEP source for the location.",
+    "provider": "USGS 3DEP",
+    "sourceResolutionMeters": 1.0,
+    "sourceUrl": "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer"
+  },
+  "spacingYds": 10.0
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/compose_course_package_canonical.py --geometry /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/geometry.json --terrain /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/terrain.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json --report /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/terrain-compose-v1.json
+{
+  "complete": true,
+  "courseId": "triggs-memorial-providence-rhode-island-usa",
+  "schemaVersion": "looper-course-package-compose-report-v1",
+  "terrainHoleCount": 18,
+  "terrainHoles": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "terrainInputSchema": "looper-course-terrain-v1",
+  "terrainSourceSummary": "Terrain: USGS 3DEP \u00b7 USGS 3DEP Bare Earth DEM Dynamic Service"
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/enrich_worldcover_context.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json --audit /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/worldcover-context-audit-v1.json --source-url https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39W072_Map.tif
+{
+  "source": "ESA WorldCover 2021 v200",
+  "sourceUrl": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39W072_Map.tif",
+  "resolutionMeters": 10,
+  "policy": "context-only; OSM surfaces/context win; no tactical surface promotion",
+  "holes": {
+    "1": {
+      "hole": 1,
+      "viewAreaSqYd": 144941.6,
+      "knownAreaSqYd": 20377.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 7,
+          "areaSqYd": 28247.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 89453.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "2": {
+      "hole": 2,
+      "viewAreaSqYd": 159464.8,
+      "knownAreaSqYd": 32199.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 16,
+          "areaSqYd": 17368.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 102203.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "3": {
+      "hole": 3,
+      "viewAreaSqYd": 158174.9,
+      "knownAreaSqYd": 28555.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 16,
+          "areaSqYd": 22319.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 8,
+          "areaSqYd": 64434.3
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 76.1
+        }
+      }
+    },
+    "4": {
+      "hole": 4,
+      "viewAreaSqYd": 92700.2,
+      "knownAreaSqYd": 8593.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 6838.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 75059.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "5": {
+      "hole": 5,
+      "viewAreaSqYd": 141693.6,
+      "knownAreaSqYd": 16247.5,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 14762.8
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 119142.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "6": {
+      "hole": 6,
+      "viewAreaSqYd": 218462.9,
+      "knownAreaSqYd": 28947.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 12,
+          "areaSqYd": 32885.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 159419.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "7": {
+      "hole": 7,
+      "viewAreaSqYd": 88959.7,
+      "knownAreaSqYd": 16056.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 19557.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 54945.2
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "8": {
+      "hole": 8,
+      "viewAreaSqYd": 131453.3,
+      "knownAreaSqYd": 9033.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 12500.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 119502.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "9": {
+      "hole": 9,
+      "viewAreaSqYd": 137813.1,
+      "knownAreaSqYd": 16787.1,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 6,
+          "areaSqYd": 23830.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 115035.3
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "10": {
+      "hole": 10,
+      "viewAreaSqYd": 165351.5,
+      "knownAreaSqYd": 14578.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 40823.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 108654.2
+        },
+        "landcover-bare": {
+          "polygons": 1,
+          "areaSqYd": 386.3
+        }
+      }
+    },
+    "11": {
+      "hole": 11,
+      "viewAreaSqYd": 123962.6,
+      "knownAreaSqYd": 15918.3,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 35134.1
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 73994.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "12": {
+      "hole": 12,
+      "viewAreaSqYd": 90934.2,
+      "knownAreaSqYd": 16229.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 23436.5
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 3,
+          "areaSqYd": 54099.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "13": {
+      "hole": 13,
+      "viewAreaSqYd": 169517.2,
+      "knownAreaSqYd": 28528.9,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 14,
+          "areaSqYd": 41964.0
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 2,
+          "areaSqYd": 101562.5
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "14": {
+      "hole": 14,
+      "viewAreaSqYd": 78729.8,
+      "knownAreaSqYd": 18644.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 5,
+          "areaSqYd": 27354.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 5,
+          "areaSqYd": 26825.4
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "15": {
+      "hole": 15,
+      "viewAreaSqYd": 178058.2,
+      "knownAreaSqYd": 41290.4,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 10,
+          "areaSqYd": 46237.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 75582.0
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "16": {
+      "hole": 16,
+      "viewAreaSqYd": 139526.4,
+      "knownAreaSqYd": 38835.8,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 8,
+          "areaSqYd": 34757.3
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 7,
+          "areaSqYd": 60055.9
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "17": {
+      "hole": 17,
+      "viewAreaSqYd": 144402.6,
+      "knownAreaSqYd": 17986.7,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 9,
+          "areaSqYd": 28965.2
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 1,
+          "areaSqYd": 122950.7
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    },
+    "18": {
+      "hole": 18,
+      "viewAreaSqYd": 149730.9,
+      "knownAreaSqYd": 11895.2,
+      "classes": {
+        "landcover-woods": {
+          "polygons": 12,
+          "areaSqYd": 28227.9
+        },
+        "landcover-scrub": {
+          "polygons": 0,
+          "areaSqYd": 0
+        },
+        "landcover-grass": {
+          "polygons": 4,
+          "areaSqYd": 125446.1
+        },
+        "landcover-bare": {
+          "polygons": 0,
+          "areaSqYd": 0
+        }
+      }
+    }
+  }
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/build_course_green_detail.py --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-import/triggs-memorial/course-dem.tif --output /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/green-detail-v1.json --spacing-yards 1.0 --margin-yards 12.0 --dataset-name USGS 3DEP Bare Earth DEM Dynamic Service --source-url https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer --source-resolution-meters 1.0
+/home/runner/work/nova-v0/nova-v0/tools/build_course_green_detail.py:306: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  dem = ds.read(1).astype(float)
+wrote /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/green-detail-v1.json (105,963 bytes)
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/validate_course_green_detail.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json
+{
+  "schemaVersion": "looper-course-green-detail-v1",
+  "courseId": "triggs-memorial-providence-rhode-island-usa",
+  "holeCount": 18,
+  "spacingYds": 1.0,
+  "marginYds": 12.0,
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/audit_course_green_surface_quality.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/green-detail-v1.json --course-package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json
+{
+  "contract": {
+    "localRadiusYds": 3.0,
+    "minimumSamples": 8,
+    "trustedRmsFt": 0.35,
+    "maximumSlopePercent": null,
+    "note": "Slope magnitude is diagnostic only; coherent steep banks are valid."
+  },
+  "holes": [
+    {
+      "hole": 1,
+      "candidateOnGreenNodes": 572,
+      "validOnGreenNodes": 572,
+      "greenCoverage": 1.0,
+      "localFitCount": 572,
+      "trustedLocalFitCount": 572,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.034,
+      "localRmsP95Ft": 0.06,
+      "maxTrustedSlopePercent": 7.1
+    },
+    {
+      "hole": 2,
+      "candidateOnGreenNodes": 537,
+      "validOnGreenNodes": 537,
+      "greenCoverage": 1.0,
+      "localFitCount": 537,
+      "trustedLocalFitCount": 537,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.04,
+      "localRmsP95Ft": 0.063,
+      "maxTrustedSlopePercent": 8.8
+    },
+    {
+      "hole": 3,
+      "candidateOnGreenNodes": 655,
+      "validOnGreenNodes": 655,
+      "greenCoverage": 1.0,
+      "localFitCount": 655,
+      "trustedLocalFitCount": 655,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.051,
+      "maxTrustedSlopePercent": 5.3
+    },
+    {
+      "hole": 4,
+      "candidateOnGreenNodes": 613,
+      "validOnGreenNodes": 613,
+      "greenCoverage": 1.0,
+      "localFitCount": 613,
+      "trustedLocalFitCount": 613,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.063,
+      "maxTrustedSlopePercent": 6.9
+    },
+    {
+      "hole": 5,
+      "candidateOnGreenNodes": 451,
+      "validOnGreenNodes": 451,
+      "greenCoverage": 1.0,
+      "localFitCount": 451,
+      "trustedLocalFitCount": 451,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.034,
+      "localRmsP95Ft": 0.05,
+      "maxTrustedSlopePercent": 4.2
+    },
+    {
+      "hole": 6,
+      "candidateOnGreenNodes": 455,
+      "validOnGreenNodes": 455,
+      "greenCoverage": 1.0,
+      "localFitCount": 455,
+      "trustedLocalFitCount": 455,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.036,
+      "localRmsP95Ft": 0.078,
+      "maxTrustedSlopePercent": 8.2
+    },
+    {
+      "hole": 7,
+      "candidateOnGreenNodes": 479,
+      "validOnGreenNodes": 479,
+      "greenCoverage": 1.0,
+      "localFitCount": 479,
+      "trustedLocalFitCount": 479,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.041,
+      "localRmsP95Ft": 0.06,
+      "maxTrustedSlopePercent": 8.4
+    },
+    {
+      "hole": 8,
+      "candidateOnGreenNodes": 515,
+      "validOnGreenNodes": 515,
+      "greenCoverage": 1.0,
+      "localFitCount": 515,
+      "trustedLocalFitCount": 515,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.036,
+      "localRmsP95Ft": 0.06,
+      "maxTrustedSlopePercent": 7.1
+    },
+    {
+      "hole": 9,
+      "candidateOnGreenNodes": 429,
+      "validOnGreenNodes": 429,
+      "greenCoverage": 1.0,
+      "localFitCount": 429,
+      "trustedLocalFitCount": 429,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.043,
+      "localRmsP95Ft": 0.069,
+      "maxTrustedSlopePercent": 6.8
+    },
+    {
+      "hole": 10,
+      "candidateOnGreenNodes": 478,
+      "validOnGreenNodes": 478,
+      "greenCoverage": 1.0,
+      "localFitCount": 478,
+      "trustedLocalFitCount": 478,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.046,
+      "localRmsP95Ft": 0.068,
+      "maxTrustedSlopePercent": 7.0
+    },
+    {
+      "hole": 11,
+      "candidateOnGreenNodes": 449,
+      "validOnGreenNodes": 449,
+      "greenCoverage": 1.0,
+      "localFitCount": 449,
+      "trustedLocalFitCount": 449,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.063,
+      "maxTrustedSlopePercent": 5.6
+    },
+    {
+      "hole": 12,
+      "candidateOnGreenNodes": 740,
+      "validOnGreenNodes": 740,
+      "greenCoverage": 1.0,
+      "localFitCount": 740,
+      "trustedLocalFitCount": 740,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.057,
+      "maxTrustedSlopePercent": 6.3
+    },
+    {
+      "hole": 13,
+      "candidateOnGreenNodes": 747,
+      "validOnGreenNodes": 747,
+      "greenCoverage": 1.0,
+      "localFitCount": 747,
+      "trustedLocalFitCount": 747,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.054,
+      "maxTrustedSlopePercent": 7.8
+    },
+    {
+      "hole": 14,
+      "candidateOnGreenNodes": 387,
+      "validOnGreenNodes": 387,
+      "greenCoverage": 1.0,
+      "localFitCount": 387,
+      "trustedLocalFitCount": 387,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.042,
+      "localRmsP95Ft": 0.068,
+      "maxTrustedSlopePercent": 6.4
+    },
+    {
+      "hole": 15,
+      "candidateOnGreenNodes": 340,
+      "validOnGreenNodes": 340,
+      "greenCoverage": 1.0,
+      "localFitCount": 340,
+      "trustedLocalFitCount": 340,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.038,
+      "localRmsP95Ft": 0.078,
+      "maxTrustedSlopePercent": 5.9
+    },
+    {
+      "hole": 16,
+      "candidateOnGreenNodes": 540,
+      "validOnGreenNodes": 540,
+      "greenCoverage": 1.0,
+      "localFitCount": 540,
+      "trustedLocalFitCount": 540,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.034,
+      "localRmsP95Ft": 0.066,
+      "maxTrustedSlopePercent": 8.4
+    },
+    {
+      "hole": 17,
+      "candidateOnGreenNodes": 577,
+      "validOnGreenNodes": 577,
+      "greenCoverage": 1.0,
+      "localFitCount": 577,
+      "trustedLocalFitCount": 577,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.04,
+      "localRmsP95Ft": 0.065,
+      "maxTrustedSlopePercent": 8.5
+    },
+    {
+      "hole": 18,
+      "candidateOnGreenNodes": 539,
+      "validOnGreenNodes": 539,
+      "greenCoverage": 1.0,
+      "localFitCount": 539,
+      "trustedLocalFitCount": 539,
+      "trustedLocalFitRatio": 1.0,
+      "localRmsP50Ft": 0.035,
+      "localRmsP95Ft": 0.049,
+      "maxTrustedSlopePercent": 6.3
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
++ /opt/hostedtoolcache/Python/3.12.16/x64/bin/python tools/update_course_cache_after_rebuild.py --cache /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/cache-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/triggs-memorial-v1.json --snapshot /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/osm-snapshot.json --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json --manifest /home/runner/work/nova-v0/nova-v0/artifacts/course-geometry/triggs-memorial/validation-v1.json --build-reason one-click-course-load --green-detail /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/green-detail-v1.json
+{
+  "builder": "build_osm_course_package_v7",
+  "cacheCreated": true,
+  "courseId": "triggs-memorial-providence-rhode-island-usa",
+  "greenDetailSha256": "e1d9a7eca28bdc4c058eaaf14dcf541b232181acebc1a441f9bc9bfe0bd6c5bc",
+  "packageSha256": "b3e4eeae8cb3360e42aefd4e7bfe77132681b96f83da83b2187e4113ad167675",
+  "snapshotSha256": "9edea4d27cedccc5c04f678a661517ebe9c6eefff1f4a849b3338971daf15b6f",
+  "sourceBaseTimestamp": null,
+  "sourceProvider": "openstreetmap-core-map",
+  "terrainComposer": "compose_course_package_canonical_v1"
+}
++ node tools/validate-course-import-contract.mjs --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json --config /home/runner/work/nova-v0/nova-v0/config/course-geometry/triggs-memorial-v1.json
+[course-import-contract] triggs-memorial-providence-rhode-island-usa: PASS — 18/18 holes satisfy the runtime geometry + tee-set contract.
+[course-import-contract] Round Setup exposes 3 canonical tee set(s): blue, white, yellow;red.
+[course-import-contract] Every canonical tee set resolves exactly once on every hole; 3 GSPro alias(es) declared.
++ node tools/generate-imported-course-registry.mjs --include-pending
+[course-registry] generated 12 canonical imported course registration(s) (including pending runtime validation).
++ node tools/validate-course-runtime.mjs --course triggs-memorial-providence-rhode-island-usa
+[runtime-smoke] Triggs Memorial: 3 canonical Round Setup tee set(s) resolve exactly once through CourseHoleGeometry on all 18 holes: yellow;red, white, blue.
+[runtime-smoke] Triggs Memorial runtime terrain validation passed for 18 hole(s).
+┌─────────┬───────────────────┬──────┬──────────┬───────────────┬───────────────┬─────────────────┬────────────────────────┬───────────────────┬────────────────┬───────────────────┬──────────────────┐
+│ (index) │ course            │ hole │ surfaces │ contextLayers │ teeCandidates │ teeSetsResolved │ sourceResolutionMeters │ runtimeSpacingYds │ teeElevationFt │ targetElevationFt │ elevationDeltaFt │
+├─────────┼───────────────────┼──────┼──────────┼───────────────┼───────────────┼─────────────────┼────────────────────────┼───────────────────┼────────────────┼───────────────────┼──────────────────┤
+│ 0       │ 'Triggs Memorial' │ 1    │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 172            │ 181.3             │ 9.3              │
+│ 1       │ 'Triggs Memorial' │ 2    │ 5        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 187.2          │ 194.8             │ 7.6              │
+│ 2       │ 'Triggs Memorial' │ 3    │ 5        │ 4             │ 3             │ 3               │ 1                      │ 10                │ 199.3          │ 181.1             │ -18.2            │
+│ 3       │ 'Triggs Memorial' │ 4    │ 5        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 175.1          │ 186.3             │ 11.2             │
+│ 4       │ 'Triggs Memorial' │ 5    │ 5        │ 3             │ 1             │ 3               │ 1                      │ 10                │ 194.3          │ 183.5             │ -10.8            │
+│ 5       │ 'Triggs Memorial' │ 6    │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 180.1          │ 158               │ -22.1            │
+│ 6       │ 'Triggs Memorial' │ 7    │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 143.1          │ 149.4             │ 6.3              │
+│ 7       │ 'Triggs Memorial' │ 8    │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 165.4          │ 167.1             │ 1.7              │
+│ 8       │ 'Triggs Memorial' │ 9    │ 5        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 181.4          │ 173.4             │ -8               │
+│ 9       │ 'Triggs Memorial' │ 10   │ 7        │ 4             │ 3             │ 3               │ 1                      │ 10                │ 162.3          │ 136.9             │ -25.4            │
+│ 10      │ 'Triggs Memorial' │ 11   │ 6        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 141.6          │ 129.4             │ -12.2            │
+│ 11      │ 'Triggs Memorial' │ 12   │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 135.4          │ 120.9             │ -14.5            │
+│ 12      │ 'Triggs Memorial' │ 13   │ 6        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 125.9          │ 125.5             │ -0.4             │
+│ 13      │ 'Triggs Memorial' │ 14   │ 5        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 137.6          │ 112.5             │ -25.1            │
+│ 14      │ 'Triggs Memorial' │ 15   │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 111.7          │ 122.2             │ 10.5             │
+│ 15      │ 'Triggs Memorial' │ 16   │ 6        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 120.5          │ 133.1             │ 12.6             │
+│ 16      │ 'Triggs Memorial' │ 17   │ 6        │ 3             │ 2             │ 3               │ 1                      │ 10                │ 140.4          │ 158.9             │ 18.5             │
+│ 17      │ 'Triggs Memorial' │ 18   │ 6        │ 3             │ 3             │ 3               │ 1                      │ 10                │ 158.9          │ 166.3             │ 7.4              │
+└─────────┴───────────────────┴──────┴──────────┴───────────────┴───────────────┴─────────────────┴────────────────────────┴───────────────────┴────────────────┴───────────────────┴──────────────────┘
+[runtime-smoke] triggs-memorial-providence-rhode-island-usa passed the generic package + all-hole tee runtime path.
++ node tools/generate-imported-course-registry.mjs
+[course-registry] generated 12 canonical imported course registration(s).
+{
+  "complete": true,
+  "courseId": "triggs-memorial-providence-rhode-island-usa",
+  "courseSlug": "triggs-memorial",
+  "greenDetail": true,
+  "landcover": true,
+  "package": "public/course-geometry/triggs-memorial/course-v1.json",
+  "runtimeReady": true,
+  "runtimeReceipt": "artifacts/course-geometry/triggs-memorial/runtime-ready-v1.json",
+  "runtimeRegistry": "src/courseGeometry/generatedImportedCourseRegistry.ts",
+  "terrain": true,
+  "terrainProvider": "usgs-3dep",
+  "validation": "artifacts/course-geometry/triggs-memorial/validation-v1.json"
+}
+=== [triggs-memorial:import] rc=0 seconds=11.6
+=== [triggs-memorial:osm] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py osm --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model/course-bbox.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model
+overpass ok url=https://overpass-api.de/api/interpreter bytes=5929117 seconds=40.2
+{"elementsByType": {"node": 23998, "way": 2826, "relation": 54}, "taggedElements": 3285, "compressedBytes": 768552}
+=== [triggs-memorial:osm] rc=0 seconds=40.7
+=== [triggs-memorial:dem] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py dem --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model/course-bbox.json --crs EPSG:26919 --tmp /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/tmp --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model
+/home/runner/work/nova-v0/nova-v0/tools/course_model/fetch_sources.py:171: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+  tile = ds.read(1).astype('float64')
+dem tiles=2 seconds=7.0 size=1330x2091
+{"width": 1330, "height": 2091, "pixel": 1.0, "validCells": 2781030, "elevMin": 13.238188743591309, "elevMax": 61.52993392944336}
+=== [triggs-memorial:dem] rc=0 seconds=7.4
+=== [triggs-memorial:lidar] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/lidar_pipeline.py --ept https://s3-us-west-2.amazonaws.com/usgs-lidar-public/ARRA-LFTNE_RhodeIsland_2011/ept.json --dem-source /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model/course-bbox.json --dem /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model/dem-utm-1m.json --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model
+nodes=194 pointsInIntersectingNodes=10403806 hierarchySeconds=1.2
+tiles 25/194 kept=766396 MB=15 seconds=3
+tiles 50/194 kept=1297476 MB=19 seconds=3
+tiles 75/194 kept=3317105 MB=34 seconds=4
+tiles 100/194 kept=3752134 MB=37 seconds=5
+tiles 125/194 kept=4489569 MB=42 seconds=6
+tiles 150/194 kept=5004574 MB=45 seconds=7
+tiles 175/194 kept=5517779 MB=48 seconds=7
+{"schemaVersion": "looper-course-model-lidar-stats-v1", "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/ARRA-LFTNE_RhodeIsland_2011/ept.json", "eptSrs": "3857", "octreeNodesRead": 194, "downloadedMB": 55.1, "pointsKeptInBbox": 5635201, "pointsPerSquareMetre": 2.03, "firstReturnsPerSquareMetre": 1.47, "classificationHistogram": {"1": 2642630, "2": 1974653, "9": 1853, "10": 134, "11": 438, "17": 1020416}, "chm": {"width": 1330, "height": 2091, "pixelMeters": 1.0, "cellsWithReturns": 2378491, "emptyCells": 402539, "cellsOver3m": 977515, "cellsOver10m": 502315, "p50": 0.13000000000000966, "p95": 18.239999999999988, "max": 34.44999999999998}, "seconds": 10.0}
+=== [triggs-memorial:lidar] rc=0 seconds=10.2
+=== [triggs-memorial:trees] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_trees.py --chm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model/chm-utm-1m.json --osm /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model/osm-full.json.gz --out /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model
+{"schemaVersion": "looper-course-model-trees-v1", "crs": "EPSG:26919", "treeCount": 13670, "heightM": {"p10": 5.9, "p50": 13.0, "p90": 20.7, "max": 33.5}, "crownRadiusM": {"p10": 1.5, "p50": 3.6, "p90": 6.6}, "woodlandPolygons": 1585, "woodlandAreaHa": 57.44, "maskedCellsBuildingsAndPower": 461042, "parameters": {"minTreeM": 3.0, "minCrownM": 2.0, "smoothingSigmaPx": 0.8, "windowBands": [[3.0, 6.0, 1], [6.0, 12.0, 2], [12.0, 20.0, 3], [20.0, 99.0, 4]], "minWoodAreaM2": 25.0}, "seconds": 1.8}
+=== [triggs-memorial:trees] rc=0 seconds=2.4
+=== [triggs-memorial:enrich] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/build_enriched_package.py --package /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json --model-dir /home/runner/work/nova-v0/nova-v0/.tmp/course-load/triggs-memorial/model --out /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1-lidar.json
+{
+ "bytes": 1757378,
+ "originalBytes": 390583,
+ "holes": {
+  "woodsPolygons": 89,
+  "bunker": "11->14",
+  "water": "0->0",
+  "mapFeatures": {
+   "road": 15,
+   "building": 14,
+   "cartpath": 7
+  },
+  "terrainCells": 36816
+ },
+ "woodsTotal": 1827
+}
+=== [triggs-memorial:enrich] rc=0 seconds=10.3
+=== [triggs-memorial:validate] /opt/hostedtoolcache/Python/3.12.16/x64/bin/python /home/runner/work/nova-v0/nova-v0/tools/course_model/validate_package.py --report /home/runner/work/nova-v0/nova-v0/artifacts/course-load/triggs-memorial/validate-report.json /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1-lidar.json
+OK   /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json (0.4 MB)
+OK   /home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1-lidar.json (1.8 MB)
+=== [triggs-memorial:validate] rc=0 seconds=0.1

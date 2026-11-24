@@ -1,0 +1,23 @@
+{
+  "completedAt": "2026-11-24T00:22:27.246375Z",
+  "configPath": "config/course-geometry/triggs-memorial-v1.json",
+  "courseId": "triggs-memorial-providence-rhode-island-usa",
+  "courseName": "Triggs Memorial",
+  "greenDetailReady": true,
+  "gsproAliases": [
+    "Triggs Memorial",
+    "Triggs Memorial Golf Course",
+    "triggs_memorial_gsp"
+  ],
+  "location": "Providence, Rhode Island, USA",
+  "packagePath": "public/course-geometry/triggs-memorial/course-v1.json",
+  "packageSha256": "b3e4eeae8cb3360e42aefd4e7bfe77132681b96f83da83b2187e4113ad167675",
+  "reason": "one-click-course-load",
+  "runtimeReady": true,
+  "schemaVersion": "looper-course-runtime-ready-v1",
+  "slug": "triggs-memorial",
+  "staticReady": true,
+  "terrainProvider": "usgs-3dep",
+  "terrainReady": true,
+  "validationPath": "artifacts/course-geometry/triggs-memorial/validation-v1.json"
+}

@@ -1,0 +1,337 @@
+{
+  "schemaVersion": "looper-course-load-report-v1",
+  "slug": "triggs-memorial",
+  "request": {
+    "slug": "triggs-memorial",
+    "name": "Triggs Memorial",
+    "location": "Providence, Rhode Island, USA",
+    "lat": 41.834,
+    "lon": -71.4592,
+    "nameRegex": "Triggs.*Memorial",
+    "osmId": 43150786,
+    "osmType": "way",
+    "gsproAliases": [
+      "triggs_memorial_gsp"
+    ]
+  },
+  "ready": true,
+  "totalSeconds": 156.3,
+  "stages": [
+    {
+      "stage": "find",
+      "ok": true,
+      "seconds": 70.8
+    },
+    {
+      "stage": "config",
+      "ok": true,
+      "seconds": 0.0,
+      "path": "config/course-geometry/triggs-memorial-v1.json"
+    },
+    {
+      "stage": "import",
+      "ok": true,
+      "seconds": 11.6
+    },
+    {
+      "stage": "osm",
+      "ok": true,
+      "seconds": 40.7
+    },
+    {
+      "stage": "dem",
+      "ok": true,
+      "seconds": 7.4
+    },
+    {
+      "stage": "lidar",
+      "ok": true,
+      "seconds": 10.2
+    },
+    {
+      "stage": "trees",
+      "ok": true,
+      "seconds": 2.4
+    },
+    {
+      "stage": "enrich",
+      "ok": true,
+      "seconds": 10.3
+    },
+    {
+      "stage": "validate",
+      "ok": true,
+      "seconds": 0.1
+    }
+  ],
+  "finishedAt": "2026-11-24T00:23:40Z",
+  "runId": "45296310832",
+  "osmCourse": {
+    "type": "way",
+    "id": 43150786,
+    "name": "Triggs Memorial Golf Course",
+    "areaHa": 55.4,
+    "found": "near"
+  },
+  "center": {
+    "lat": 41.833682,
+    "lon": -71.459818
+  },
+  "lidar": {
+    "name": "ARRA-LFTNE_RhodeIsland_2011",
+    "url": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/ARRA-LFTNE_RhodeIsland_2011/ept.json",
+    "count": 9901691046,
+    "year": 2011
+  },
+  "crs": "EPSG:26919",
+  "validation": [
+    {
+      "package": "/home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1.json",
+      "ok": true,
+      "hard": [],
+      "soft": [],
+      "bytes": 390583,
+      "sha256": "b3e4eeae8cb3360e42aefd4e7bfe77132681b96f83da83b2187e4113ad167675",
+      "holes": {
+        "1": {
+          "points": 763,
+          "terrainValid": 1.0
+        },
+        "10": {
+          "points": 1055,
+          "terrainValid": 1.0
+        },
+        "11": {
+          "points": 1007,
+          "terrainValid": 1.0
+        },
+        "12": {
+          "points": 862,
+          "terrainValid": 1.0
+        },
+        "13": {
+          "points": 1371,
+          "terrainValid": 1.0
+        },
+        "14": {
+          "points": 573,
+          "terrainValid": 1.0
+        },
+        "15": {
+          "points": 1247,
+          "terrainValid": 1.0
+        },
+        "16": {
+          "points": 984,
+          "terrainValid": 1.0
+        },
+        "17": {
+          "points": 936,
+          "terrainValid": 1.0
+        },
+        "18": {
+          "points": 848,
+          "terrainValid": 1.0
+        },
+        "2": {
+          "points": 1020,
+          "terrainValid": 1.0
+        },
+        "3": {
+          "points": 938,
+          "terrainValid": 1.0
+        },
+        "4": {
+          "points": 581,
+          "terrainValid": 1.0
+        },
+        "5": {
+          "points": 858,
+          "terrainValid": 1.0
+        },
+        "6": {
+          "points": 1216,
+          "terrainValid": 1.0
+        },
+        "7": {
+          "points": 684,
+          "terrainValid": 1.0
+        },
+        "8": {
+          "points": 769,
+          "terrainValid": 1.0
+        },
+        "9": {
+          "points": 783,
+          "terrainValid": 1.0
+        }
+      }
+    },
+    {
+      "package": "/home/runner/work/nova-v0/nova-v0/public/course-geometry/triggs-memorial/course-v1-lidar.json",
+      "ok": true,
+      "hard": [],
+      "soft": [],
+      "bytes": 1757378,
+      "sha256": "5985f4fa9f95ca7d7894ae37974f80e2ba05d996328811d75551ea5ca3314a4f",
+      "holes": {
+        "1": {
+          "points": 3157,
+          "terrainValid": 1.0
+        },
+        "10": {
+          "points": 3718,
+          "terrainValid": 1.0
+        },
+        "11": {
+          "points": 3804,
+          "terrainValid": 1.0
+        },
+        "12": {
+          "points": 3027,
+          "terrainValid": 1.0
+        },
+        "13": {
+          "points": 4026,
+          "terrainValid": 1.0
+        },
+        "14": {
+          "points": 2200,
+          "terrainValid": 1.0
+        },
+        "15": {
+          "points": 4070,
+          "terrainValid": 1.0
+        },
+        "16": {
+          "points": 3996,
+          "terrainValid": 1.0
+        },
+        "17": {
+          "points": 3698,
+          "terrainValid": 1.0
+        },
+        "18": {
+          "points": 3220,
+          "terrainValid": 1.0
+        },
+        "2": {
+          "points": 3690,
+          "terrainValid": 1.0
+        },
+        "3": {
+          "points": 4035,
+          "terrainValid": 1.0
+        },
+        "4": {
+          "points": 2010,
+          "terrainValid": 1.0
+        },
+        "5": {
+          "points": 3069,
+          "terrainValid": 1.0
+        },
+        "6": {
+          "points": 4514,
+          "terrainValid": 1.0
+        },
+        "7": {
+          "points": 2637,
+          "terrainValid": 1.0
+        },
+        "8": {
+          "points": 2748,
+          "terrainValid": 1.0
+        },
+        "9": {
+          "points": 2970,
+          "terrainValid": 1.0
+        }
+      }
+    }
+  ],
+  "lidar-stats": {
+    "schemaVersion": "looper-course-model-lidar-stats-v1",
+    "eptSource": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/ARRA-LFTNE_RhodeIsland_2011/ept.json",
+    "eptSrs": "3857",
+    "octreeNodesRead": 194,
+    "downloadedMB": 55.1,
+    "pointsKeptInBbox": 5635201,
+    "pointsPerSquareMetre": 2.03,
+    "firstReturnsPerSquareMetre": 1.47,
+    "classificationHistogram": {
+      "1": 2642630,
+      "2": 1974653,
+      "9": 1853,
+      "10": 134,
+      "11": 438,
+      "17": 1020416
+    },
+    "chm": {
+      "width": 1330,
+      "height": 2091,
+      "pixelMeters": 1.0,
+      "cellsWithReturns": 2378491,
+      "emptyCells": 402539,
+      "cellsOver3m": 977515,
+      "cellsOver10m": 502315,
+      "p50": 0.13000000000000966,
+      "p95": 18.239999999999988,
+      "max": 34.44999999999998
+    },
+    "seconds": 10.0
+  },
+  "trees-summary": {
+    "schemaVersion": "looper-course-model-trees-v1",
+    "crs": "EPSG:26919",
+    "treeCount": 13670,
+    "heightM": {
+      "p10": 5.9,
+      "p50": 13.0,
+      "p90": 20.7,
+      "max": 33.5
+    },
+    "crownRadiusM": {
+      "p10": 1.5,
+      "p50": 3.6,
+      "p90": 6.6
+    },
+    "woodlandPolygons": 1585,
+    "woodlandAreaHa": 57.44,
+    "maskedCellsBuildingsAndPower": 461042,
+    "parameters": {
+      "minTreeM": 3.0,
+      "minCrownM": 2.0,
+      "smoothingSigmaPx": 0.8,
+      "windowBands": [
+        [
+          3.0,
+          6.0,
+          1
+        ],
+        [
+          6.0,
+          12.0,
+          2
+        ],
+        [
+          12.0,
+          20.0,
+          3
+        ],
+        [
+          20.0,
+          99.0,
+          4
+        ]
+      ],
+      "minWoodAreaM2": 25.0
+    },
+    "seconds": 1.8
+  },
+  "publishedBytes": {
+    "green-detail-v1.json": 105963,
+    "course-v1.json": 390583,
+    "course-v1-lidar.json": 1757378
+  }
+}
