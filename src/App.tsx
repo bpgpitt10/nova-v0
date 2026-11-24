@@ -4751,6 +4751,17 @@ function App({
       ),
     },
     {
+      // Brian, 23 Nov: it was missing here. The table keeps its height; the rows share it.
+      metric: 'Attack Angle',
+      last: formatDegrees(latestShot ? attackAngleValue(latestShot) : undefined),
+      pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.attackAngle),
+      delta: formatDeltaValue(
+        latestShot ? attackAngleValue(latestShot) : undefined,
+        selectedClubShotProfiles.bestAvailable?.attackAngle,
+        'deg',
+      ),
+    },
+    {
       metric: 'Club Path',
       last: formatDegrees(latestShot ? clubPathValue(latestShot) : undefined),
       pure: formatDegrees(selectedClubShotProfiles.bestAvailable?.clubPath),

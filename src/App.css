@@ -2256,7 +2256,9 @@ td {
 
 .session-intelligence-comparison-table {
   display: grid;
-  gap: 8px;
+  /* 6px, was 8: Attack Angle made it 17 rows, and at this gap they need 4px less than the 16
+     did, so the box keeps its height (17 × 20.25 + 16 × 6 = 440; 16 × 20.25 + 15 × 8 = 444). */
+  gap: 6px;
   flex: 1;
   grid-auto-rows: minmax(0, 1fr);
   align-content: stretch;
