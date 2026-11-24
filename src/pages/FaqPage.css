@@ -172,3 +172,12 @@
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
+
+/* The support address: plain text, one click selects all of it. */
+.support-email {
+  color: #cfb36e;
+  user-select: all;
+  -webkit-user-select: all;
+  cursor: text;
+  overflow-wrap: anywhere;
+}

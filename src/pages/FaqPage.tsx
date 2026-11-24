@@ -14,7 +14,7 @@ export default function FaqPage() {
           <div>
             <h1>Questions and answers</h1>
             <p>How The Looper works, and what to do when something does not.</p>
-            <p className="faq-support">Still stuck? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Copy the support code from Live Caddie&rsquo;s Details if you have one.</p>
+            <p className="faq-support">Still stuck? Email <SupportEmail />. Copy the support code from Live Caddie&rsquo;s Details if you have one.</p>
           </div>
         </header>
         {/* The latest enhancements, always first (Brian, 23 Nov): the companion's update box links here. */}
@@ -75,11 +75,19 @@ export default function FaqPage() {
         ))}
         <section className="faq-section faq-contact" id="contact">
           <h2>Contact</h2>
-          <p>Questions, bugs or a course that isn&rsquo;t loading right: email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. A screenshot and the support code from Live Caddie&rsquo;s Details help a lot.</p>
+          <p>Questions, bugs or a course that isn&rsquo;t loading right: email <SupportEmail />. A screenshot and the support code from Live Caddie&rsquo;s Details help a lot.</p>
         </section>
       </div>
     </main>
   )
+}
+
+/**
+ * The support address as text, not a mailto link: a mailto opens nothing on a computer with no
+ * mail app set up (Brian, 23 Nov). One click selects the whole address to copy.
+ */
+export function SupportEmail() {
+  return <span className="support-email">{SUPPORT_EMAIL}</span>
 }
 
 /** Help, Insights and support: the same links under the tagline and in the page-bottom footer. */
@@ -90,7 +98,7 @@ export function LooperHelpLinks() {
       <span aria-hidden="true"> · </span>
       <a href="/insights">GSPro 4.1.9 Insights</a>
       <span aria-hidden="true"> · </span>
-      <a href={`mailto:${SUPPORT_EMAIL}`}>Email support</a>
+      <span>Support: <SupportEmail /></span>
     </>
   )
 }
