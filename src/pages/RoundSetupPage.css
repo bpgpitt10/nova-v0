@@ -360,3 +360,44 @@
 .round-setup-need { margin: -6px 0 0; color: #b2c0b0; font-size: 13px; text-align: center; }
 
 .round-setup-unsure { margin: -8px 0 0; color: #8fa08d; font-size: 12px; }
+
+/* No companion answering on this computer: say what to do in place of the form. */
+.round-setup-gate {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 20px 22px;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 14px;
+  background: rgba(13, 19, 14, 0.72);
+  color: #cfd8cd;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.round-setup-gate > strong {
+  color: #f4f1e8;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.round-setup-gate li strong {
+  color: #f4f1e8;
+}
+
+.round-setup-gate p {
+  margin: 0;
+}
+
+.round-setup-gate a,
+.round-setup-gate button {
+  color: #f4d15d;
+}
+
+.round-setup-gate-steps {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding-left: 20px;
+  font-size: 14.5px;
+}
