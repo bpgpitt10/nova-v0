@@ -82,7 +82,7 @@ export type InsightTopRead = Readonly<{ initials: string; missYds: number; club:
 
 /** Three-letter words nobody needs on a leaderboard. The database refuses them too. */
 // Kept in step with the leaderboard table's check (migration insight_read_initials_more_words, 24 Nov).
-const NOT_INITIALS = /^(ASS|ARS|AZZ|FUK|FUC|FCK|FUX|FKU|FKN|KKK|NIG|NGR|NGA|FAG|FGT|CUM|JIZ|TIT|DIK|DIC|COK|COC|CNT|VAG|ANL|POO|PEE|PIS|SEX|XXX|WTF|KYS|NAZ|HOE|SUK|SUC)$/
+const NOT_INITIALS = /^(ASS|ARS|AZZ|FUK|FUC|FCK|FUX|FKU|FKN|KKK|NIG|NGR|NGA|FAG|FGT|GAY|CUM|JIZ|TIT|DIK|DIC|COK|COC|CNT|VAG|ANL|POO|PEE|PIS|SEX|XXX|WTF|KYS|NAZ|HOE|SUK|SUC)$/
 
 /** Typed initials that are letters but not allowed: say so, so the greyed-out button isn't a mystery. */
 export const initialsRefused = (typed: string) => {
