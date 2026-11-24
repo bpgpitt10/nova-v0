@@ -3,14 +3,23 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 
+// A browser store with a size limit, like the real 5 MB one.
+let quota = Infinity
+const sizeOf = (store) => Object.entries(store).reduce((n, [k, v]) => n + k.length + v.length, 0)
 const makeWindow = (store) => {
   const listeners = {}
   return {
     reloads: 0,
     localStorage: {
       getItem: (k) => (k in store ? store[k] : null),
-      setItem: (k, v) => { store[k] = String(v) },
+      setItem: (k, v) => {
+        const next = sizeOf(store) - (k in store ? k.length + store[k].length : 0) + k.length + String(v).length
+        if (next > quota) throw new Error(`Setting the value of '${k}' exceeded the quota.`)
+        store[k] = String(v)
+      },
       removeItem: (k) => { delete store[k] },
+      key: (i) => Object.keys(store)[i] ?? null,
+      get length() { return Object.keys(store).length },
     },
     addEventListener: (type, fn) => { (listeners[type] ??= []).push(fn) },
     removeEventListener: () => {},
@@ -67,5 +76,28 @@ b2.scope.deactivateLocalUserScope()
 assert.deepEqual(b2.scope.activateLocalUserScope('A'), { replacedAnotherAccount: true }, 'a different account in the same tab')
 assert.equal(browser[SESSIONS], 'A-sessions', 'A gets A’s own data back')
 
-await Promise.all([a.close(), b.close(), b2.close()])
+// A full store (23 Nov 2026: two accounts' round archives filled it; sign-in and sign-out both failed).
+const ARCHIVE = 'looper-live-gspro-round-archive-v1'
+const full = {}
+const big = 'x'.repeat(400)
+const c = await tab(full)
+c.scope.activateLocalUserScope('A')
+c.window.localStorage.setItem(ARCHIVE, big); c.scope.persistWorkingCacheValueForActiveUser(ARCHIVE, big)
+c.window.localStorage.setItem(SESSIONS, 'A-sessions'); c.scope.persistWorkingCacheValueForActiveUser(SESSIONS, 'A-sessions')
+full[`${ARCHIVE}:user:GONE`] = big                                   // a deleted account's copy
+full[`looper-unscoped-legacy-backup-v1:${ARCHIVE}`] = big            // an old backup
+quota = sizeOf(full) + 40                                            // no room for another archive
+c.scope.deactivateLocalUserScope()                                   // signing out must not throw
+assert.equal(full[ARCHIVE], undefined)
+assert.equal(full[`${SESSIONS}:user:A`], 'A-sessions', 'the player’s own data is kept')
+c.scope.activateLocalUserScope('B')                                  // nor signing in as someone else
+c.window.localStorage.removeItem(ARCHIVE)
+c.scope.persistWorkingCacheValueForActiveUser(ARCHIVE, big)          // B's archive needs the room
+assert.equal(full[`${ARCHIVE}:user:B`], big, 'room was made for the signed-in account')
+assert.equal(full[`${ARCHIVE}:user:GONE`], undefined, 'by dropping other accounts’ rebuildable copies')
+assert.equal(full[`looper-unscoped-legacy-backup-v1:${ARCHIVE}`], undefined)
+assert.equal(full[`${SESSIONS}:user:A`], 'A-sessions', 'never anyone’s sessions')
+quota = Infinity
+
+await Promise.all([a.close(), b.close(), b2.close(), c.close()])
 console.log('local user scope ok')
