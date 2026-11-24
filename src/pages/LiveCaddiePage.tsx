@@ -41,6 +41,7 @@ import { anchorGreenToGkd, greenAnchorLine, greenShareOutsideDetail, type GreenA
 import {
   loadCourseGreenDetail, sampleCourseGreenElevation, type CourseGreenDetail,
 } from '../courseGeometry/courseGreenDetail'
+import { greenDetailFromTerrain, greenRingsOf } from '../courseGeometry/greenDetailFromTerrain'
 import { buildCourseGreenApproachTarget } from '../liveCaddie/greenTargeting'
 import { analyzeGreen, greenReadLine } from '../liveCaddie/greenRead'
 import { buildUnderRangeShotStrategy } from '../liveCaddie/shotStrategy'
@@ -261,7 +262,7 @@ export default function LiveCaddiePage() {
   // mounted, so it follows Round Setup's selection event.
   const [courseId, setCourseId] = useState<CourseId>(() => loadLastSelectedCourseId())
   const [holeNumber, setHoleNumber] = useState(1)
-  const [greenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
+  const [packagedGreenDetail, setGreenDetail] = useState<CourseGreenDetail | null>(null)
   const [rawHole, setHole] = useState<CourseHoleGeometry | null>(null)
   // GSPro's own penalty areas and OB, and the green anchored to GSPro's green
   // (both from the player's GKD through the registration), on this hole.
@@ -408,6 +409,15 @@ export default function LiveCaddiePage() {
   const visualCaptureRef = useRef<BrowserGsproVisualCaptureConnection | null>(null)
 
   const selectedCourse = courseId === UNSELECTED_COURSE_ID ? null : getCourseCatalogEntry(courseId)
+  // Map-area courses have no green package, but their 2-yd LiDAR covers the greens: build the same
+  // 1-yd green grid here (Brian, 24 Nov, 3s Greenville: "no green map here").
+  // tools/test-area-green-detail.mjs checks it against the packaged greens.
+  const areaGreenDetail = useMemo(() => (
+    selectedCourse?.packageKind === 'area' && hole && hole.holeNumber === holeNumber
+      ? greenDetailFromTerrain(holeNumber, hole.terrain, greenRingsOf(hole.surfaces))
+      : null
+  ), [selectedCourse?.packageKind, hole, holeNumber])
+  const greenDetail = packagedGreenDetail ?? areaGreenDetail
   // Holes from GSPro's course file (GSPro-only or a map area): ground the map
   // doesn't cover is unmapped, not trouble.
   const gsproOnlyCourse = selectedCourse?.source === 'gspro-only' || selectedCourse?.packageKind === 'area'
