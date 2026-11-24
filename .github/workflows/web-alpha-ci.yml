@@ -144,6 +144,8 @@ jobs:
         run: node tools/test-round-window.mjs
       - name: Round settings (GSPro course conditions at Start a Round)
         run: node tools/test-round-settings.mjs
+      - name: Two accounts on one browser never share local data
+        run: node tools/test-local-user-scope.mjs
       - name: Companion sightings saved on the account
         run: node tools/test-companion-connections.mjs
 

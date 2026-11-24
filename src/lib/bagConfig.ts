@@ -2,6 +2,7 @@ import { syncBagConfigToCloud } from '../cloud/cloudPersistence'
 import {
   BAG_CONFIG_STORAGE_KEY,
   persistWorkingCacheValueForActiveUser,
+  workingCacheBelongsToThisTab,
 } from './localUserScope'
 import {
   BAG_SETUP_SECTION_ORDER,
@@ -171,6 +172,7 @@ export const saveBagConfig = (selectedClubs: Club[]) => {
     selectedClubs: sortClubIds(selectedClubs),
   }
   const serialized = JSON.stringify(payload)
+  if (!workingCacheBelongsToThisTab()) return
   window.localStorage.setItem(BAG_CONFIG_STORAGE_KEY, serialized)
   persistWorkingCacheValueForActiveUser(BAG_CONFIG_STORAGE_KEY, serialized)
   refreshBagConfigState()
