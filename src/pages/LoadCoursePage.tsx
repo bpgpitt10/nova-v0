@@ -198,8 +198,19 @@ export default function LoadCoursePage() {
   // the page, off screen, so the button looked dead; Brian, 11/5).
   const [picking, setPicking] = useState<{ courseKey: string; candidates: Extract<CrosswalkDecision, { kind: 'pick' }>['candidates'] } | null>(null)
   // Row actions that fall back to the search results bring the search into view.
-  const searchRef = useRef<HTMLElement>(null)
-  const showSearch = () => searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const searchRef = useRef<HTMLDetailsElement>(null)
+  // Sections fold (Brian, 23 Nov): only Your GSPro courses is open when the page opens. Anything
+  // that sends the player to the search opens it first.
+  const [openSections, setOpenSections] = useState<Readonly<Record<'search' | 'gspro' | 'loads', boolean>>>(
+    { search: false, gspro: true, loads: false },
+  )
+  const setSectionOpen = (key: 'search' | 'gspro' | 'loads', open: boolean) =>
+    setOpenSections((current) => (current[key] === open ? current : { ...current, [key]: open }))
+  const [closedGroups, setClosedGroups] = useState<ReadonlySet<string>>(() => new Set())
+  const showSearch = () => {
+    setSectionOpen('search', true)
+    window.requestAnimationFrame(() => searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
   // Re-render when GSPro links change (Link / Unlink, or the shared list
   // loads) or a loaded course arrives (published at run time).
   const [catalogVersion, setCatalogVersion] = useState(0)
@@ -545,6 +556,7 @@ export default function LoadCoursePage() {
 
   return (
     <main className="load-course-page">
+      <div className="load-course-shell">
       <header>
         <span className="load-course-kicker">COURSES</span>
         <h1>Load a course</h1>
@@ -558,8 +570,14 @@ export default function LoadCoursePage() {
       {message ? <p className="load-course-message">{message}</p> : null}
       {loadsError ? <p className="load-course-message">Sign in to load courses ({loadsError}).</p> : null}
 
-      <section ref={searchRef}>
-        <h2>Find a course</h2>
+      <details
+        className="load-course-section"
+        open={openSections.search}
+        onToggle={(event) => setSectionOpen('search', event.currentTarget.open)}
+        ref={searchRef}
+      >
+        <summary><h2>Find a course</h2><span className="load-course-section-hint">Search the map by name</span></summary>
+        <div className="load-course-section-body">
         {linkedGspro ? (
           <p className="load-course-note">
             Loading one of these links it to your GSPro course <strong>{linkedGspro.courseName}</strong>.{' '}
@@ -598,10 +616,19 @@ export default function LoadCoursePage() {
             )
           })}
         </ul>
-      </section>
+        </div>
+      </details>
 
-      <section>
-        <h2>Your GSPro courses</h2>
+      <details
+        className="load-course-section"
+        open={openSections.gspro}
+        onToggle={(event) => setSectionOpen('gspro', event.currentTarget.open)}
+      >
+        <summary>
+          <h2>Your GSPro courses</h2>
+          {installed.length ? <span className="load-course-section-hint">{installed.length}</span> : null}
+        </summary>
+        <div className="load-course-section-body">
         {libraryNote ? <p className="load-course-note">{libraryNote}</p> : null}
         {savedLibraryAt ? (
           <p className="load-course-note">
@@ -613,20 +640,40 @@ export default function LoadCoursePage() {
         {groups.map(({ key, title }) => {
           const rows = installed.filter((row) => row.group === key)
           return rows.length ? (
-            <div key={key} className="load-course-group">
-              <h3>{title} <span>{rows.length}</span></h3>
+            <details
+              key={key}
+              className="load-course-group"
+              open={!closedGroups.has(key)}
+              onToggle={(event) => {
+                const open = event.currentTarget.open
+                setClosedGroups((current) => {
+                  if (open === !current.has(key)) return current
+                  const next = new Set(current)
+                  if (open) next.delete(key)
+                  else next.add(key)
+                  return next
+                })
+              }}
+            >
+              <summary><h3>{title} <span>{rows.length}</span></h3></summary>
               <ul className="load-course-list">{rows.map(installedRow)}</ul>
-            </div>
+            </details>
           ) : null
         })}
         {skipped > 0 ? (
           <p className="load-course-note">{skipped} range{skipped === 1 ? '' : 's'} and practice course{skipped === 1 ? '' : 's'} hidden.</p>
         ) : null}
-      </section>
+        </div>
+      </details>
 
       {loads.length ? (
-        <section>
-          <h2>Recent loads</h2>
+        <details
+          className="load-course-section"
+          open={openSections.loads}
+          onToggle={(event) => setSectionOpen('loads', event.currentTarget.open)}
+        >
+          <summary><h2>Recent loads</h2><span className="load-course-section-hint">{Math.min(loads.length, 12)}</span></summary>
+          <div className="load-course-section-body">
           <ul className="load-course-list">
             {loads.slice(0, 12).map((row) => (
               <li key={row.id}>
@@ -640,14 +687,16 @@ export default function LoadCoursePage() {
               </li>
             ))}
           </ul>
-        </section>
+          </div>
+        </details>
       ) : null}
 
-      <p className="load-course-note">
+      <p className="load-course-note load-course-credits">
         Courses come from OpenStreetMap (© OpenStreetMap contributors, ODbL), with elevation and trees from USGS, NRCan,
         LINZ or Copernicus. GSPro course list: Simulator Golf Tour.
       </p>
       <LooperTagline />
+      </div>
     </main>
   )
 }
