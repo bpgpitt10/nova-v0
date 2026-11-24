@@ -198,19 +198,17 @@ export default function LoadCoursePage() {
   // the page, off screen, so the button looked dead; Brian, 11/5).
   const [picking, setPicking] = useState<{ courseKey: string; candidates: Extract<CrosswalkDecision, { kind: 'pick' }>['candidates'] } | null>(null)
   // Row actions that fall back to the search results bring the search into view.
-  const searchRef = useRef<HTMLDetailsElement>(null)
-  // Sections fold (Brian, 23 Nov): only Your GSPro courses is open when the page opens. Anything
-  // that sends the player to the search opens it first.
-  const [openSections, setOpenSections] = useState<Readonly<Record<'search' | 'gspro' | 'loads', boolean>>>(
-    { search: false, gspro: true, loads: false },
+  const searchRef = useRef<HTMLElement>(null)
+  // Brian, 23 Nov: Find a course is always there. Everything else starts closed and the player
+  // opens what they want. Arriving for one GSPro course ("Load this course") opens its section
+  // and its group.
+  const [openSections, setOpenSections] = useState<Readonly<Record<'gspro' | 'loads', boolean>>>(
+    () => ({ gspro: Boolean(focusKey), loads: false }),
   )
-  const setSectionOpen = (key: 'search' | 'gspro' | 'loads', open: boolean) =>
+  const setSectionOpen = (key: 'gspro' | 'loads', open: boolean) =>
     setOpenSections((current) => (current[key] === open ? current : { ...current, [key]: open }))
-  const [closedGroups, setClosedGroups] = useState<ReadonlySet<string>>(() => new Set())
-  const showSearch = () => {
-    setSectionOpen('search', true)
-    window.requestAnimationFrame(() => searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  }
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(() => new Set())
+  const showSearch = () => searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Re-render when GSPro links change (Link / Unlink, or the shared list
   // loads) or a loaded course arrives (published at run time).
   const [catalogVersion, setCatalogVersion] = useState(0)
@@ -482,11 +480,14 @@ export default function LoadCoursePage() {
     { key: 'off-map', title: 'Not on the map' },
   ] as const
 
-  const focusPresent = Boolean(focusKey && installed.some((row) => row.course.courseKey === focusKey))
+  const focusGroup = focusKey ? installed.find((row) => row.course.courseKey === focusKey)?.group ?? null : null
   useEffect(() => {
-    if (!focusPresent || !focusKey) return
-    document.getElementById(`gspro-${focusKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [focusPresent, focusKey])
+    if (!focusGroup || !focusKey) return
+    // Open the course's group first, then bring the course into view once it is drawn.
+    setOpenGroups((current) => (current.has(focusGroup) ? current : new Set(current).add(focusGroup)))
+    window.requestAnimationFrame(() =>
+      document.getElementById(`gspro-${focusKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }, [focusGroup, focusKey])
 
   const installedRow = ({ course, slug, link, decision, group }: (typeof installed)[number]) => (
     <li
@@ -570,13 +571,8 @@ export default function LoadCoursePage() {
       {message ? <p className="load-course-message">{message}</p> : null}
       {loadsError ? <p className="load-course-message">Sign in to load courses ({loadsError}).</p> : null}
 
-      <details
-        className="load-course-section"
-        open={openSections.search}
-        onToggle={(event) => setSectionOpen('search', event.currentTarget.open)}
-        ref={searchRef}
-      >
-        <summary><h2>Find a course</h2><span className="load-course-section-hint">Search the map by name</span></summary>
+      <section className="load-course-section is-fixed" ref={searchRef}>
+        <div className="load-course-section-head"><h2>Find a course</h2><span className="load-course-section-hint">Search by name</span></div>
         <div className="load-course-section-body">
         {linkedGspro ? (
           <p className="load-course-note">
@@ -617,7 +613,7 @@ export default function LoadCoursePage() {
           })}
         </ul>
         </div>
-      </details>
+      </section>
 
       <details
         className="load-course-section"
@@ -643,14 +639,14 @@ export default function LoadCoursePage() {
             <details
               key={key}
               className="load-course-group"
-              open={!closedGroups.has(key)}
+              open={openGroups.has(key)}
               onToggle={(event) => {
                 const open = event.currentTarget.open
-                setClosedGroups((current) => {
-                  if (open === !current.has(key)) return current
+                setOpenGroups((current) => {
+                  if (open === current.has(key)) return current
                   const next = new Set(current)
-                  if (open) next.delete(key)
-                  else next.add(key)
+                  if (open) next.add(key)
+                  else next.delete(key)
                   return next
                 })
               }}
@@ -672,7 +668,7 @@ export default function LoadCoursePage() {
           open={openSections.loads}
           onToggle={(event) => setSectionOpen('loads', event.currentTarget.open)}
         >
-          <summary><h2>Recent loads</h2><span className="load-course-section-hint">{Math.min(loads.length, 12)}</span></summary>
+          <summary><h2>Recently loaded to The Looper</h2><span className="load-course-section-hint">{Math.min(loads.length, 12)}</span></summary>
           <div className="load-course-section-body">
           <ul className="load-course-list">
             {loads.slice(0, 12).map((row) => (

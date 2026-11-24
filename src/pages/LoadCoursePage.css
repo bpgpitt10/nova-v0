@@ -88,13 +88,19 @@
   -webkit-backdrop-filter: blur(6px);
 }
 
-.load-course-section > summary {
+.load-course-section > summary,
+.load-course-section-head {
   display: flex;
   align-items: baseline;
   gap: 12px;
   padding: 16px 18px;
   list-style: none;
   cursor: pointer;
+}
+
+/* Find a course: always open, no handle. */
+.load-course-section-head {
+  cursor: default;
 }
 
 .load-course-section > summary::-webkit-details-marker,
@@ -120,6 +126,7 @@
   transform: rotate(45deg);
 }
 
+.load-course-section-head h2,
 .load-course-section > summary h2 {
   margin: 0;
   color: #f4f1e8;
