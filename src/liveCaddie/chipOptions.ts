@@ -19,6 +19,7 @@ import {
 import { sidehillLieShare, upDownLieShare } from './lieResponse'
 import { puttSpeedFor, rollOnGreen, type SlopeField } from './puttRead'
 import { sandSpeedFactor, sandSpinFactor } from './surfaceResponse'
+import type { PlayerFamilyFit } from './playerShortGame'
 
 /**
  * Partial wedges (23 Nov): from the chip zone up to the player's shortest full club, the same card
@@ -202,7 +203,32 @@ export type ChipSetting = Readonly<{
    */
   flightTrees?: (flight: Readonly<{ carryYds: number; launchDeg: number; descentDeg: number }>) =>
     'blocked' | 'close-left' | 'close-right' | 'close-both' | null
+  /**
+   * The player's own flights of this family, from their rounds (playerShortGame.ts): their launch and
+   * spin where they hit a flight often, and the flights they almost never hit.
+   */
+  player?: PlayerFamilyFit | null
 }>
+
+const playerFit = (type: ChipType, setting?: Pick<ChipSetting, 'player'>) => setting?.player?.byType[type] ?? null
+
+/** The launch this flight leaves at: the player's own when they hit it often, else GSPro's stock shot. */
+export const launchFor = (type: ChipType, setting?: Pick<ChipSetting, 'player'>) =>
+  playerFit(type, setting)?.launchDeg ?? CHIP_LAUNCH_DEG[type]
+
+/**
+ * The flight that carries `carryYds` for this player: GSPro's measured flights read at the player's
+ * launch (plus what the slope under the ball adds), then the spin set to the player's own per mph.
+ */
+const flightFor = (type: ChipType, carryYds: number, setting: ChipSetting): ChipFlight => {
+  const launch = launchFor(type, setting)
+  const slopeDeg = (setting.lieUpDownDeg ?? 0) * upDownLieShare(launch)
+  const flight = chipFlight(type, carryYds, launch - CHIP_LAUNCH_DEG[type] + slopeDeg)
+  const perMph = playerFit(type, setting)?.spinPerMph
+  if (perMph == null || !(flight.ballSpeedMph > 0) || !(flight.spinRpm > 0)) return flight
+  const scale = perMph / (flight.spinRpm / flight.ballSpeedMph)
+  return { ...flight, spinRpm: flight.spinRpm * scale, landing: { ...flight.landing, spinRpm: flight.landing.spinRpm * scale } }
+}
 
 const ROUGH = { speed: 0.97, spin: 0.68 }
 
@@ -234,6 +260,10 @@ export type ChipOption = Readonly<{
   levelCarryYds: number
   /** The ball as it leaves the lie for that swing (ball data). */
   swingFlight: ChipFlight
+  /** Launch and spin are the player's own (from their rounds), not GSPro's stock shot. */
+  ownFlight: boolean
+  /** A flight the player almost never hits: GSPro's stock numbers, and not Looper's pick while another works. */
+  rarelyHit: boolean
 }>
 
 /**
@@ -329,7 +359,7 @@ const troubleOnTheRun = (carry: number, distanceYds: number, probe: LandingProbe
 }
 
 const releaseFor = (type: ChipType, carry: number, probe: LandingProbe, setting: ChipSetting) => {
-  const flight = chipFlight(type, carry, (setting.lieUpDownDeg ?? 0) * upDownLieShare(CHIP_LAUNCH_DEG[type]))
+  const flight = flightFor(type, carry, setting)
   // From sand the flight is the ball as it leaves the sand; its spin is GSPro's sand share of the bigger swing's.
   const sandSpin = setting.fromSand
     ? (() => { const raw = rawSpeedFromSand(flight.ballSpeedMph); return sandSpinFactor(raw) / sandSpeedFactor(raw) })()
@@ -419,7 +449,7 @@ export const chipOptions = (
     const bad = BAD_LANDING[s.landsOn]
     const inTheWay = bad ? null : troubleOnTheRun(s.flight.carryYds, distanceYds, probe)
     const trees = family === 'wedge' && setting.flightTrees
-      ? setting.flightTrees({ carryYds: s.flight.carryYds, launchDeg: CHIP_LAUNCH_DEG[s.type], descentDeg: s.flight.landing.descentDeg })
+      ? setting.flightTrees({ carryYds: s.flight.carryYds, launchDeg: launchFor(s.type, setting), descentDeg: s.flight.landing.descentDeg })
       : null
     const side = probe(s.flight.carryYds).sideTrouble ?? null
     const onGreen = s.landsOn === 'green' && (greenStarts == null || s.flight.carryYds - greenStarts >= ONTO_GREEN_YDS - 0.25)
@@ -475,7 +505,13 @@ export const chipOptions = (
   const order = family === 'wedge'
     ? (['standard', 'flighted', 'high', 'runner'] as ChipType[]).map((type) => judged.find((j) => j.s.type === type)!)
     : judged
-  const pick = order.find((j) => j.verdict === 'fine' && finish(j.s) <= distanceYds + 1)
+  // A flight the player almost never hits is the pick only when nothing they do hit works (Brian,
+  // 24 Nov: armed Chip, swung his usual 25 degree pitch, and it ran half what the card said).
+  const rarely = new Set(setting.player?.rarely ?? [])
+  const usual = order.filter((j) => !rarely.has(j.s.type))
+  const pick = usual.find((j) => j.verdict === 'fine' && finish(j.s) <= distanceYds + 1)
+    ?? usual.find((j) => j.verdict === 'fine')
+    ?? order.find((j) => j.verdict === 'fine' && finish(j.s) <= distanceYds + 1)
     ?? order.find((j) => j.verdict === 'fine')
   if (pick) {
     pick.verdict = 'good'
@@ -489,6 +525,11 @@ export const chipOptions = (
           ? 'The only shot that lands on the green and stops.'
           : 'Lands on the green and stops: the lowest shot that does.'
   }
+  judged.forEach((j) => {
+    if (j !== pick && j.verdict === 'fine' && rarely.has(j.s.type)) {
+      j.reason = `You rarely hit this one, so it's GSPro's stock ${CHIP_LABEL[j.s.type].toLowerCase()}.`
+    }
+  })
   const flop = judged.find((j) => j.s.type === 'flop')
   if (flop && pick && pick !== flop && flop.verdict === 'fine') {
     flop.verdict = 'not-needed'
@@ -523,10 +564,10 @@ export const chipOptions = (
     const landingRiseFt = probe(s.flight.carryYds).riseFt ?? null
     const levelCarryYds = levelCarryFor(s.flight.carryYds, s.flight.landing.descentDeg, landingRiseFt)
     const swingFlight = Math.abs(levelCarryYds - s.flight.carryYds) < 0.05 ? s.flight
-      : chipFlight(s.type, levelCarryYds, (setting.lieUpDownDeg ?? 0) * upDownLieShare(CHIP_LAUNCH_DEG[s.type]))
+      : flightFor(s.type, levelCarryYds, setting)
     return {
       type: s.type,
-      launchDeg: CHIP_LAUNCH_DEG[s.type],
+      launchDeg: Math.round(launchFor(s.type, setting)),
       flight: s.flight,
       runYds: s.run,
       landsOn: s.landsOn,
@@ -540,6 +581,8 @@ export const chipOptions = (
       runGrade: s.grade ?? null,
       levelCarryYds,
       swingFlight,
+      ownFlight: playerFit(s.type, setting) != null,
+      rarelyHit: rarely.has(s.type),
     }
   })
 }

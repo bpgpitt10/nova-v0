@@ -93,7 +93,8 @@ export default function ChipOptionsCard({
   // lands nearest the green. Never a low one landing short (Brian, 21 Nov).
   const nearest = options.some((o) => o.verdict === 'good') ? null : defaultChip(options, distanceYds)
   const tagFor = (option: ChipOption) => (option === nearest ? 'Best guess'
-    : edgeUnclear(option) ? 'Edge unclear' : TAG[option.verdict] ?? '')
+    : edgeUnclear(option) ? 'Edge unclear'
+      : option.rarelyHit && option.verdict === 'fine' ? 'Rarely yours' : TAG[option.verdict] ?? '')
   const aimedThis = aim != null && aim.type === shown
   const current = options.find((o) => o.type === shown) ?? null
   const onlyLine = !current ? 'None of the four finishes at the hole cleanly from here.'
@@ -118,7 +119,15 @@ export default function ChipOptionsCard({
   // under the number says why. Same name and colour either way (Brian, 23 Nov).
   const swingDiffers = !wedge && current != null && (current.swingLikeYds != null || heightCounts)
   const playsDelta = current && wedge ? playsFor(current) - current.flight.carryYds : 0
-  const comfortable = options.filter((o) => o.verdict === 'fine' || o.verdict === 'good').length >= 2
+  const comfortable = options.filter((o) => (o.verdict === 'fine' && !o.rarelyHit) || o.verdict === 'good').length >= 2
+  // Which flights are the player's own (from their rounds) and which are still GSPro's test shots.
+  const own = options.filter((o) => o.ownFlight)
+  const listNames = (names: string[]) => (names.length <= 1 ? names.join('')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`)
+  const sourceNote = own.length === 0
+    ? wedge ? 'New: flights and run are modeled from GSPro test shots, not your own swings yet.' : ''
+    : `${listNames(own.map((o) => CHIP_LABEL[o.type]))} ${own.length === 1 ? 'uses' : 'use'} your own launch and spin, from your rounds.`
+      + (own.length < options.length ? ' The rest are GSPro test shots.' : '')
   const lieOnly = current ? chipLieRead(current, distanceYds, lieLeftRightDeg, lieUpDownDeg) : null
   const breakFt = current ? breakLeftFt?.[current.type] ?? null : null
   // The aim line is the two together; each row below shows its own share.
@@ -199,7 +208,7 @@ export default function ChipOptionsCard({
         {onlyLine ? <p className="chip-options__reason">{onlyLine}</p> : null}
         <p className="chip-options__note">
           {comfortable ? 'More than one lands on the green: pick the one you’re most comfortable with.' : ''}
-          {wedge ? `${comfortable ? ' ' : ''}New: flights and run are modeled from GSPro test shots, not your own swings yet.` : ''}
+          {sourceNote ? `${comfortable ? ' ' : ''}${sourceNote}` : ''}
         </p>
       </section>
 
