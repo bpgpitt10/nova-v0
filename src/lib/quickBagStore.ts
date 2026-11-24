@@ -5,7 +5,7 @@ import {
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
 import { getActiveBagClubIds, type Club } from './bagConfig'
-import { QUICK_BAG_STORAGE_KEY, persistWorkingCacheValueForActiveUser } from './localUserScope'
+import { QUICK_BAG_STORAGE_KEY, persistWorkingCacheValueForActiveUser, workingCacheBelongsToThisTab } from './localUserScope'
 import { isShotIncludedInAnalysis } from './historicalModel'
 import { STOCK_SHOT_VARIANT_ID, resolveShotVariantId } from './shotVariants'
 import type { SavedSession } from '../types'
@@ -159,6 +159,7 @@ export const needsQuickBagStep = (sessions: readonly SavedSession[]): boolean =>
 
 const writeLocal = (input: QuickBagInput | null) => {
   const serialized = input ? JSON.stringify(input) : null
+  if (!workingCacheBelongsToThisTab()) return
   if (serialized) window.localStorage.setItem(QUICK_BAG_STORAGE_KEY, serialized)
   else window.localStorage.removeItem(QUICK_BAG_STORAGE_KEY)
   persistWorkingCacheValueForActiveUser(QUICK_BAG_STORAGE_KEY, serialized)

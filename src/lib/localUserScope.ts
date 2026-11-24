@@ -100,6 +100,36 @@ export const clearPreservedLegacyBackups = () => {
   purgeRetiredHumanShotReviews()
 }
 
+/**
+ * The account this tab last ran as. Pages read user data into memory when they load, so a tab
+ * that has held one account's data must start again before it shows or saves another's
+ * (23 Nov 2026: a verification link opened in a browser signed in to another account, and the
+ * new account's Bag page showed the first account's sessions from memory).
+ */
+let tabUserId: string | null = null
+
+/** Any managed value in the shared working cache right now. */
+const workingCacheHasData = () =>
+  managedKeys.some((baseKey) => window.localStorage.getItem(baseKey) != null)
+
+/**
+ * Another tab switched this browser to a different account: this tab still holds the old
+ * account's data in memory. Start again before it can show it or save it under the new one.
+ */
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== ACTIVE_LOCAL_USER_KEY || tabUserId == null) return
+    if (event.newValue != null && event.newValue !== tabUserId) window.location.reload()
+  })
+}
+
+/** False when the working cache now belongs to a different account than this tab ran as. */
+export const workingCacheBelongsToThisTab = () => {
+  if (typeof window === 'undefined' || tabUserId == null) return true
+  const active = getActiveLocalUserId()
+  return active == null || active === tabUserId
+}
+
 export const getActiveLocalUserId = () => {
   if (typeof window === 'undefined') {
     return null
@@ -117,18 +147,27 @@ export const getActiveLocalUserId = () => {
 export const activateLocalUserScope = (
   userId: string,
   options: { claimUnscopedLegacyData?: boolean } = {},
-) => {
+): { replacedAnotherAccount: boolean } => {
   if (typeof window === 'undefined') {
-    return
+    return { replacedAnotherAccount: false }
   }
 
   purgeRetiredHumanShotReviews()
 
+  // This tab ran as someone else, or the cache it loaded from was someone else's: whatever the
+  // page read into memory before now is not this account's. The caller must reload.
+  const previousTabUser = tabUserId
   const currentUserId = getActiveLocalUserId()
+  const replacedAnotherAccount =
+    (previousTabUser != null && previousTabUser !== userId)
+    || (currentUserId != null && currentUserId !== userId)
+    || (currentUserId == null && !options.claimUnscopedLegacyData && workingCacheHasData())
+  tabUserId = userId
+
   if (currentUserId === userId) {
     // The working cache already belongs to this user. Keep it as-is so a reload
     // does not discard newer offline-safe data that has not synced yet.
-    return
+    return { replacedAnotherAccount }
   }
 
   if (currentUserId) {
@@ -146,6 +185,7 @@ export const activateLocalUserScope = (
   restoreScopeToWorkingCache(userId)
   window.localStorage.setItem(ACTIVE_LOCAL_USER_KEY, userId)
   dispatchLocalDataChanged()
+  return { replacedAnotherAccount }
 }
 
 export const persistCacheValueForUser = (
@@ -184,6 +224,10 @@ export const persistWorkingCacheValueForActiveUser = (
   }
   const userId = getActiveLocalUserId()
   if (!userId) {
+    return
+  }
+  // A tab still running as the previous account must not save its memory under the new one.
+  if (tabUserId != null && tabUserId !== userId) {
     return
   }
   persistCacheValueForUser(baseKey, userId, value)

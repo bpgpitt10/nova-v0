@@ -59,9 +59,16 @@ export const bootstrapLooperCloudData = async (
   // account on the same browser from seeing or uploading the first golfer's
   // local safety copy. Only an explicitly approved migration path may claim the
   // old pre-auth cache.
-  activateLocalUserScope(userId, {
+  const scope = activateLocalUserScope(userId, {
     claimUnscopedLegacyData: options.claimUnscopedLegacyData,
   })
+  if (scope.replacedAnotherAccount) {
+    // The page loaded while this browser belonged to another account, so views already hold
+    // that account's sessions and bag in memory. Start again from this account's own data.
+    // The reload finds the cache already this account's and carries on normally.
+    window.location.reload()
+    return new Promise<CloudBootstrapResult>(() => {})
+  }
 
   const warnings: string[] = []
   const key = bootstrapKey(userId)

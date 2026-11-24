@@ -5,6 +5,7 @@ import {
   ACTIVE_SESSION_STORAGE_KEY,
   SESSION_HISTORY_STORAGE_KEY,
   persistWorkingCacheValueForActiveUser,
+  workingCacheBelongsToThisTab,
 } from './localUserScope'
 import { installMishitPlanningState } from './mishitPlanningPopulation'
 import { resolveHandedOpenGolfCoachValue } from './openGolfCoach'
@@ -191,6 +192,7 @@ export const saveSessionHistory = (sessions: SavedSession[]) => {
   const normalizedSessions = normalizeSessions(sessions)
 
   const serialized = JSON.stringify(normalizedSessions)
+  if (!workingCacheBelongsToThisTab()) return
   window.localStorage.setItem(SESSION_HISTORY_STORAGE_KEY, serialized)
   persistWorkingCacheValueForActiveUser(SESSION_HISTORY_STORAGE_KEY, serialized)
 
