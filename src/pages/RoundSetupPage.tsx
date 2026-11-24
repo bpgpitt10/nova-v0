@@ -7,7 +7,9 @@ import {
   getCourseCatalogEntry,
   type CourseId,
 } from '../courseGeometry/courseCatalog'
+import { CompanionDownloadLinks, CompanionInstallSteps } from '../components/CompanionChip'
 import { CoursePicker } from '../components/CoursePicker'
+import { useCompanionPresence } from '../lib/useCompanionPresence'
 import { refreshGsproOnlyCourses } from '../courseGeometry/gsproOnlyCourses'
 import { loadCourseHoleGeometry } from '../courseGeometry/courseProvider'
 import { estimateProvisionalTee } from '../courseGeometry/provisionalTeeEstimate'
@@ -66,6 +68,7 @@ const OTHER_TEE = '__looper-unmapped-tee__'
 const ACTIVE_ROUND_RECENT_MS = 12 * 60 * 60 * 1000
 
 export default function RoundSetupPage() {
+  const presence = useCompanionPresence()
   const initialCourse = loadLastSelectedCourseId()
   // Nothing chosen yet: Greywolf (our home course) when it is loaded, else the first course.
   const initialCourseId = initialCourse === '__no-course-selected__'
@@ -281,6 +284,31 @@ export default function RoundSetupPage() {
     starting || loadingTees || !actualTeeSet || actualTeeSet.length > 60 || course.packageStatus !== 'ready'
     || !(gsproTellsSettings ? conditions.stimp != null : roundConditionsComplete(conditions))
 
+  // A round can't be played without the companion answering on this computer, so don't offer the
+  // form (Brian, 23 Nov, from a Mac: it asked for tees and four settings and could never start).
+  // The page checks again every 15 seconds and when it gets focus, and shows the form by itself.
+  const companionGate = presence.status === 'elsewhere' ? (
+    <div className="round-setup-gate" role="status">
+      <strong>Start your round on your GSPro PC</strong>
+      <p>Live Caddie runs beside GSPro. Open thelooper.golf on the PC that runs GSPro and start the round there.</p>
+      <p>This computer is fine for your bag, your rounds and your stats.</p>
+      <p className="round-setup-gate-links"><a href="/looper">Home</a> · <a href="/rounds">Rounds</a> · <a href="/bag">Your bag</a></p>
+    </div>
+  ) : presence.status === 'not-installed' ? (
+    <div className="round-setup-gate" role="status">
+      <strong>You need the Looper Companion to play a round</strong>
+      <p>It&apos;s the small app that connects Looper to GSPro on this PC. Download it, install it, and this page carries on by itself.</p>
+      <p><CompanionDownloadLinks /></p>
+      <CompanionInstallSteps className="round-setup-gate-steps" />
+    </div>
+  ) : presence.status === 'not-running' ? (
+    <div className="round-setup-gate" role="status">
+      <strong>Start the Looper Companion</strong>
+      <p>It&apos;s installed on this PC but isn&apos;t answering. Start it from the Start menu (Looper Companion) or the tray, and this page carries on by itself.</p>
+      <p>Still nothing? Reinstall: <CompanionDownloadLinks compact /></p>
+    </div>
+  ) : null
+
   return (
     <main className="round-setup-page">
       <div className="round-setup-shell">
@@ -306,6 +334,7 @@ export default function RoundSetupPage() {
             </div>
           ) : null}
 
+          {companionGate ?? (<>
           <div className="round-setup-field">
             <span className="round-setup-label">Course</span>
             <CoursePicker
@@ -433,6 +462,7 @@ export default function RoundSetupPage() {
           ) : !roundConditionsComplete(conditions) ? (
             <p className="round-setup-need">Pick the course type, stimp and both firmness settings to start.</p>
           ) : null}
+          </>)}
         </section>
       </div>
     </main>
