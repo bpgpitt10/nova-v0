@@ -1,37 +1,154 @@
+/* Load a course: the mountain scene behind, sections that fold (Brian, 23 Nov). */
 .load-course-page {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 32px 16px 64px;
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  overflow-x: hidden;
+  background: #07100a;
   color: #e8efe6;
-  font-family: inherit;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.load-course-page::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: -10vh;
+  height: 120vh;
+  z-index: 0;
+  pointer-events: none;
+  background: url('../assets/Backgrounds/course-mountain.webp') center / cover no-repeat;
+  filter: brightness(0.72) saturate(0.9);
+}
+
+.load-course-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(6, 14, 9, 0.12) 0%, rgba(6, 14, 9, 0.5) 60%, rgba(4, 9, 6, 0.78) 100%),
+    linear-gradient(180deg, rgba(5, 11, 7, 0.35) 0%, rgba(4, 10, 6, 0.62) 50%, rgba(3, 8, 5, 0.88) 100%);
+}
+
+.load-course-shell {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(860px, 100%);
+  margin: 0 auto;
+  padding: clamp(32px, 6vh, 64px) 16px 64px;
+  display: grid;
+  gap: 14px;
 }
 
 .load-course-kicker {
-  color: #8fd19e;
+  color: #d4b15a;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .load-course-page h1 {
-  margin: 8px 0 8px;
-  font-size: 30px;
+  margin: 6px 0 10px;
+  color: #eab308;
+  font-family: Fraunces, Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: clamp(34px, 6vw, 44px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.04;
 }
 
-.load-course-page h2 {
-  margin: 28px 0 10px;
-  font-size: 18px;
+.load-course-page header {
+  margin-bottom: 10px;
 }
 
 .load-course-page header p {
   margin: 0 0 12px;
-  color: #b9c4b7;
-  line-height: 1.5;
+  color: #cfd8cd;
+  font-size: 16px;
+  line-height: 1.55;
 }
 
 .load-course-back {
-  color: #8fd19e;
+  color: #f4d15d;
   font-size: 14px;
+}
+
+/* A section that folds: the heading is the handle. */
+.load-course-section {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(10, 17, 12, 0.66);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.load-course-section > summary,
+.load-course-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 18px;
+  list-style: none;
+  cursor: pointer;
+}
+
+/* Find a course: always open, no handle. */
+.load-course-section-head {
+  cursor: default;
+}
+
+.load-course-section > summary::-webkit-details-marker,
+.load-course-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.load-course-section > summary::before,
+.load-course-group > summary::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid #9da99f;
+  border-bottom: 2px solid #9da99f;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.load-course-section[open] > summary::before,
+.load-course-group[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.load-course-section-head h2,
+.load-course-section > summary h2 {
+  margin: 0;
+  color: #f4f1e8;
+  font-size: 19px;
+  font-weight: 650;
+}
+
+.load-course-section-hint {
+  color: #9da99f;
+  font-size: 13px;
+}
+
+.load-course-section > summary:hover h2 {
+  color: #f4d15d;
+}
+
+.load-course-section-body {
+  padding: 0 18px 18px;
+}
+
+.load-course-credits {
+  margin-top: 8px;
 }
 
 .load-course-message {
@@ -62,9 +179,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 10px;
-  background: rgba(14, 22, 16, 0.7);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .load-course-list li > div {
@@ -188,12 +305,29 @@
   font-size: 13px;
 }
 
+.load-course-group + .load-course-group {
+  margin-top: 6px;
+}
+
+.load-course-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 8px;
+  list-style: none;
+  cursor: pointer;
+}
+
 .load-course-group h3 {
-  margin: 18px 0 8px;
+  margin: 0;
   color: #cfd8cd;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.load-course-group > summary:hover h3 {
+  color: #f4d15d;
 }
 
 .load-course-group h3 span {
