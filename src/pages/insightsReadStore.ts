@@ -81,7 +81,15 @@ export const loadInsightReadStats = async (): Promise<InsightReadStats | null> =
 export type InsightTopRead = Readonly<{ initials: string; missYds: number; club: string }>
 
 /** Three-letter words nobody needs on a leaderboard. The database refuses them too. */
-const NOT_INITIALS = /^(ASS|FUK|FUC|FCK|KKK|NIG|FAG|CUM|TIT|DIK|COK)$/
+// Kept in step with the leaderboard table's check (migration insight_read_initials_more_words, 24 Nov).
+const NOT_INITIALS = /^(ASS|ARS|AZZ|FUK|FUC|FCK|FUX|FKU|FKN|KKK|NIG|NGR|NGA|FAG|FGT|CUM|JIZ|TIT|DIK|DIC|COK|COC|CNT|VAG|ANL|POO|PEE|PIS|SEX|XXX|WTF|KYS|NAZ|HOE|SUK|SUC)$/
+
+/** Typed initials that are letters but not allowed: say so, so the greyed-out button isn't a mystery. */
+export const initialsRefused = (typed: string) => {
+  // Read the same way cleanInitials does, so "a.s.s" is caught too.
+  const letters = typed.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3)
+  return letters.length > 0 && NOT_INITIALS.test(letters)
+}
 
 /** One to three capital letters, or null when what was typed can't be used. */
 export const cleanInitials = (typed: string): string | null => {

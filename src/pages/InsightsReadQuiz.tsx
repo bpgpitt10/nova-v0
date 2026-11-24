@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   LEADERBOARD_MIN_MOVE_YDS,
   cleanInitials,
+  initialsRefused,
   loadInsightReadStats,
   loadTopReads,
   postTopRead,
@@ -503,6 +504,7 @@ export default function InsightsReadQuiz() {
                 <button className="insights-button" disabled={!cleanInitials(initials) || posted === 'posting'} type="submit">
                   {posted === 'posting' ? 'Posting…' : 'Post it'}
                 </button>
+                {initialsRefused(initials) ? <span className="insights-quiz__post-error">Nice try. Pick different initials.</span> : null}
                 {posted === 'failed' ? <span className="insights-quiz__post-error">That didn&rsquo;t go through. Try different initials.</span> : null}
               </form>
             ) : null}
