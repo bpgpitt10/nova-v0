@@ -422,10 +422,10 @@
 
 .load-course-nomap-chip {
   padding: 4px 10px;
-  border: 1px solid rgba(234, 179, 8, 0.45);
+  border: 1px solid #60a5fa;
   border-radius: 999px;
-  background: transparent;
-  color: #f5d06a;
+  background: #1d4ed8;
+  color: #fff;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;

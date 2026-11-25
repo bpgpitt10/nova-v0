@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { BASIC_CADDIE_MISSING, BASIC_CADDIE_SUMMARY } from '../lib/basicCaddie'
 import type { CourseCatalogEntry } from '../courseGeometry/courseCatalog'
 import { courseSearchScore } from '../courseGeometry/courseSearch'
 import { gsproOnlyLoadedMatch } from '../courseGeometry/gsproOnlyCourses'
@@ -30,7 +31,7 @@ export function CoursePicker({
 
   const matches = useMemo(() => {
     // A course installed in GSPro shows once: its loaded map if there is one,
-    // else its GSPro course file ("GSPro file" tag).
+    // else its GSPro course file ("Basic caddie · no map" tag).
     const ready = courses.filter((entry) => entry.packageStatus === 'ready'
       && (entry.source !== 'gspro-only' || entry.id === value || !gsproOnlyLoadedMatch(entry)))
     return ready
@@ -123,12 +124,17 @@ export function CoursePicker({
               <span className="course-picker-name">
                 {entry.name}
                 {entry.source === 'gspro-only' ? (
-                  <span className="course-picker-tag" title="Plays from your GSPro course file: tees, pins, GSPro's water and OB. Load the course for fairways, bunkers and trees.">
-                    GSPro file
+                  <span className="course-picker-tag course-picker-tag--basic" title={`${BASIC_CADDIE_SUMMARY} Missing: ${BASIC_CADDIE_MISSING.join(', ').toLowerCase()}.`}>
+                    Basic caddie · no map
                   </span>
                 ) : null}
               </span>
               {entry.location ? <span className="course-picker-location">{entry.location}</span> : null}
+              {entry.source === 'gspro-only' ? (
+                <span className="course-picker-location course-picker-nomap">
+                  No fairways, bunkers, trees or green slopes: yardages and club picks from GSPro's own course file.
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

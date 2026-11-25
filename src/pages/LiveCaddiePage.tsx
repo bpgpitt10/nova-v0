@@ -54,6 +54,7 @@ import { pinFromHudDistance } from '../liveCaddie/hudPin'
 import { priceAimError } from '../liveCaddie/aimErrorCost'
 import { estimatedPinAim, type EstimatedPinAim } from '../liveCaddie/pinUncertainty'
 import { rerankClubs } from '../liveCaddie/clubRerank'
+import { BasicCaddieChip } from '../components/BasicCaddieChip'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
@@ -255,10 +256,6 @@ const LIVE_DIAGNOSTICS_KEY = 'looper.live-diagnostics.v1'
 const LIVE_DEV_DIAGNOSTICS_KEY = 'looper.live-dev-diagnostics.v1'
 // Lies GSPro's file code identifies reliably; anything else asks the golfer.
 const KNOWN_LIES = new Set(['tee', 'fairway', 'rough', 'deep-rough', 'sand', 'green'])
-
-/** What the basic caddie does without a map (the Load page lists the same). */
-const BASIC_CADDIE_TITLE = 'No Looper map for this course: yardages, club picks, GSPro\'s penalty areas and out of bounds, '
-  + 'tees and pins come from GSPro\'s own course file. No fairway, rough, bunkers, trees or green slopes.'
 
 export default function LiveCaddiePage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
@@ -2333,13 +2330,14 @@ export default function LiveCaddiePage() {
               <strong>{selectedCourse?.name ?? 'Choose a course'}</strong>
             </div>
             {selectedCourse ? <span>Hole {holeNumber}</span> : null}
-            {/* A course played from GSPro's own file with no Looper map (fictional, or not mapped yet). */}
-            {selectedCourse?.source === 'gspro-only' ? (
-              <span className="live-basic-caddie-chip" title={BASIC_CADDIE_TITLE}>Basic caddie (no map)</span>
-            ) : null}
           </div>
 
           <div className="live-caddie-header-actions">
+            {/* A course played from GSPro's own file with no Looper map (fictional, or not mapped yet):
+                bright and first, so nobody misses that they're not getting everything (Brian, 25 Nov). */}
+            {selectedCourse?.source === 'gspro-only' ? (
+              <BasicCaddieChip fictional={/\bfictional\b/i.test(selectedCourse.location ?? '')} />
+            ) : null}
             <div className={`live-connection-state state-${livePrepared ? liveStatus : 'offline'}`}>
               <i />
               <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>

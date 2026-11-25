@@ -30,6 +30,7 @@ import {
 import { crosswalkDecision, crosswalkForGsproKey, crosswalkForGsproKeys, type CrosswalkDecision, type CrosswalkRow } from '../courseLoading/courseCrosswalk'
 import './LoadCoursePage.css'
 import { LooperTagline } from '../components/LooperTagline'
+import { BASIC_CADDIE_MISSING, BASIC_CADDIE_WORKS } from '../lib/basicCaddie'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
 
@@ -111,7 +112,7 @@ function PlaysWithoutMap({ fictional }: Readonly<{ fictional: boolean }>) {
   return (
     <span className="load-course-nomap">
       <button type="button" className="load-course-nomap-chip" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {fictional ? 'Fictional course · plays without a map' : 'Not mapped yet · plays without a map'}
+        {fictional ? 'Fictional course · basic caddie, no map' : 'Not mapped yet · basic caddie, no map'}
       </button>
       {open ? (
         <span className="load-course-nomap-detail">
@@ -121,8 +122,8 @@ function PlaysWithoutMap({ fictional }: Readonly<{ fictional: boolean }>) {
               : "Nobody has mapped this course on OpenStreetMap yet, so there's no map to load."}
             {' '}The Looper caddies here from what GSPro itself knows about the course. Just start a round in GSPro.
           </span>
-          <span><strong>Works:</strong> yardages to the pin · club picks from your bag · GSPro's penalty areas and out of bounds · tees and pin positions · shot tracking and club tagging</span>
-          <span><strong>Doesn't:</strong> fairway, rough and bunker outlines · trees · green slopes and putt reads</span>
+          <span><strong>Works:</strong> {BASIC_CADDIE_WORKS.join(' · ').toLowerCase()}</span>
+          <span><strong>Doesn't:</strong> {BASIC_CADDIE_MISSING.join(' · ').toLowerCase()}</span>
         </span>
       ) : null}
     </span>
