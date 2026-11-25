@@ -7,4 +7,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 tools/diag_hole_elevation.py tobacco-road 14 tee:17.24:27.01 pin:10.3:184.4 ball2:-7.35:163.44
+      - run: python3 tools/diag_hole_elevation.py tobacco-road 14 tee:17.24:27.01 pin:10.3:184.4 ball2:-7.35:163.44 l7:-1.0:193.0 l8:-0.5:182.0 l9:9.0:168.0

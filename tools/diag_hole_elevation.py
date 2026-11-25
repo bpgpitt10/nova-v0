@@ -66,3 +66,20 @@ if gd:
     vals = grid_values(g['grid'], g['grid']['width'] * g['grid']['height'])
     for pname, (x, y) in points.items():
         print(f'  {pname} ({x}, {y}): {sample(g["grid"], vals, x, y, "spacingYds")} ft')
+
+# Grid around the green (25 Nov: why the 7i/8i/9i got only ~4 yd of drop).
+lidar = get('course-v1-lidar.json')
+t = lidar['holes'][hole]['terrain'] if lidar else None
+tv = grid_values(t, t['width'] * t['height']) if t else None
+gg = gd['holes'][hole]['grid'] if gd else None
+gv = grid_values(gg, gg['width'] * gg['height']) if gg else None
+print('== grid: terrain ft (green-detail ft in brackets); rows y, cols x')
+xs = list(range(-30, 31, 5))
+print('y\\x ' + ' '.join(f'{x:>12}' for x in xs))
+for y in range(205, 129, -5):
+    cells = []
+    for x in xs:
+        a = sample(t, tv, x, y, 'runtimeSpacingYds') if t else None
+        b = sample(gg, gv, x, y, 'spacingYds') if gg else None
+        cells.append(f'{a if a is not None else "-":>6}[{b if b is not None else "-":>5}]'[:12].rjust(12))
+    print(f'{y:>4} ' + ' '.join(cells))
