@@ -72,7 +72,8 @@ def holes_mapped_twice(errors: list[str] | None) -> list[int]:
     return [int(n) for n in re.findall(r'\d+', inner)]
 
 
-def multiple_courses_message(names: list[str]) -> str:
+def multiple_courses_message(choices: list[dict]) -> str:
+    names = [c['name'] for c in choices if c.get('name')]
     which = f" ({', '.join(names)})" if names else ''
     return (f'This outline holds more than one course{which}: each hole number is mapped twice. '
             'Search for the one course you play and load that.')
@@ -87,13 +88,13 @@ def early_reject(bbox: dict) -> dict | None:
     numbered, twice = counts.get('holesNumbered') or [], counts.get('holesTwice') or []
     greens = counts.get('greensNearby') or 0
     if len(twice) >= 9:
-        return {'errorCode': 'multiple_courses', 'errorMessage': multiple_courses_message(bbox.get('subCourses') or []),
-                'osmCounts': counts}
+        return {'errorCode': 'multiple_courses', 'errorMessage': multiple_courses_message(bbox.get('courseChoices') or []),
+                'osmCounts': counts, 'courseChoices': bbox.get('courseChoices') or []}
     complete = numbered == list(range(1, 19)) or numbered == list(range(1, 10))
     # Without every hole numbered the course can only load as a map area, which needs all 18 greens.
     if not complete and greens < 18:
         holes = f'{len(numbered)} of its holes' if numbered else 'none of its holes'
-        return {'errorCode': 'holes_not_mapped', 'osmCounts': counts,
+        return {'errorCode': 'holes_not_mapped', 'osmCounts': counts, 'courseChoices': bbox.get('courseChoices') or [],
                 'errorMessage': f"OpenStreetMap only has {greens} of this course's 18 greens and {holes}, "
                                 "so the map can't be built yet."}
     return None
@@ -255,7 +256,8 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
         twice = holes_mapped_twice(failed.get('error'))
         if len(twice) >= 9:
             # Two courses in one outline: never package the whole club as a map (We-Ko-Pa, 24 Nov).
-            extra.update({'errorCode': 'multiple_courses', 'errorMessage': multiple_courses_message(bbox.get('subCourses') or [])})
+            extra.update({'errorCode': 'multiple_courses', 'errorMessage': multiple_courses_message(bbox.get('courseChoices') or []),
+                          'courseChoices': bbox.get('courseChoices') or []})
             return load.finish(request, extra)
         if not holes_not_mapped(failed.get('error')):
             return load.finish(request, extra)

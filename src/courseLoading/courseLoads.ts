@@ -37,7 +37,12 @@ export type CourseLoadRow = {
   mode?: string | null
   /** From the load report: why it couldn't load, in a form the site can put in plain words. */
   error_code?: string | null
+  /** From the load report: the courses to ask about when it couldn't go ahead (inside the outline, or nearby). */
+  course_choices?: readonly CourseChoice[] | null
 }
+
+/** A course on OpenStreetMap the player may have meant: loadable as it stands. */
+export type CourseChoice = Readonly<{ name: string; osmType: 'way' | 'relation'; osmId: number; lat: number; lon: number }>
 
 export type LoadOutcome = Readonly<{
   /** Short chip text. */
@@ -133,7 +138,7 @@ export const listCourseLoads = async (): Promise<CourseLoadRow[]> => {
   const client = await getSupabaseClient()
   const { data, error } = await client
     .from<CourseLoadRow[]>('course_load_requests')
-    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error, mode:report->>mode, error_code:report->>errorCode')
+    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error, mode:report->>mode, error_code:report->>errorCode, course_choices:report->courseChoices')
     .order('created_at', { ascending: false })
     .limit(40)
   if (error) throw new Error(error.message)

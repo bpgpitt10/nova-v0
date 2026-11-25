@@ -24,19 +24,22 @@ def holes(numbers, lat: float) -> list[dict]:
 
 
 def bbox_with(elements: list[dict], sub=None) -> dict:
-    return {'osmGolf': find_course.golf_counts(elements, [RING]), **({'subCourses': sub} if sub else {})}
+    choices = [{'name': n, 'osmType': 'way', 'osmId': i, 'lat': 33.58, 'lon': -111.69} for i, n in enumerate(sub or [])]
+    return {'osmGolf': find_course.golf_counts(elements, [RING]), **({'courseChoices': choices} if choices else {})}
 
 
 # Kenai: 16 greens, no hole lines.
 kenai = load_course.early_reject(bbox_with(greens(16)))
 assert kenai and kenai['errorCode'] == 'holes_not_mapped', kenai
 assert '16 of this course' in kenai['errorMessage'] and 'none of its holes' in kenai['errorMessage'], kenai
+assert kenai['courseChoices'] == [], kenai
 
 # We-Ko-Pa Golf Club: holes 1-18 drawn twice, about 700 m apart, inside one outline.
 club = bbox_with(greens(36) + holes(range(1, 19), 33.581) + holes(range(1, 19), 33.5875), ['Cholla', 'Saguaro'])
 assert club['osmGolf']['holesTwice'] == list(range(1, 19)), club['osmGolf']
 wk = load_course.early_reject(club)
 assert wk and wk['errorCode'] == 'multiple_courses' and '(Cholla, Saguaro)' in wk['errorMessage'], wk
+assert [c['name'] for c in wk['courseChoices']] == ['Cholla', 'Saguaro'], wk
 
 # A normal 18 and a complete 9: carry on.
 assert load_course.early_reject(bbox_with(greens(18) + holes(range(1, 19), 33.581))) is None

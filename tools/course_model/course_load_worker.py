@@ -304,7 +304,7 @@ def work(request: dict, key: str) -> None:
     report = load_course.load_one(
         job, on_stage=lambda name, index, count: patch(stage=name, stage_index=index, stage_count=count))
     summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'center', 'lidar', 'publishedBytes',
-                                           'mode', 'errorCode', 'errorMessage', 'osmCounts')}
+                                           'mode', 'errorCode', 'errorMessage', 'osmCounts', 'courseChoices')}
     if not report['ready']:
         failed = next((s for s in report['stages'] if not s['ok']), {})
         tail = readable_reason(failed.get('error') or [])

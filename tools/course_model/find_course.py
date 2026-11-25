@@ -131,24 +131,27 @@ def golf_counts(elements: list[dict], rings: list) -> dict:
             'holesNumbered': sorted(holes), 'holesTwice': twice}
 
 
-def sub_courses(best: dict, box: tuple[float, float, float, float]) -> list[str]:
-    """Other named golf courses whose middle sits inside this outline (Saguaro and Cholla inside
-    "We-Ko-Pa Golf Club"): the courses to offer when the outline holds more than one."""
-    s0, w0, n0, e0 = box
+def course_choices(best: dict, area: str, inside_only: bool, limit: int = 4) -> list[dict]:
+    """Other named golf courses to ask the player about when a load can't go ahead: the courses inside
+    this outline (Saguaro and Cholla inside "We-Ko-Pa Golf Club"), or the ones nearby when this outline
+    can't be built (Kenai). Each can be loaded straight from the site's "Your courses" question."""
     try:
-        found = overpass(f'[out:json][timeout:120];(way["leisure"="golf_course"]({s0},{w0},{n0},{e0});'
-                         f'relation["leisure"="golf_course"]({s0},{w0},{n0},{e0}););out center tags;')
-    except Exception as exc:  # noqa: BLE001 - names are a nicety, never a failure
-        print(f'sub-course lookup failed: {exc}', file=sys.stderr)
+        found = overpass(f'[out:json][timeout:120];(way["leisure"="golf_course"]{area};'
+                         f'relation["leisure"="golf_course"]{area};);out center tags;')
+    except Exception as exc:  # noqa: BLE001 - choices are a nicety, never a failure
+        print(f'course choices lookup failed: {exc}', file=sys.stderr)
         return []
-    names = []
+    choices, seen = [], set()
     for el in found.get('elements', []):
         c, name = el.get('center') or {}, (el.get('tags') or {}).get('name')
-        if not name or el.get('id') == best.get('id') or c.get('lon') is None:
+        if not name or el.get('id') == best.get('id') or c.get('lon') is None or name in seen:
             continue
-        if any(point_in_ring(c['lon'], c['lat'], ring) for ring in best['rings']):
-            names.append(name)
-    return sorted(set(names))
+        if inside_only and not any(point_in_ring(c['lon'], c['lat'], ring) for ring in best['rings']):
+            continue
+        seen.add(name)
+        choices.append({'name': name, 'osmType': el['type'], 'osmId': el['id'],
+                        'lat': round(c['lat'], 6), 'lon': round(c['lon'], 6)})
+    return sorted(choices, key=lambda ch: ch['name'])[:limit]
 
 
 def in_usgs_3dep_coverage(w: float, s: float, e: float, n: float) -> bool:
@@ -286,7 +289,10 @@ def main() -> int:
     counts = golf_counts(golf_elements, best['rings'])
     print(f"OpenStreetMap: {counts['greensNearby']} greens nearby, holes numbered {len(counts['holesNumbered'])}/18"
           f"{', mapped twice: ' + str(counts['holesTwice']) if counts['holesTwice'] else ''}")
-    others = sub_courses(best, (s0, w0, n0, e0)) if len(counts['holesTwice']) >= 9 else []
+    complete = counts['holesNumbered'] in (list(range(1, 19)), list(range(1, 10)))
+    others = course_choices(best, f'({s0},{w0},{n0},{e0})', inside_only=True) if len(counts['holesTwice']) >= 9 \
+        else course_choices(best, f'(around:8000,{args.lat},{args.lon})', inside_only=False) \
+        if not complete and counts['greensNearby'] < 18 else []
     for el in golf_elements:
         for p in el.get('geometry') or []:
             lons.append(p['lon'])
@@ -376,7 +382,7 @@ def main() -> int:
                 'candidates': hits[:8]},
         'demProvider': provider,
         'osmGolf': counts,
-        **({'subCourses': others} if others else {}),
+        **({'courseChoices': others} if others else {}),
         **({'hrdem': hrdem} if hrdem else {}),
         **({'linz': linz} if linz else {}),
     }
