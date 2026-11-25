@@ -532,6 +532,26 @@
   color: #9da99f;
 }
 
+/* The close call: the next club is as good, so the headline says so. */
+.live-close-call-tag {
+  display: block;
+  width: fit-content;
+  margin-top: 10px;
+  padding: 3px 10px;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  border-radius: 999px;
+  color: #f5d06a;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.live-close-call .live-safe-pick-label {
+  color: #f5d06a;
+}
+
 .live-outcomes-card,
 .live-compare-card {
   border-radius: 14px;

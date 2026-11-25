@@ -97,6 +97,7 @@ import {
   buildAimDescriptor,
 } from '../liveCaddie/aimDescriptor'
 import { describeMathPick, describeSafeAlternative, pickSafeAlternative } from '../liveCaddie/safeAlternative'
+import { describeCloseCall, describeCloseCallPick, pickCloseCall } from '../liveCaddie/closeCall'
 import { pickAimLineOptions } from '../liveCaddie/aimLineOptions'
 import type { ClubAimEvaluation } from '../liveCaddie/aimOptimization'
 import {
@@ -1644,6 +1645,10 @@ export default function LiveCaddiePage() {
   const safePick = useMemo(() => (isShotStrategy || evaluations.length === 0 ? null : pickSafeAlternative(evaluations)), [evaluations, isShotStrategy])
   const safePickChosen = safePick != null && viewedEvaluation?.club === safePick.club
     && inspectedCandidate?.aimOffsetYds === safePick.candidate.aimOffsetYds
+  // The close call: the next club is as good within a few hundredths of a stroke (Tobacco Road 14:
+  // 7i over 8i by 0.01). Shares the slot with the safe play; display only.
+  const closeCall = useMemo(() => (isShotStrategy || evaluations.length === 0 ? null : pickCloseCall(evaluations, safePick)), [evaluations, isShotStrategy, safePick])
+  const closeCallChosen = closeCall != null && viewedEvaluation?.club === closeCall.club
   // Green read (steepness, tilt, tiers, spines). Shown only when this shot can
   // actually get to the green: the expected finish reaches the front of the
   // green, or comes up no more than ~20 yd short. Tee shots on par 4s and 5s
@@ -2815,6 +2820,11 @@ export default function LiveCaddiePage() {
                   <div className="live-club-hero">{isShotStrategy && shotStrategy
                     ? `PLAY ${Math.round(shotStrategy.effectiveDistanceYds)} YDS`
                     : displayedClub ?? '—'}
+                    {closeCall && !isShotStrategy && (displayedClub === closeCall.club || displayedClub === closeCall.pick.club) ? (
+                      <span className="live-close-call-tag" title={`${closeCall.pick.club} and ${closeCall.club} are within ${closeCall.gapStrokes < 0.005 ? 'a hundredth' : `${closeCall.gapStrokes.toFixed(2)}`} of a stroke. A couple of yards either way would flip it.`}>
+                        Close call · {closeCall.pick.club} or {closeCall.club}
+                      </span>
+                    ) : null}
                     {/* 40 to 90 yd: PLAY is the carry to the target; the window is where it can land and be on the green. */}
                     {isShotStrategy && shotStrategy?.carryWindow ? (
                       <span className="live-carry-window">
@@ -2983,6 +2993,40 @@ export default function LiveCaddiePage() {
                             <strong>{safePick.club}</strong>{safeAimText ? ` · ${safeAimText.replace(/^Aim\s+/i, 'aim ')}` : ''}
                           </span>
                           <span className="live-safe-pick-why">{describeSafeAlternative(safePick)}</span>
+                        </>
+                      )}
+                    </button>
+                  ) : null}
+                  {closeCall && !safePick && !armedHere && !chipLab ? (
+                    // Same slot as the safe play: before the tap it offers the other club; after, the way back.
+                    <button
+                      type="button"
+                      className={`live-safe-pick live-close-call${closeCallChosen ? ' is-chosen' : ''}`}
+                      aria-pressed={closeCallChosen}
+                      title={closeCallChosen
+                        ? `Back to ${closeCall.pick.club}, Looper\u2019s pick by a hair.`
+                        : `${closeCall.club} instead of ${closeCall.pick.club}. Tap to switch the card to it, then arm as usual.`}
+                      onClick={() => {
+                        if (closeCallChosen) {
+                          setPreviewClub(null)
+                          setInspectedAimOffset(null)
+                          return
+                        }
+                        pickClub(closeCall.club)
+                        setInspectedAimOffset(closeCall.candidate.aimOffsetYds)
+                      }}
+                    >
+                      {closeCallChosen ? (
+                        <>
+                          <span className="live-safe-pick-label">Showing the close call</span>
+                          <span className="live-safe-pick-what">Back to <strong>{closeCall.pick.club}</strong></span>
+                          <span className="live-safe-pick-why">Looper’s pick by a hair{describeCloseCallPick(closeCall) ? ` · ${describeCloseCallPick(closeCall)}` : ''}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="live-safe-pick-label">Close call</span>
+                          <span className="live-safe-pick-what"><strong>{closeCall.club}</strong></span>
+                          <span className="live-safe-pick-why">{describeCloseCall(closeCall)}</span>
                         </>
                       )}
                     </button>
