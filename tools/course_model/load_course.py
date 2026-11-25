@@ -59,6 +59,46 @@ def holes_not_mapped(errors: list[str] | None) -> bool:
     return any(marker in text for marker in HOLES_NOT_MAPPED)
 
 
+#: The importer's message when hole numbers repeat in different places: two courses in one outline.
+HOLES_TWICE = 'holes mapped twice in different places: ['
+
+
+def holes_mapped_twice(errors: list[str] | None) -> list[int]:
+    text = ' '.join(errors or [])
+    start = text.find(HOLES_TWICE)
+    if start < 0:
+        return []
+    inner = text[start + len(HOLES_TWICE):].split(']', 1)[0]
+    return [int(n) for n in re.findall(r'\d+', inner)]
+
+
+def multiple_courses_message(names: list[str]) -> str:
+    which = f" ({', '.join(names)})" if names else ''
+    return (f'This outline holds more than one course{which}: each hole number is mapped twice. '
+            'Search for the one course you play and load that.')
+
+
+def early_reject(bbox: dict) -> dict | None:
+    """Stop in seconds what would fail after minutes, with a reason code the site turns into plain words.
+    Uses the counts find_course.py wrote; returns None to carry on."""
+    counts = bbox.get('osmGolf')
+    if not counts:
+        return None
+    numbered, twice = counts.get('holesNumbered') or [], counts.get('holesTwice') or []
+    greens = counts.get('greensNearby') or 0
+    if len(twice) >= 9:
+        return {'errorCode': 'multiple_courses', 'errorMessage': multiple_courses_message(bbox.get('subCourses') or []),
+                'osmCounts': counts}
+    complete = numbered == list(range(1, 19)) or numbered == list(range(1, 10))
+    # Without every hole numbered the course can only load as a map area, which needs all 18 greens.
+    if not complete and greens < 18:
+        holes = f'{len(numbered)} of its holes' if numbered else 'none of its holes'
+        return {'errorCode': 'holes_not_mapped', 'osmCounts': counts,
+                'errorMessage': f"OpenStreetMap only has {greens} of this course's 18 greens and {holes}, "
+                                "so the map can't be built yet."}
+    return None
+
+
 class Load:
     def __init__(self, slug: str, report_dir: Path, on_stage=None):
         self.on_stage = on_stage
@@ -182,6 +222,13 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
     extra['center'] = {'lat': round((s_ + n) / 2, 6), 'lon': round((w + e) / 2, 6)}
     extra['lidar'] = bbox['ept'].get('chosen')
     extra['crs'] = bbox['crs']
+    if bbox.get('osmGolf'):
+        extra['osmCounts'] = bbox['osmGolf']
+    rejected = early_reject(bbox)
+    if rejected:
+        extra.update(rejected)
+        load.note('check', False, 0, error=[rejected['errorMessage']])
+        return load.finish(request, extra)
 
     t0 = time.time()
     config_path = write_config(slug, request, bbox)
@@ -205,6 +252,11 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
                                             '--config', str(config_path.relative_to(ROOT)), '--slug', slug,
                                             '--reason', 'one-click-course-load'):
         failed = load.stages[-1]
+        twice = holes_mapped_twice(failed.get('error'))
+        if len(twice) >= 9:
+            # Two courses in one outline: never package the whole club as a map (We-Ko-Pa, 24 Nov).
+            extra.update({'errorCode': 'multiple_courses', 'errorMessage': multiple_courses_message(bbox.get('subCourses') or [])})
+            return load.finish(request, extra)
         if not holes_not_mapped(failed.get('error')):
             return load.finish(request, extra)
         load.stages[-1] = {'stage': 'import', 'ok': True, 'seconds': failed['seconds'], 'mode': 'area',
@@ -258,6 +310,11 @@ def load_one(request: dict, *, skip_import: bool = False, on_stage=None) -> dict
         load.stage('validate', py, str(HERE / 'validate_package.py'), '--report', str(report_path), *map(str, built))
         if report_path.exists():
             extra['validation'] = json.loads(report_path.read_text())
+        too_few = re.search(r'area has (\d+) greens', ' '.join(load.stages[-1].get('error') or []))
+        if not load.stages[-1]['ok'] and too_few:
+            extra.update({'errorCode': 'greens_not_mapped',
+                          'errorMessage': f"OpenStreetMap only has {too_few.group(1)} of this course's 18 greens "
+                                          "and none of its holes, so the map can't be built yet."})
     for name in ('lidar-stats.json', 'trees-summary.json'):
         if (model / name).exists():
             extra[name.replace('.json', '')] = json.loads((model / name).read_text())

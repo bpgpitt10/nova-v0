@@ -15,6 +15,7 @@ import {
   listCourseLoads,
   refreshGsproLinks,
   refreshLoadedCourses,
+  loadOutcome,
   loadSavedGsproLibrary,
   saveGsproLibrary,
   minutesLeft,
@@ -162,7 +163,8 @@ const statusText = (row: CourseLoadRow) => {
     const step = row.stage_index && row.stage_count ? `Step ${row.stage_index} of ${row.stage_count}: ` : ''
     return `${step}${STAGE_LABELS[row.stage ?? ''] ?? 'Loading'} · ~${minutesLeft(row)} min left`
   }
-  if (row.status === 'ready') return 'Ready to play'
+  const outcome = loadOutcome(row)
+  if (row.status === 'ready' || row.error_code) return outcome.label
   return "Didn't load" + (row.error ? `: ${row.error}` : '')
 }
 
@@ -447,10 +449,14 @@ export default function LoadCoursePage() {
     if (slugs.has(slug)) return <span className="load-course-ready">Ready to play</span>
     const row = latestFor(slug)
     if (row && ACTIVE.has(row.status)) return <span className="load-course-progress">{statusText(row)}</span>
-    if (row?.status === 'ready') return <span className="load-course-ready">{statusText(row)}</span>
+    if (row?.status === 'ready') return <span className="load-course-ready" title={loadOutcome(row).detail ?? undefined}>{statusText(row)}</span>
+    // A course OpenStreetMap can't supply yet: trying again won't help until someone maps it.
+    if (row?.status === 'failed' && loadOutcome(row).basicCaddie) {
+      return <span className="load-course-failed" title={loadOutcome(row).detail ?? undefined}>{loadOutcome(row).label}</span>
+    }
     return (
       <span className="load-course-actions">
-        {row?.status === 'failed' ? <span className="load-course-failed" title={row.error ?? undefined}>Didn't load</span> : null}
+        {row?.status === 'failed' ? <span className="load-course-failed" title={row.error ?? undefined}>{row.error_code ? loadOutcome(row).label : "Didn't load"}</span> : null}
         <button type="button" disabled={busyKey !== null} onClick={onLoad}>
           {busyKey === key ? 'Starting…' : row?.status === 'failed' ? 'Try again' : label}
         </button>
@@ -676,6 +682,7 @@ export default function LoadCoursePage() {
                 <div>
                   <strong>{row.course_name}</strong>
                   <span>{row.location ?? ''}</span>
+                  {loadOutcome(row).detail && !ACTIVE.has(row.status) ? <span className="load-course-outcome">{loadOutcome(row).detail}</span> : null}
                 </div>
                 <span className={row.status === 'failed' ? 'load-course-failed' : row.status === 'ready' ? 'load-course-ready' : 'load-course-progress'}>
                   {statusText(row)}

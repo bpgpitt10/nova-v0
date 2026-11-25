@@ -401,3 +401,12 @@
   border-radius: 8px;
   background: rgba(234, 179, 8, 0.06);
 }
+
+/* What a finished load came to, in plain words (map area, not fully mapped, more than one course). */
+.load-course-outcome {
+  display: block;
+  margin-top: 2px;
+  color: rgba(231, 236, 230, 0.62);
+  font-size: 12px;
+  line-height: 1.4;
+}
