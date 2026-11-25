@@ -12,7 +12,7 @@ import type {
 } from '../courseGeometry/types'
 import type { SavedSession } from '../types'
 import { buildAirAltitudeAdjustment } from './airAltitudeAdjustment'
-import { clubEligibleForShot, resolveShotOriginEligibility, type ShotOriginEligibility } from './clubShotEligibility'
+import { clubEligibleForShot, clubRecommendableFromLie, resolveShotOriginEligibility, type ShotOriginEligibility } from './clubShotEligibility'
 import {
   rankRiskAwareAimCandidates,
   rankRiskAwareClubChoices,
@@ -183,6 +183,8 @@ export type AimCandidateEvaluation = {
 }
 
 export type ClubAimEvaluation = {
+  /** False for a wood from sand or deep rough: evaluated (an armed wood keeps its numbers) but never ranked. */
+  recommendable?: boolean
   club: string
   variant: 'Stock'
   stockCarryYds: number
@@ -876,10 +878,13 @@ export const evaluateAimLab = (
       withinCatastropheGuardrail: null,
       decisionReason: null,
       notes,
+      recommendable: clubRecommendableFromLie(profile.club, ballSurface),
     }
   })
 
-  const rankedClubs = rankRiskAwareClubChoices(evaluations)
+  // Woods from sand or deep rough are never ranked (Brian, 25 Nov), so they can't be the pick.
+  const unranked = evaluations.filter((evaluation) => evaluation.recommendable === false)
+  const rankedClubs = rankRiskAwareClubChoices(evaluations.filter((evaluation) => evaluation.recommendable !== false))
   rankedClubs.forEach((ranked) => {
     ranked.evaluation.decisionRank = ranked.rank
     ranked.evaluation.targetFit = ranked.targetFit
@@ -895,5 +900,5 @@ export const evaluateAimLab = (
     }
   })
 
-  return rankedClubs.map((ranked) => ranked.evaluation)
+  return [...rankedClubs.map((ranked) => ranked.evaluation), ...unranked]
 }

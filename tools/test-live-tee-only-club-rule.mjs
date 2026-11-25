@@ -49,11 +49,25 @@ try {
   assert.ok(inDeepRough.length>0,'non-tee still has club recommendations')
   assert.ok(inDeepRough.every(x=>x.club!=='Driver'&&x.club!=='Mini Driver'),
     'NEVER rank either tee-only club off the tee, even near a tee OSM polygon')
-  assert.ok(inDeepRough.some(x=>x.club==='3W'),'regular fairway wood still available')
+  // A fairway wood from deep rough or sand keeps its numbers (the player may arm it) but is never ranked,
+  // so it can never be Looper's pick (Brian, 25 Nov).
+  const deep3W=inDeepRough.find(x=>x.club==='3W')
+  assert.ok(deep3W && deep3W.recommendable===false && deep3W.decisionRank==null,'3W from deep rough: evaluated, not ranked')
+  assert.notEqual(inDeepRough[0].club,'3W','3W is never the pick from deep rough')
+  const inSand=evaluateAimLab(sessions,hole,tee,target,{shotOrigin:'non-tee',surfaceOverride:'sand'},now)
+  assert.ok(inSand[0].club!=='3W' && inSand.find(x=>x.club==='3W')?.decisionRank==null,'3W is never the pick from sand')
+  const inRough=evaluateAimLab(sessions,hole,tee,target,{shotOrigin:'non-tee',surfaceOverride:'rough'},now)
+  assert.ok(inRough.find(x=>x.club==='3W')?.decisionRank!=null,'regular fairway wood still ranked from rough')
+  const {isWoodClub,clubRecommendableFromLie}=await vite.ssrLoadModule('/src/liveCaddie/clubShotEligibility.ts')
+  for (const club of ['3W','5W','7W','Driver','Mini Driver','5 wood']) assert.equal(isWoodClub(club),true,club)
+  for (const club of ['3H','4i','PW','LW']) assert.equal(isWoodClub(club),false,club)
+  assert.equal(clubRecommendableFromLie('5W','TVGsand'),false)
+  assert.equal(clubRecommendableFromLie('3H','sand'),true,'hybrids stay allowed')
+  assert.equal(clubRecommendableFromLie('3W','fairway'),true)
   const unknown=evaluateAimLab(sessions,hole,tee,target,{
     shotOrigin:'unknown',surfaceOverride:'tee',
   },now)
   assert.ok(unknown.every(x=>x.club!=='Driver'&&x.club!=='Mini Driver'),
     'unknown GSPro shot state is not permission for a tee-only club')
-  console.log('PASS: actual full club evaluator excludes Driver+Mini Driver for non-tee/unknown and preserves tee and fairway wood.')
+  console.log('PASS: actual full club evaluator excludes Driver+Mini Driver for non-tee/unknown, never ranks woods from sand or deep rough, and keeps the fairway wood elsewhere.')
 } finally {await vite.close()}
