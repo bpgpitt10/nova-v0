@@ -1,0 +1,10 @@
+name: diag hole elevation (temporary)
+on:
+  push:
+    branches: [diag-tobacco-road-14]
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/diag_hole_elevation.py tobacco-road 14 tee:17.24:27.01 pin:10.3:184.4 ball2:-7.35:163.44
