@@ -69,14 +69,19 @@ try {
     club('5i', 1, 170, cand(0, 0.02, 0.1, 2.9)),
     club('4H', 2, 180, cand(0, 0.02, 0.1, 2.91), { decisionReason: 'cold-start: too few shots' }),
   ]), null)
-  // 5. Same trouble both ways: the line only says where each lands.
+  // 5. Close but nothing to trade (Driver vs 3W off a wide tee, same trouble): not worth the space.
+  assert.equal(pickCloseCall([
+    club('Driver', 1, 250, cand(0, 0.01, 0.10, 3.40)),
+    club('3W', 2, 232, cand(0, 0.01, 0.12, 3.42)),
+  ]), null, 'a close call must trade some trouble')
+  // 6. Trading sand (not water): the line names sand.
   {
     const close = pickCloseCall([
-      club('9i', 1, 150, cand(0, 0.01, 0.10, 2.40)),
-      club('8i', 2, 160.4, cand(0, 0.01, 0.11, 2.42)),
+      club('9i', 1, 150, cand(0, 0.01, 0.06, 2.40)),
+      club('8i', 2, 160.4, cand(0, 0.01, 0.16, 2.42)),
     ])
-    assert.equal(describeCloseCall(close), 'just as good (0.02 strokes behind) · lands 3 past')
-    assert.equal(describeCloseCallPick(close), 'lands 8 short')
+    assert.equal(describeCloseCall(close), 'just as good (0.02 strokes behind) · lands 3 past · more sand or deep rough (1 in 6 vs 1 in 17)')
+    assert.equal(describeCloseCallPick(close), 'lands 8 short · less sand or deep rough (1 in 17 vs 1 in 6)')
   }
 
   console.log('close call: ok')

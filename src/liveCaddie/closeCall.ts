@@ -11,6 +11,12 @@ import { oneIn, type SafeAlternative } from './safeAlternative'
  * safe play says it. Display only: the ranking is unchanged.
  */
 export const CLOSE_CALL_MAX_GAP_STROKES = 0.05
+/**
+ * ... and the two must really trade something: trouble odds this far apart. Without it, 57% of the
+ * last two weeks' decisions were "close" (Driver vs 3W off a wide tee, both fine); with it, only the
+ * ones like Tobacco Road 14, where the choice is short-with-the-bunker or long-and-safe.
+ */
+export const CLOSE_CALL_MIN_RISK_GAP = 0.05
 /** A difference in trouble this small isn't worth naming. */
 const RISK_NAME_MIN = 0.02
 
@@ -49,7 +55,7 @@ const side = (evaluation: ClubAimEvaluation): CloseCallSide | null => {
 
 /**
  * The close call, or null: the pick is clear, the runner-up is the same club,
- * or the safe play already offers that club. `evaluations` must be ranked
+ * the two don't really trade anything, or the safe play already offers that club. `evaluations` must be ranked
  * (decisionRank 1 = the pick).
  */
 export const pickCloseCall = (
@@ -68,6 +74,8 @@ export const pickCloseCall = (
   if (!pick || !other) return null
   const gap = other.expectedFutureStrokes - pick.expectedFutureStrokes
   if (!(gap >= -1e-9 && gap <= maxGapStrokes)) return null
+  const riskGap = Math.max(Math.abs(other.catastrophe - pick.catastrophe), Math.abs(other.seriousTrouble - pick.seriousTrouble))
+  if (riskGap < CLOSE_CALL_MIN_RISK_GAP) return null
   return { club: other.club, evaluation: otherEvaluation, candidate: other.candidate, gapStrokes: Math.max(0, gap), pick, other }
 }
 
