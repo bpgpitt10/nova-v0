@@ -303,12 +303,14 @@ def work(request: dict, key: str) -> None:
     }
     report = load_course.load_one(
         job, on_stage=lambda name, index, count: patch(stage=name, stage_index=index, stage_count=count))
-    summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'center', 'lidar', 'publishedBytes', 'mode')}
+    summary = {k: report.get(k) for k in ('ready', 'totalSeconds', 'stages', 'osmCourse', 'center', 'lidar', 'publishedBytes',
+                                           'mode', 'errorCode', 'errorMessage', 'osmCounts', 'courseChoices')}
     if not report['ready']:
         failed = next((s for s in report['stages'] if not s['ok']), {})
         tail = readable_reason(failed.get('error') or [])
+        # A known reason reads as plain words on the site; anything else keeps the stage and its error.
         patch(status='failed', finished_at=now(), report=summary,
-              error=f"{failed.get('stage', 'load')} failed: {tail or 'see run log'}")
+              error=report.get('errorMessage') or f"{failed.get('stage', 'load')} failed: {tail or 'see run log'}")
         return
     patch(status='publishing', stage='publish', report=summary)
     if report.get('mode') == 'area':

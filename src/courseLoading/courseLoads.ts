@@ -33,6 +33,56 @@ export type CourseLoadRow = {
   started_at: string | null
   finished_at: string | null
   error: string | null
+  /** From the load report: 'area' when it loaded as a map area (OpenStreetMap doesn't number the holes). */
+  mode?: string | null
+  /** From the load report: why it couldn't load, in a form the site can put in plain words. */
+  error_code?: string | null
+  /** From the load report: the courses to ask about when it couldn't go ahead (inside the outline, or nearby). */
+  course_choices?: readonly CourseChoice[] | null
+}
+
+/** A course on OpenStreetMap the player may have meant: loadable as it stands. */
+export type CourseChoice = Readonly<{ name: string; osmType: 'way' | 'relation'; osmId: number; lat: number; lon: number }>
+
+export type LoadOutcome = Readonly<{
+  /** Short chip text. */
+  label: string
+  tone: 'ok' | 'note' | 'bad' | 'progress'
+  /** One or two sentences for the person who asked for it, or null. */
+  detail: string | null
+  /** The course can still be played with what GSPro knows (no Looper map). */
+  basicCaddie: boolean
+}>
+
+/** What a load came to, in plain words (24 Nov: Kenai showed the validator's text after 12 minutes). */
+export const loadOutcome = (row: Pick<CourseLoadRow, 'status' | 'error' | 'mode' | 'error_code'>): LoadOutcome => {
+  if (row.status === 'queued' || row.status === 'running' || row.status === 'publishing') {
+    return { label: 'Loading', tone: 'progress', detail: null, basicCaddie: false }
+  }
+  if (row.status === 'ready') {
+    return row.mode === 'area'
+      ? { label: 'Ready · map area', tone: 'ok', basicCaddie: false,
+        detail: "OpenStreetMap doesn't number this course's holes, so The Looper places GSPro's own holes on the map." }
+      : { label: 'Ready to play', tone: 'ok', detail: null, basicCaddie: false }
+  }
+  // Loads from before the reason codes (Kenai, 24 Nov): read the validator's own words.
+  const tooFewGreens = !row.error_code ? row.error?.match(/area has (\d+) greens/) : null
+  if (tooFewGreens) {
+    return loadOutcome({ ...row, error_code: 'greens_not_mapped',
+      error: `OpenStreetMap only has ${tooFewGreens[1]} of this course's 18 greens and none of its holes, so the map can't be built yet.` })
+  }
+  switch (row.error_code) {
+    case 'holes_not_mapped':
+    case 'greens_not_mapped':
+      return { label: "Can't load yet · not fully mapped", tone: 'bad', basicCaddie: true,
+        detail: `${row.error ?? "OpenStreetMap doesn't have this course's holes and greens yet."} `
+          + 'You can still play it with the basic caddie: yardages and club picks from what GSPro knows.' }
+    case 'multiple_courses':
+      return { label: 'More than one course here', tone: 'note', basicCaddie: false,
+        detail: row.error ?? 'This outline holds more than one course. Search for the one you play and load that.' }
+    default:
+      return { label: "Didn't load", tone: 'bad', detail: row.error, basicCaddie: false }
+  }
 }
 
 export type GolfCourseSearchResult = Readonly<{
@@ -88,7 +138,7 @@ export const listCourseLoads = async (): Promise<CourseLoadRow[]> => {
   const client = await getSupabaseClient()
   const { data, error } = await client
     .from<CourseLoadRow[]>('course_load_requests')
-    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error')
+    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error, mode:report->>mode, error_code:report->>errorCode, course_choices:report->courseChoices')
     .order('created_at', { ascending: false })
     .limit(40)
   if (error) throw new Error(error.message)

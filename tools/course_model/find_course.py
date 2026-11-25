@@ -97,6 +97,63 @@ def bbox_intersects_polygon(bbox: tuple, geom: dict) -> bool:
     return False
 
 
+def golf_counts(elements: list[dict], rings: list) -> dict:
+    """What OpenStreetMap has for this course, before minutes of loading (Kenai, 24 Nov: 16 greens and
+    no holes failed after 12 minutes; We-Ko-Pa: two 18s in one outline loaded as a map with no holes).
+
+    greensNearby   greens within 600 m of the outline (an upper bound: a neighbour's greens count too)
+    holesNumbered  hole numbers 1-18 with a hole line inside the outline
+    holesTwice     hole numbers mapped twice inside the outline more than 150 m apart (two courses)
+    """
+    def centre(el: dict) -> tuple[float, float] | None:
+        pts = el.get('geometry') or []
+        return (sum(p['lon'] for p in pts) / len(pts), sum(p['lat'] for p in pts) / len(pts)) if pts else None
+
+    def inside(pt: tuple[float, float] | None) -> bool:
+        return pt is not None and any(point_in_ring(pt[0], pt[1], ring) for ring in rings)
+
+    greens = [el for el in elements if (el.get('tags') or {}).get('golf') == 'green']
+    holes: dict[int, list[tuple[float, float]]] = {}
+    for el in elements:
+        tags = el.get('tags') or {}
+        ref = str(tags.get('ref') or '').strip()
+        pt = centre(el)
+        if tags.get('golf') == 'hole' and ref.isdigit() and 1 <= int(ref) <= 18 and inside(pt):
+            holes.setdefault(int(ref), []).append(pt)
+
+    def apart_m(a: tuple[float, float], b: tuple[float, float]) -> float:
+        k = 111_320.0 * math.cos(math.radians((a[1] + b[1]) / 2))
+        return math.hypot((a[0] - b[0]) * k, (a[1] - b[1]) * 110_540.0)
+
+    twice = sorted(n for n, pts in holes.items()
+                   if any(apart_m(a, b) > 150 for i, a in enumerate(pts) for b in pts[i + 1:]))
+    return {'greensNearby': len(greens), 'greensInside': sum(1 for el in greens if inside(centre(el))),
+            'holesNumbered': sorted(holes), 'holesTwice': twice}
+
+
+def course_choices(best: dict, area: str, inside_only: bool, limit: int = 4) -> list[dict]:
+    """Other named golf courses to ask the player about when a load can't go ahead: the courses inside
+    this outline (Saguaro and Cholla inside "We-Ko-Pa Golf Club"), or the ones nearby when this outline
+    can't be built (Kenai). Each can be loaded straight from the site's "Your courses" question."""
+    try:
+        found = overpass(f'[out:json][timeout:120];(way["leisure"="golf_course"]{area};'
+                         f'relation["leisure"="golf_course"]{area};);out center tags;')
+    except Exception as exc:  # noqa: BLE001 - choices are a nicety, never a failure
+        print(f'course choices lookup failed: {exc}', file=sys.stderr)
+        return []
+    choices, seen = [], set()
+    for el in found.get('elements', []):
+        c, name = el.get('center') or {}, (el.get('tags') or {}).get('name')
+        if not name or el.get('id') == best.get('id') or c.get('lon') is None or name in seen:
+            continue
+        if inside_only and not any(point_in_ring(c['lon'], c['lat'], ring) for ring in best['rings']):
+            continue
+        seen.add(name)
+        choices.append({'name': name, 'osmType': el['type'], 'osmId': el['id'],
+                        'lat': round(c['lat'], 6), 'lon': round(c['lon'], 6)})
+    return sorted(choices, key=lambda ch: ch['name'])[:limit]
+
+
 def in_usgs_3dep_coverage(w: float, s: float, e: float, n: float) -> bool:
     """USGS 3DEP's bare-earth service covers the US (lower 48, Alaska,
     Hawaii, Puerto Rico); a box test is enough to pick it over Copernicus."""
@@ -228,7 +285,15 @@ def main() -> int:
     golf_q = (f'[out:json][timeout:180];way["golf"~"^(hole|fairway|green|tee|bunker|rough|water_hazard|lateral_water_hazard)$"]'
               f'({s0},{w0},{n0},{e0});out geom;')
     grown = 0
-    for el in overpass(golf_q).get('elements', []):
+    golf_elements = overpass(golf_q).get('elements', [])
+    counts = golf_counts(golf_elements, best['rings'])
+    print(f"OpenStreetMap: {counts['greensNearby']} greens nearby, holes numbered {len(counts['holesNumbered'])}/18"
+          f"{', mapped twice: ' + str(counts['holesTwice']) if counts['holesTwice'] else ''}")
+    complete = counts['holesNumbered'] in (list(range(1, 19)), list(range(1, 10)))
+    others = course_choices(best, f'({s0},{w0},{n0},{e0})', inside_only=True) if len(counts['holesTwice']) >= 9 \
+        else course_choices(best, f'(around:8000,{args.lat},{args.lon})', inside_only=False) \
+        if not complete and counts['greensNearby'] < 18 else []
+    for el in golf_elements:
         for p in el.get('geometry') or []:
             lons.append(p['lon'])
             lats.append(p['lat'])
@@ -316,6 +381,8 @@ def main() -> int:
                 'rule': 'newest year in dataset name, then most points',
                 'candidates': hits[:8]},
         'demProvider': provider,
+        'osmGolf': counts,
+        **({'courseChoices': others} if others else {}),
         **({'hrdem': hrdem} if hrdem else {}),
         **({'linz': linz} if linz else {}),
     }
