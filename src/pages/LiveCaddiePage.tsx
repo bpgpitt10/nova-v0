@@ -64,6 +64,7 @@ import {
   type LiveCaddieStartRoundDetail,
 } from '../liveCaddie/roundRuntime'
 import { fairwayRollModelOn } from '../liveCaddie/roundConditions'
+import { loadPlayerShortGame, type PlayerShortGame } from '../liveCaddie/playerShortGame'
 import { useGsproRoundConditions } from '../liveCaddie/useGsproRoundConditions'
 import {
   firstTeeCaptureKey,
@@ -395,6 +396,13 @@ export default function LiveCaddiePage() {
   const [armedClub, setArmedClub] = useState<string | null>(null)
   const [chipLabOn] = useState(() => isChipLabEnabled())
   const [armedChip, setArmedChip] = useState<{ shot: string; type: ChipType } | null>(null)
+  // The player's own chips and part wedges (launch and spin per flight), from their rounds.
+  const [playerShortGame, setPlayerShortGame] = useState<PlayerShortGame | null>(null)
+  useEffect(() => {
+    let alive = true
+    void loadPlayerShortGame().then((fit) => { if (alive) setPlayerShortGame(fit) })
+    return () => { alive = false }
+  }, [])
   const [chipAim, setChipAim] = useState<{ shot: string; type: ChipType; state: ChipAimState; message: string } | null>(null)
   // Clicking a club only previews it; Arm commits (fills, then aims in GSPro).
   const [previewClub, setPreviewClub] = useState<string | null>(null)
@@ -1303,6 +1311,7 @@ export default function LiveCaddiePage() {
           (carry) => ({ surface: surfaceAt(carry), gradeToHole: gradeToHole(carry), sideTrouble: sideTrouble(carry), riseFt: sizeForHeight ? landingRiseFt(carry) : null }),
           {
             green, fairway, fromRough, fromSand: chipFromSand, lieUpDownDeg: chipLieUpDownDeg,
+            player: playerShortGame?.[family] ?? null,
             ...(family === 'wedge' ? { flightTrees: flightTreesFor(hole, ball, pinEstimate) } : {}),
           },
           greenStarts == null ? null : chipDistanceYds - greenStarts,

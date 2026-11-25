@@ -119,6 +119,50 @@ try {
     for (const o of edge) assert.ok(Math.abs(near.flight.carryYds + near.runYds - 8) <= Math.abs(o.flight.carryYds + o.runYds - 8) + 1e-9)
   }
   assert.equal(defaultChip([], 8), null)
+
+  // The player's own flights (24 Nov, 3s Greenville 7: armed Chip, swung his usual 25 deg pitch).
+  const { fitPlayerShortGame, nearestFlight } = await server.ssrLoadModule('/src/liveCaddie/playerShortGame.ts')
+  assert.equal(nearestFlight('chip', 25.2), 'pitch')
+  assert.equal(nearestFlight('chip', 23.9), 'chip')
+  assert.equal(nearestFlight('wedge', 29), 'standard')
+  let n = 0
+  const swing = (mph, launch, rpm, surface = 2, round = 'r') => ({ roundKey: round, shotKey: `${round}|${n += 1}`, startSurface: surface, ballSpeedMph: mph, launchDeg: launch, spinRpm: rpm })
+  const pitches = Array.from({ length: 20 }, (_, i) => swing(16.0371 + i * 0.4, 27.013 + (i % 5), (16.0371 + i * 0.4) * 140))
+  const flops = Array.from({ length: 4 }, (_, i) => swing(18.0213 + i, 36.071 + i, (18.0213 + i) * 120))
+  // A lab shot fired three times (identical to the last digit), one typed in once (tenths only, saved
+  // as single-precision floats), a shot off the tee and a putt: all left out.
+  const lab = [swing(37.8, 27.7, 10856), swing(37.8, 27.7, 10856), swing(37.8, 27.7, 10856), swing(18.399999618530273, 29.0, 2300),
+    // Not on tenths, but the same numbers turn up in another round: a lab shot fired again.
+    swing(21.0371, 30.013, 2611, 2, 'r'), swing(21.0371, 30.013, 2611, 2, 'other')]
+  // The same shot saved twice in its round (once as itself, once copied onto the next shot) counts once.
+  const fit = fitPlayerShortGame([...pitches, ...flops, ...lab, swing(20, 20, 1500, 18), swing(6, 0, 0, 5), { ...pitches[0], shotKey: 'copy' }])
+  assert.equal(fit.chip.total, 24, 'lab shots, tee shots and repeats are dropped')
+  assert.ok(Math.abs(fit.chip.byType.pitch.launchDeg - 29.013) < 0.01)
+  assert.ok(Math.abs(fit.chip.byType.pitch.spinPerMph - 140) < 0.01)
+  assert.equal(fit.chip.byType.flop, undefined, 'four flops is not enough to replace the stock flop')
+  assert.deepEqual([...fit.chip.rarely].sort(), ['bump', 'chip'])
+  assert.equal(fit.wedge.total, 0)
+  assert.deepEqual(fit.wedge.rarely, [])
+  // Rough spin is after GSPro's penalty: launch counts, spin doesn't.
+  const roughOnly = fitPlayerShortGame(Array.from({ length: 8 }, (_, i) => swing(20.013 + i, 28.031, 1500 + i, 1)))
+  assert.ok(roughOnly.chip.byType.pitch && roughOnly.chip.byType.pitch.spinPerMph === null)
+
+  // Same open green as above: GSPro's stock Chip is Looper's pick; for this player it's his Pitch,
+  // at his launch, and the chip is marked as one he rarely hits.
+  const mine = byType(chipOptions(18, line(4, 'fairway', 0.015), { ...setting, player: fit.chip }, 14))
+  assert.equal(open.chip.verdict, 'good')
+  assert.equal(mine.pitch.verdict, 'good')
+  assert.equal(mine.pitch.launchDeg, 29)
+  assert.ok(mine.pitch.ownFlight && !mine.chip.ownFlight && mine.chip.rarelyHit)
+  assert.match(mine.chip.reason ?? '', /rarely hit/)
+  for (const o of Object.values(mine)) assert.ok(Math.abs(o.flight.carryYds + o.runYds - 18) < 0.3, `${o.type} sized to 18 for the player`)
+  // More spin per mph than GSPro's stock pitch (about 125): a little less run, so a longer carry.
+  assert.ok(mine.pitch.flight.carryYds > open.pitch.flight.carryYds, `${mine.pitch.flight.carryYds} vs ${open.pitch.flight.carryYds}`)
+  assert.ok(Math.abs(mine.pitch.flight.spinRpm / mine.pitch.flight.ballSpeedMph - 140) < 0.5)
+  // A rarely hit flight is still the pick when nothing the player hits works.
+  const onlyLow = byType(chipOptions(30, (carry) => ({ surface: carry < 3 ? 'fairway' : 'green', gradeToHole: -0.06 }), { ...setting, player: fit.chip }, 27))
+  const lowPick = Object.values(onlyLow).find((o) => o.verdict === 'good')
+  if (lowPick && lowPick.rarelyHit) assert.ok(!Object.values(onlyLow).some((o) => !o.rarelyHit && o.verdict === 'fine'))
   console.log('chip options ok', bumpBreak.toFixed(1), flopBreak.toFixed(1))
 } finally {
   await server.close()

@@ -26,6 +26,8 @@ type SupabaseQueryBuilder<T> = PromiseLike<SupabaseQueryResult<T>> & {
   select(columns?: string): SupabaseQueryBuilder<T>
   eq(column: string, value: unknown): SupabaseQueryBuilder<T>
   in(column: string, values: readonly unknown[]): SupabaseQueryBuilder<T>
+  gt(column: string, value: unknown): SupabaseQueryBuilder<T>
+  lt(column: string, value: unknown): SupabaseQueryBuilder<T>
   order(column: string, options?: { ascending?: boolean }): SupabaseQueryBuilder<T>
   limit(count: number): SupabaseQueryBuilder<T>
   insert(values: Record<string, unknown> | Array<Record<string, unknown>>): SupabaseQueryBuilder<T>
