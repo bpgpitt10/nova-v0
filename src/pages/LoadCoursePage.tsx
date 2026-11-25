@@ -30,6 +30,7 @@ import {
 import { crosswalkDecision, crosswalkForGsproKey, crosswalkForGsproKeys, type CrosswalkDecision, type CrosswalkRow } from '../courseLoading/courseCrosswalk'
 import './LoadCoursePage.css'
 import { LooperTagline } from '../components/LooperTagline'
+import { BASIC_CADDIE_MISSING, BASIC_CADDIE_WORKS } from '../lib/basicCaddie'
 
 const ACTIVE = new Set(['queued', 'running', 'publishing'])
 
@@ -90,13 +91,43 @@ function GsproMatch({ courseId, courseKey }: Readonly<{ courseId: CourseId; cour
   return <span className={shown.tone === 'ok' ? 'load-course-ready' : shown.tone === 'bad' ? 'load-course-failed' : 'load-course-progress'}>{shown.text}</span>
 }
 
-/** A range, putting course or fictional course: nothing on OpenStreetMap to load. */
+/** A range or putting course: not a course to play, so hidden here. */
 const notARealCourse = (course: Readonly<{ courseName?: string | null; courseKey?: string | null; location?: string | null }>) => {
   const name = `${course.courseName ?? ''} ${course.courseKey ?? ''}`
-  return /\bfictional\b/i.test(course.location ?? '')
-    || /\bputting (course|green)\b/i.test(name)
+  return /\bputting (course|green)\b/i.test(name)
     || /\b(driving|practice|multi) range\b/i.test(name)
     || /^\s*gspro\b/i.test(course.courseName ?? '')
+}
+
+/** A course designed for GSPro, with no real place: its course file says so, or the crosswalk does. */
+const isFictional = (course: Readonly<{ location?: string | null }>, decision: CrosswalkDecision) =>
+  /\bfictional\b/i.test(course.location ?? '') || (decision.kind === 'not-on-map' && /fictional/.test(decision.reason))
+
+/**
+ * Plays without a map: a fictional course, or a real one nobody has mapped. The caddie works from GSPro's
+ * own course file (gsproOnlyCourse.ts), so say plainly what that gives and what it doesn't.
+ */
+function PlaysWithoutMap({ fictional }: Readonly<{ fictional: boolean }>) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="load-course-nomap">
+      <button type="button" className="load-course-nomap-chip" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        {fictional ? 'Fictional course · basic caddie, no map' : 'Not mapped yet · basic caddie, no map'}
+      </button>
+      {open ? (
+        <span className="load-course-nomap-detail">
+          <span>
+            {fictional
+              ? "This course was designed for GSPro and doesn't exist in the real world, so there's no map or terrain to load."
+              : "Nobody has mapped this course on OpenStreetMap yet, so there's no map to load."}
+            {' '}The Looper caddies here from what GSPro itself knows about the course. Just start a round in GSPro.
+          </span>
+          <span><strong>Works:</strong> {BASIC_CADDIE_WORKS.join(' · ').toLowerCase()}</span>
+          <span><strong>Doesn't:</strong> {BASIC_CADDIE_MISSING.join(' · ').toLowerCase()}</span>
+        </span>
+      ) : null}
+    </span>
+  )
 }
 
 /**
@@ -483,16 +514,17 @@ export default function LoadCoursePage() {
       : courseSlugFromName(course.courseName)
     const link = gsproLinks().find((l) => l.gsproCourseKey === course.courseKey) ?? null
     const decision = crosswalkDecision(crosswalk.get(course.courseKey) ?? null)
+    const fictional = isFictional(course, decision)
     const group: 'ready' | 'loading' | 'load' | 'off-map' = slugs.has(slug) ? 'ready'
       : ACTIVE.has(latestFor(slug)?.status ?? '') ? 'loading'
-        : decision.kind === 'not-on-map' ? 'off-map' : 'load'
-    return { course, slug, link, decision, group }
+        : decision.kind === 'not-on-map' || fictional ? 'off-map' : 'load'
+    return { course, slug, link, decision, group, fictional }
   })
   const groups = [
     { key: 'ready', title: 'Ready to play' },
     { key: 'loading', title: 'Loading' },
     { key: 'load', title: 'Not loaded yet' },
-    { key: 'off-map', title: 'Not on the map' },
+    { key: 'off-map', title: 'Plays without a map' },
   ] as const
 
   const focusGroup = focusKey ? installed.find((row) => row.course.courseKey === focusKey)?.group ?? null : null
@@ -504,7 +536,7 @@ export default function LoadCoursePage() {
       document.getElementById(`gspro-${focusKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
   }, [focusGroup, focusKey])
 
-  const installedRow = ({ course, slug, link, decision, group }: (typeof installed)[number]) => (
+  const installedRow = ({ course, slug, link, decision, group, fictional }: (typeof installed)[number]) => (
     <li
       className={focusKey && course.courseKey === focusKey ? 'load-course-focus' : undefined}
       id={`gspro-${course.courseKey}`}
@@ -524,8 +556,8 @@ export default function LoadCoursePage() {
         ) : null}
       </div>
       <span className="load-course-actions">
-        {group === 'off-map' && decision.kind === 'not-on-map' ? (
-          <span className="load-course-note">{/fictional/.test(decision.reason) ? 'Fictional course' : 'Not mapped yet'}</span>
+        {group === 'off-map' ? (
+          <PlaysWithoutMap fictional={fictional} />
         ) : rowAction(slug, course.courseKey, () => { void loadInstalled(course) },
           decision.kind === 'pick' ? 'Choose the map course' : 'Load')}
         {group === 'ready' && courseIdFor(slug) && !savedLibraryAt

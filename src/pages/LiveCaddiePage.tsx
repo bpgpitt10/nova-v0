@@ -54,6 +54,7 @@ import { pinFromHudDistance } from '../liveCaddie/hudPin'
 import { priceAimError } from '../liveCaddie/aimErrorCost'
 import { estimatedPinAim, type EstimatedPinAim } from '../liveCaddie/pinUncertainty'
 import { rerankClubs } from '../liveCaddie/clubRerank'
+import { BasicCaddieChip } from '../components/BasicCaddieChip'
 import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupportedTee'
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
@@ -2332,6 +2333,11 @@ export default function LiveCaddiePage() {
           </div>
 
           <div className="live-caddie-header-actions">
+            {/* A course played from GSPro's own file with no Looper map (fictional, or not mapped yet):
+                bright and first, so nobody misses that they're not getting everything (Brian, 25 Nov). */}
+            {selectedCourse?.source === 'gspro-only' ? (
+              <BasicCaddieChip fictional={/\bfictional\b/i.test(selectedCourse.location ?? '')} />
+            ) : null}
             <div className={`live-connection-state state-${livePrepared ? liveStatus : 'offline'}`}>
               <i />
               <span>{livePrepared ? `GSPro ${liveStatus}` : 'GSPro not connected'}</span>

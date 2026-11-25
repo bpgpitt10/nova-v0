@@ -1,0 +1,70 @@
+/* Bright, so nobody misses that this course plays without a map. */
+.basic-caddie {
+  position: relative;
+}
+
+.basic-caddie__chip {
+  padding: 6px 12px;
+  border: 1px solid #60a5fa;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+}
+
+.basic-caddie__chip:hover,
+.basic-caddie__chip[aria-expanded='true'] {
+  background: #2563eb;
+}
+
+.basic-caddie__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1200;
+  width: min(320px, calc(100vw - 32px));
+  padding: 14px 16px;
+  border: 1px solid #60a5fa;
+  border-radius: 12px;
+  background: #0f1d36;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  color: #e6edf8;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.basic-caddie__panel p {
+  margin: 0 0 10px;
+}
+
+.basic-caddie__panel strong {
+  display: block;
+  margin-top: 6px;
+  color: #93c5fd;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.basic-caddie__panel ul {
+  margin: 4px 0 6px;
+  padding-left: 18px;
+}
+
+.basic-caddie__panel ul.is-missing li {
+  color: #fca5a5;
+}
+
+.basic-caddie__panel a {
+  display: inline-block;
+  margin-top: 6px;
+  color: #93c5fd;
+  font-weight: 700;
+  text-decoration: none;
+}
