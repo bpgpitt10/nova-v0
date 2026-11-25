@@ -117,9 +117,17 @@ export const applyGsproConditionsToActiveRound = (seen: Readonly<{
   greenFirmness: NonNullable<RoundConditions['greenFirmness']>
   fairwayFirmness: NonNullable<RoundConditions['fairwayFirmness']>
   altitudeFt: number | null
+  /** When the shot these came from was seen (see GsproLogConditions); absent = take them. */
+  shotSeenAtMs?: number | null
 }>): ActiveLiveCaddieRound | null => {
   const round = loadActiveLiveCaddieRound()
   if (!round) return null
+  // Settings from a shot before this round started may be another course's (its altitude,
+  // its course type): wait for this round's first shot.
+  if (seen.shotSeenAtMs !== undefined) {
+    const started = Date.parse(round.startedAt)
+    if (seen.shotSeenAtMs == null || (Number.isFinite(started) && seen.shotSeenAtMs < started)) return round
+  }
   const before = round.conditions ?? null
   const altitudeFt = seen.altitudeFt ?? round.gsproAltitudeFt ?? null
   if (

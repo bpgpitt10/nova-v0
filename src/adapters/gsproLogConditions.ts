@@ -26,6 +26,13 @@ export type GsproLogConditions = Readonly<{
   altitudeFt: number | null
   /** How many shots in this stretch of log carried a settings line. */
   shotCount: number
+  /**
+   * When Looper first saw the latest shot's settings line (ms), or null when it
+   * hasn't seen one land in the log while watching. A round only takes settings
+   * from a shot seen after it started: the one before may be another course
+   * (Tobacco Road, 24 Nov: Start a Round kept the previous course's 1,486 ft).
+   */
+  shotSeenAtMs?: number | null
 }>
 
 const SETTINGS = /Physics Settings:\s*Green Firmness\s*(\d)\s+Fairway Firmness\s*(\d)\s+Course Type\s*(\d)/gi
@@ -82,6 +89,7 @@ let latest: GsproLogConditions | null = null
 const same = (a: GsproLogConditions | null, b: GsproLogConditions) =>
   a != null && a.courseType === b.courseType && a.greenFirmness === b.greenFirmness
     && a.fairwayFirmness === b.fairwayFirmness && a.altitudeFt === b.altitudeFt
+    && (a.shotSeenAtMs ?? null) === (b.shotSeenAtMs ?? null)
 
 /** GSPro's settings from a shot hit while Looper was watching, or null before one. */
 export const latestGsproLogConditions = () => latest
