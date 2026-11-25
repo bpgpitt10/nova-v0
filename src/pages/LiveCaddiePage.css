@@ -1355,6 +1355,27 @@
   border-color: rgba(134, 239, 172, 0.5);
 }
 
+/* End round: a second tap confirms, so a stray click can't end it. */
+.live-end-round-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e7ece6;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.live-diagnostics-toggle.live-end-round-yes {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+.live-diagnostics-toggle.live-end-round-yes:hover {
+  color: #ffffff;
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(248, 113, 113, 0.8);
+}
+
 /* EXPERIMENTAL voice: a command that didn't land keeps the green outline and
    shows a faint red fill for a moment. */
 .live-diagnostics-toggle[data-voice-miss='true'] {

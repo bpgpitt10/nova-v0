@@ -58,6 +58,7 @@ import { matchProvisionalOsmTeeByDistance } from '../courseGeometry/liveSupporte
 import { resolveLiveFirstTeeDisplay } from '../courseGeometry/liveFirstUseTeeState'
 import { loadLiveTeeSessionAnchor, saveLiveTeeSessionAnchor } from '../courseGeometry/liveTeeSessionAnchor'
 import {
+  clearActiveLiveCaddieRound,
   loadActiveLiveCaddieRound,
   LIVE_CADDIE_START_ROUND_EVENT,
   type LiveCaddieStartRoundDetail,
@@ -371,6 +372,17 @@ export default function LiveCaddiePage() {
   const [captureRoundId, setCaptureRoundId] = useState<string | null>(
     () => loadActiveLiveCaddieRound()?.id ?? null,
   )
+  // End the round from here (Brian, 24 Nov: quitting meant going home and back). Two taps, no dialog.
+  const [confirmEndRound, setConfirmEndRound] = useState(false)
+  useEffect(() => {
+    if (!confirmEndRound) return undefined
+    const timer = window.setTimeout(() => setConfirmEndRound(false), 6000)
+    return () => window.clearTimeout(timer)
+  }, [confirmEndRound])
+  const endRound = () => {
+    clearActiveLiveCaddieRound()
+    window.location.assign('/rounds')
+  }
   const lastCaptureRoundIdRef = useRef(captureRoundId)
   const [teeCaptureProgress, setTeeCaptureProgress] = useState<TeeCaptureProgress | null>(null)
   const [fallbackApprovedKey, setFallbackApprovedKey] = useState<string | null>(null)
@@ -2333,6 +2345,18 @@ export default function LiveCaddiePage() {
                 {voiceNote ?? voiceLabel}
               </button>
             ) : null}
+            {captureRoundId ? (confirmEndRound ? (
+              <span className="live-end-round-confirm" role="group" aria-label="End this round?">
+                <span>End round?</span>
+                <button type="button" className="live-diagnostics-toggle live-end-round-yes" onClick={endRound}>Yes, end it</button>
+                <button type="button" className="live-diagnostics-toggle" onClick={() => setConfirmEndRound(false)}>Keep playing</button>
+              </span>
+            ) : (
+              <button type="button" className="live-diagnostics-toggle" onClick={() => setConfirmEndRound(true)}
+                title="Stop this round. Your shots are saved and it shows in Rounds.">
+                End round
+              </button>
+            )) : null}
             {/* Diagnostics remain available at /dev/aim-lab, without a primary Live Caddie header link. */}
             <button type="button" className="live-diagnostics-toggle" onClick={toggleDiagnostics}
               aria-pressed={showDiagnostics}>
