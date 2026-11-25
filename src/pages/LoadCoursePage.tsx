@@ -187,7 +187,9 @@ export default function LoadCoursePage() {
   const [loadsError, setLoadsError] = useState<string | null>(null)
   const [library, setLibrary] = useState<LooperCompanionInstalledCourse[] | null>(null)
   const [libraryNote, setLibraryNote] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
+  // ?q=<name>: "Something else" from the Your courses question opens the search with the name in it.
+  const [initialQuery] = useState(() => new URLSearchParams(window.location.search).get('q')?.trim() || '')
+  const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState<GolfCourseSearchResult[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
@@ -444,6 +446,13 @@ export default function LoadCoursePage() {
       setSearching(false)
     }
   }
+  const searchedInitial = useRef(false)
+  useEffect(() => {
+    if (!initialQuery || searchedInitial.current) return
+    searchedInitial.current = true
+    void runSearch(initialQuery)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once, for the name in the link
+  }, [initialQuery])
 
   const rowAction = (slug: string, key: string, onLoad: () => void, label = 'Load') => {
     if (slugs.has(slug)) return <span className="load-course-ready">Ready to play</span>

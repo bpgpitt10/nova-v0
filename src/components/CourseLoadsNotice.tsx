@@ -3,7 +3,10 @@ import { getCurrentLooperUser } from '../cloud/supabaseClient'
 import {
   acknowledgeCourseLoads,
   listMyUnseenCourseLoads,
+  loadQuestion,
   myLoadLine,
+  requestCourseLoad,
+  type CourseChoice,
   type MyCourseLoad,
 } from '../courseLoading/courseLoads'
 import './CourseLoadsNotice.css'
@@ -28,6 +31,8 @@ export function CourseLoadsNotice() {
   const [rows, setRows] = useState<MyCourseLoad[]>([])
   const [hidden, setHidden] = useState(hiddenThisVisit)
   const [saving, setSaving] = useState(false)
+  // Answers to "which course?": the load row id -> what happened when the player picked.
+  const [answers, setAnswers] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (hidden) return undefined
@@ -42,6 +47,20 @@ export function CourseLoadsNotice() {
   }, [hidden])
 
   if (hidden || !rows.length) return null
+
+  const pickCourse = async (row: MyCourseLoad, choice: CourseChoice) => {
+    setAnswers((current) => ({ ...current, [row.id]: `Starting ${choice.name}…` }))
+    try {
+      await requestCourseLoad({
+        name: choice.name, location: row.location ?? '', lat: choice.lat, lon: choice.lon,
+        osmType: choice.osmType, osmId: choice.osmId, gsproCourseKey: row.gspro_course_key,
+      })
+      await acknowledgeCourseLoads([row.id]).catch(() => undefined)
+      setAnswers((current) => ({ ...current, [row.id]: `⏳ Loading ${choice.name}. It's usually ready in about 10 minutes; this box tells you how it went next time.` }))
+    } catch (error) {
+      setAnswers((current) => ({ ...current, [row.id]: `Couldn't start ${choice.name}: ${error instanceof Error ? error.message : String(error)}` }))
+    }
+  }
 
   const gotIt = async () => {
     setSaving(true)
@@ -67,10 +86,26 @@ export function CourseLoadsNotice() {
         <ul>
           {rows.map((row) => {
             const line = myLoadLine(row)
+            const question = loadQuestion(row)
+            const answer = answers[row.id]
             return (
               <li key={row.id} className={`course-loads-notice__line is-${line.tone}`}>
                 <span aria-hidden="true">{line.icon}</span>
-                <span>{line.text}</span>
+                <span>
+                  {line.text}
+                  {question && !answer ? (
+                    <span className="course-loads-notice__question">
+                      <span>{question.prompt}</span>
+                      {question.choices.map((choice) => (
+                        <button type="button" key={`${choice.osmType}/${choice.osmId}`} onClick={() => { void pickCourse(row, choice) }}>
+                          {choice.name}
+                        </button>
+                      ))}
+                      <a href={`/courses?q=${encodeURIComponent(row.course_name)}`}>Something else</a>
+                    </span>
+                  ) : null}
+                  {answer ? <span className="course-loads-notice__answer">{answer}</span> : null}
+                </span>
               </li>
             )
           })}

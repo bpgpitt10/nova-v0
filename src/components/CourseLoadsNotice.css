@@ -99,3 +99,37 @@
     flex: 1;
   }
 }
+
+/* "Which course do you play?": the courses to load instead, as buttons. */
+.course-loads-notice__question {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #e7ece6;
+}
+
+.course-loads-notice__question button,
+.course-loads-notice__question a {
+  padding: 4px 10px;
+  border: 1px solid rgba(234, 179, 8, 0.6);
+  border-radius: 999px;
+  background: transparent;
+  color: #f5d06a;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.course-loads-notice__question a {
+  border-color: rgba(231, 236, 230, 0.35);
+  color: #e7ece6;
+}
+
+.course-loads-notice__answer {
+  display: block;
+  margin-top: 6px;
+  color: #bbf7d0;
+}

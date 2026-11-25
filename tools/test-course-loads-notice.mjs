@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 const server = await createServer({ appType: 'custom', logLevel: 'silent', server: { middlewareMode: true } })
 try {
-  const { unseenCourseLoads, myLoadLine } = await server.ssrLoadModule('/src/courseLoading/courseLoads.ts')
+  const { unseenCourseLoads, myLoadLine, loadQuestion } = await server.ssrLoadModule('/src/courseLoading/courseLoads.ts')
   const base = { created_at: '2026-11-24T20:00:00Z', location: null, slug: null, gspro_course_key: null, stage: null, stage_index: null, stage_count: null, started_at: null, error: null, mode: null, error_code: null }
   const rows = [
     { ...base, id: 'k', course_name: 'Kenai Golf Course', status: 'failed', finished_at: '2026-11-24T21:01:55Z', acknowledged_at: null, error: 'validate failed: FAIL … area has 16 greens (min 18)' },
@@ -24,5 +24,14 @@ try {
   assert.match(club.text, /Cholla, Saguaro/)
   assert.equal(running.text, 'Pine Needles is loading, step 5 of 9.')
   assert.match(myLoadLine({ ...base, id: 'a', course_name: 'Dunes West', status: 'ready', mode: 'area', finished_at: 'x', acknowledged_at: null }).text, /\(map area\)/)
+  // The question: courses inside a multi-course outline, or nearby ones when the outline couldn't be built.
+  const choices = [{ name: 'We-Ko-Pa Cholla', osmType: 'way', osmId: 11, lat: 33.59, lon: -111.69 }, { name: 'We-Ko-Pa Saguaro', osmType: 'way', osmId: 12, lat: 33.59, lon: -111.69 }]
+  const q = loadQuestion({ status: 'failed', error_code: 'multiple_courses', course_choices: choices })
+  assert.equal(q.prompt, 'Which course do you play?')
+  assert.deepEqual(q.choices.map((c) => c.name), ['We-Ko-Pa Cholla', 'We-Ko-Pa Saguaro'])
+  assert.equal(loadQuestion({ status: 'failed', error_code: 'holes_not_mapped', course_choices: choices }).prompt, 'Did you mean one of these?')
+  assert.equal(loadQuestion({ status: 'ready', course_choices: choices }), null, 'nothing to ask about a ready load')
+  assert.equal(loadQuestion({ status: 'failed', error_code: 'holes_not_mapped', course_choices: null }), null)
+  assert.equal(loadQuestion({ status: 'failed', course_choices: [{ name: '', osmType: 'way', osmId: 0, lat: NaN, lon: 0 }] }), null, 'broken choices are dropped')
   console.log('course loads notice ok')
 } finally { await server.close() }

@@ -537,7 +537,7 @@ export const listMyUnseenCourseLoads = async (userId: string, nowMs = Date.now()
   const since = new Date(nowMs - MY_LOADS_WINDOW_DAYS * 86_400_000).toISOString()
   const { data, error } = await client
     .from<MyCourseLoad[]>('course_load_requests')
-    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error, acknowledged_at, mode:report->>mode, error_code:report->>errorCode')
+    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error, acknowledged_at, mode:report->>mode, error_code:report->>errorCode, course_choices:report->courseChoices')
     .eq('requested_by', userId)
     .gt('created_at', since)
     .order('created_at', { ascending: false })
@@ -556,6 +556,20 @@ export const acknowledgeCourseLoads = async (ids: readonly string[]): Promise<vo
   const client = await getSupabaseClient()
   const { error } = await client.rpc<number>('acknowledge_course_loads', { request_ids: [...ids] })
   if (error) throw new Error(error.message)
+}
+
+/**
+ * The question to ask when a load couldn't go ahead (Brian, 25 Nov: "this didn't load: was it this course,
+ * this course or something else?"). The courses inside a multi-course outline, or nearby ones when the
+ * outline couldn't be built. Null when there's nothing to ask.
+ */
+export const loadQuestion = (row: Pick<MyCourseLoad, 'status' | 'error_code' | 'course_choices'>) => {
+  const choices = (row.course_choices ?? []).filter((c) => c?.name && c.osmId && Number.isFinite(c.lat) && Number.isFinite(c.lon))
+  if (row.status !== 'failed' || !choices.length) return null
+  return {
+    prompt: row.error_code === 'multiple_courses' ? 'Which course do you play?' : 'Did you mean one of these?',
+    choices,
+  }
 }
 
 /** One line per load for the sign-in summary. */
