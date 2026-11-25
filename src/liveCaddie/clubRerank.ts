@@ -18,12 +18,13 @@ export const rerankClubs = <E extends ClubAimEvaluation>(evaluations: readonly E
     withinCatastropheGuardrail: null,
     decisionReason: null,
   }))
-  const ranked = rankRiskAwareClubChoices(reset)
+  // Woods from sand or deep rough stay out of the ranking (evaluateAimLab marks them).
+  const ranked = rankRiskAwareClubChoices(reset.filter((evaluation) => evaluation.recommendable !== false))
   ranked.forEach((row) => {
     row.evaluation.decisionRank = row.rank
     row.evaluation.targetFit = row.targetFit
     row.evaluation.withinCatastropheGuardrail = row.withinCatastropheGuardrail
     row.evaluation.decisionReason = row.decisionReason
   })
-  return ranked.map((row) => row.evaluation)
+  return [...ranked.map((row) => row.evaluation), ...reset.filter((evaluation) => evaluation.recommendable === false)]
 }
