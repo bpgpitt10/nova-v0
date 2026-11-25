@@ -520,3 +520,72 @@ export const geocodePlace = async (text: string): Promise<readonly [number, numb
   const hit = places.find((p) => Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)))
   return hit ? [Number(hit.lat), Number(hit.lon)] : null
 }
+
+// ---------------------------------------------------------------- "Your courses" at sign-in
+
+export type MyCourseLoad = CourseLoadRow & Readonly<{ acknowledged_at: string | null }>
+
+/** Loads older than this never come back at sign-in. */
+export const MY_LOADS_WINDOW_DAYS = 30
+
+/**
+ * The signed-in player's own load requests from the last 30 days that they haven't seen the end of:
+ * finished and not acknowledged, or still running. Bulk loads have no requester, so they never show.
+ */
+export const listMyUnseenCourseLoads = async (userId: string, nowMs = Date.now()): Promise<MyCourseLoad[]> => {
+  const client = await getSupabaseClient()
+  const since = new Date(nowMs - MY_LOADS_WINDOW_DAYS * 86_400_000).toISOString()
+  const { data, error } = await client
+    .from<MyCourseLoad[]>('course_load_requests')
+    .select('id, created_at, course_name, location, slug, gspro_course_key, osm_id, status, stage, stage_index, stage_count, started_at, finished_at, error, acknowledged_at, mode:report->>mode, error_code:report->>errorCode, course_choices:report->courseChoices')
+    .eq('requested_by', userId)
+    .gt('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) throw new Error(error.message)
+  return unseenCourseLoads(data ?? [])
+}
+
+export const unseenCourseLoads = (rows: readonly MyCourseLoad[]): MyCourseLoad[] =>
+  rows.filter((row) => (row.finished_at != null && row.acknowledged_at == null)
+    || row.status === 'queued' || row.status === 'running' || row.status === 'publishing')
+
+/** "Got it": these finished loads won't show again. Only the player's own rows change (database function). */
+export const acknowledgeCourseLoads = async (ids: readonly string[]): Promise<void> => {
+  if (!ids.length) return
+  const client = await getSupabaseClient()
+  const { error } = await client.rpc<number>('acknowledge_course_loads', { request_ids: [...ids] })
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * The question to ask when a load couldn't go ahead (Brian, 25 Nov: "this didn't load: was it this course,
+ * this course or something else?"). The courses inside a multi-course outline, or nearby ones when the
+ * outline couldn't be built. Null when there's nothing to ask.
+ */
+export const loadQuestion = (row: Pick<MyCourseLoad, 'status' | 'error_code' | 'course_choices'>) => {
+  const choices = (row.course_choices ?? []).filter((c) => c?.name && c.osmId && Number.isFinite(c.lat) && Number.isFinite(c.lon))
+  if (row.status !== 'failed' || !choices.length) return null
+  return {
+    prompt: row.error_code === 'multiple_courses' ? 'Which course do you play?' : 'Did you mean one of these?',
+    choices,
+  }
+}
+
+/** One line per load for the sign-in summary. */
+export const myLoadLine = (row: MyCourseLoad): Readonly<{ icon: string; text: string; tone: LoadOutcome['tone'] }> => {
+  const outcome = loadOutcome(row)
+  const name = row.course_name
+  if (outcome.tone === 'progress') {
+    const step = row.stage_index && row.stage_count ? `, step ${row.stage_index} of ${row.stage_count}` : ''
+    return { icon: '⏳', tone: 'progress', text: `${name} is loading${step}.` }
+  }
+  if (row.status === 'ready') {
+    return { icon: '✅', tone: 'ok', text: `${name} is ready${row.mode === 'area' ? ' (map area)' : ''}. Start a round in GSPro and the caddie picks it up.` }
+  }
+  if (row.error_code === 'multiple_courses') {
+    return { icon: '⚠️', tone: 'note', text: `${name}: ${outcome.detail ?? 'more than one course here; load the one you play.'}` }
+  }
+  if (outcome.basicCaddie) return { icon: '❌', tone: 'bad', text: `${name} couldn't load. ${outcome.detail ?? ''}`.trim() }
+  return { icon: '❌', tone: 'bad', text: `${name} didn't load${row.error ? `: ${row.error}` : '.'} You can try again on the Load page.` }
+}

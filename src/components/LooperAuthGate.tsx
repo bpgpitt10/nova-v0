@@ -1,5 +1,6 @@
 import { CompanionChip } from './CompanionChip'
 import { CompanionUpdateNotice } from './CompanionUpdateNotice'
+import { CourseLoadsNotice } from './CourseLoadsNotice'
 import { AccountGsproPlayer, useKnownGsproPlayers } from './AccountGsproPlayer'
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import looperLogo from '../assets/LooperLogo.webp'
@@ -465,6 +466,7 @@ export default function LooperAuthGate({ children }: Props) {
     return (
       <>
         {user ? <CompanionUpdateNotice /> : null}
+        {user ? <CourseLoadsNotice /> : null}
         {user ? (
           <div className="looper-account-control">
             <CompanionChip />
