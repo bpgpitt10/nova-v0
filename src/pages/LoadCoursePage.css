@@ -410,3 +410,38 @@
   font-size: 12px;
   line-height: 1.4;
 }
+
+/* Fictional or unmapped courses: a chip that opens what the basic caddie does without a map. */
+.load-course-nomap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.load-course-nomap-chip {
+  padding: 4px 10px;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  border-radius: 999px;
+  background: transparent;
+  color: #f5d06a;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.load-course-nomap-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgba(231, 236, 230, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .load-course-nomap { align-items: flex-start; }
+  .load-course-nomap-detail { text-align: left; }
+}

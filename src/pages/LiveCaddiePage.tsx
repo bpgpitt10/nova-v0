@@ -256,6 +256,10 @@ const LIVE_DEV_DIAGNOSTICS_KEY = 'looper.live-dev-diagnostics.v1'
 // Lies GSPro's file code identifies reliably; anything else asks the golfer.
 const KNOWN_LIES = new Set(['tee', 'fairway', 'rough', 'deep-rough', 'sand', 'green'])
 
+/** What the basic caddie does without a map (the Load page lists the same). */
+const BASIC_CADDIE_TITLE = 'No Looper map for this course: yardages, club picks, GSPro\'s penalty areas and out of bounds, '
+  + 'tees and pins come from GSPro\'s own course file. No fairway, rough, bunkers, trees or green slopes.'
+
 export default function LiveCaddiePage() {
   const [sessions, setSessions] = useState<SavedSession[]>(() => loadSavedSessions())
   const [bagClubs, setBagClubs] = useState(() => [...activeBagClubIds])
@@ -2329,6 +2333,10 @@ export default function LiveCaddiePage() {
               <strong>{selectedCourse?.name ?? 'Choose a course'}</strong>
             </div>
             {selectedCourse ? <span>Hole {holeNumber}</span> : null}
+            {/* A course played from GSPro's own file with no Looper map (fictional, or not mapped yet). */}
+            {selectedCourse?.source === 'gspro-only' ? (
+              <span className="live-basic-caddie-chip" title={BASIC_CADDIE_TITLE}>Basic caddie (no map)</span>
+            ) : null}
           </div>
 
           <div className="live-caddie-header-actions">
