@@ -5,7 +5,11 @@ import {
   type GsproLogConditions,
 } from '../adapters/gsproLogConditions'
 import { rememberRoundConditions, type Firmness } from './roundConditions'
-import { applyGsproConditionsToActiveRound, loadActiveLiveCaddieRound } from './roundRuntime'
+import {
+  applyGsproConditionsToActiveRound,
+  LIVE_CADDIE_START_ROUND_EVENT,
+  loadActiveLiveCaddieRound,
+} from './roundRuntime'
 
 export type RoundPhysicsConditions = Readonly<{
   fairwayConditions: { courseType: Firmness; fairwayFirmness: Firmness } | null
@@ -40,7 +44,7 @@ const sameConditions = (a: RoundPhysicsConditions, b: RoundPhysicsConditions) =>
 /**
  * The round's course type, firmness and altitude for the roll, green and
  * flight models. They start as picked at Start a Round. Once GSPro logs a shot
- * of this round, its own settings replace them and are kept on the round, so a
+ * of this round (one hit after the round started), its own settings replace them and are kept on the round, so a
  * page reload doesn't go back to the picks.
  */
 export const useGsproRoundConditions = (): RoundPhysicsConditions => {
@@ -55,8 +59,17 @@ export const useGsproRoundConditions = (): RoundPhysicsConditions => {
     }
     take(latestGsproLogConditions())
     const onSeen = (event: Event) => take((event as CustomEvent<GsproLogConditions>).detail ?? null)
+    // A new round starts on its own picks, not the last round's GSPro settings.
+    const onStart = () => {
+      const next = fromActiveRound()
+      setConditions((current) => (sameConditions(current, next) ? current : next))
+    }
     window.addEventListener(GSPRO_LOG_CONDITIONS_EVENT, onSeen)
-    return () => window.removeEventListener(GSPRO_LOG_CONDITIONS_EVENT, onSeen)
+    window.addEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStart)
+    return () => {
+      window.removeEventListener(GSPRO_LOG_CONDITIONS_EVENT, onSeen)
+      window.removeEventListener(LIVE_CADDIE_START_ROUND_EVENT, onStart)
+    }
   }, [])
   return conditions
 }

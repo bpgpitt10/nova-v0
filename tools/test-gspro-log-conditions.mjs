@@ -79,11 +79,16 @@ try {
   assert.equal(log.latestGsproLogConditions().altitudeFt, 2851)
   assert.equal(log.latestGsproLogConditions().courseType, 'medium')
 
+  // The shot was seen while watching, so it carries when.
+  const shotAt = log.latestGsproLogConditions().shotSeenAtMs
+  assert.equal(typeof shotAt, 'number')
+
   // More log with no shot in it changes nothing and tells nobody.
   const told = seen.length
   await core.readPlayerLog(file(landed + 'UnloadTime: 2.1 ms\n'.repeat(400)))
   assert.equal(seen.length, told)
   assert.equal(log.latestGsproLogConditions().altitudeFt, 2851)
+  assert.equal(log.latestGsproLogConditions().shotSeenAtMs, shotAt, 'no new shot, same time')
 
   // A lie penalty in the new log is learned from.
   const penalties = await load('/src/adapters/gsproPenaltyLog.ts')
@@ -118,6 +123,20 @@ try {
     assert.equal(rounds.loadActiveLiveCaddieRound().conditions.courseType, 'soft')
     // The next shot is still in the air: the altitude already known stays.
     assert.equal(rounds.applyGsproConditionsToActiveRound({ courseType: 'soft', greenFirmness: 'firm', fairwayFirmness: 'firm', altitudeFt: null }).gsproAltitudeFt, 358)
+
+    // A new round must not take the last course's settings (Tobacco Road, 24 Nov: Start a Round
+    // kept We-Ko-Pa's 1,486 ft). Settings from a shot seen before it started wait for its first shot.
+    const startedAt = Date.now()
+    db.set('looper.live-caddie.active-round.v1', JSON.stringify({
+      ...stored, id: 'r2', startedAt: new Date(startedAt).toISOString(), conditions: { courseType: 'medium', greenFirmness: 'medium', fairwayFirmness: 'medium', stimp: 11 },
+    }))
+    const stale = rounds.applyGsproConditionsToActiveRound({ courseType: 'soft', greenFirmness: 'firm', fairwayFirmness: 'firm', altitudeFt: 1486, shotSeenAtMs: startedAt - 60_000 })
+    assert.equal(stale.gsproAltitudeFt ?? null, null, 'the last course altitude is not this round')
+    assert.equal(stale.conditions.courseType, 'medium', 'nor its course type')
+    assert.equal(rounds.applyGsproConditionsToActiveRound({ courseType: 'soft', greenFirmness: 'firm', fairwayFirmness: 'firm', altitudeFt: 1486, shotSeenAtMs: null }).gsproAltitudeFt ?? null, null)
+    const own = rounds.applyGsproConditionsToActiveRound({ courseType: 'soft', greenFirmness: 'firm', fairwayFirmness: 'firm', altitudeFt: 358, shotSeenAtMs: startedAt + 1 })
+    assert.equal(own.gsproAltitudeFt, 358, 'this round\'s first shot sets it')
+    assert.equal(own.conditionsFromGspro, true)
   } else {
     assert.fail('the test could not store an active round')
   }

@@ -335,9 +335,15 @@ export const readPlayerLog = async (file: File | null) => {
     const text = file.size > from ? await file.slice(from).text() : ''
     learnFromPenaltyLog(text)
     const seen = parseGsproLogConditions(text)
+    // A settings line past what was read before is a shot hit just now (the overlap only repeats old ones).
+    const freshShot = parseGsproLogConditions(text.slice(Math.max(0, playerLogReadTo - from))) != null
     // A read that caught the settings but not yet the landing keeps the altitude already known.
     const conditions = seen
-      ? { ...seen, altitudeFt: seen.altitudeFt ?? watch.conditions?.altitudeFt ?? null }
+      ? {
+          ...seen,
+          altitudeFt: seen.altitudeFt ?? watch.conditions?.altitudeFt ?? null,
+          shotSeenAtMs: freshShot ? Date.now() : watch.conditions?.shotSeenAtMs ?? null,
+        }
       : watch.conditions
     playerLogWatch = { fromByte: watch.fromByte, conditions }
     playerLogReadTo = file.size
