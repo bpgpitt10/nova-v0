@@ -199,11 +199,60 @@ const sessionShotsForClub = (sessions: readonly SavedSession[], club: Club): Sho
  * The stored predictions give us labeled validation data before inference is
  * ever allowed to assign a club operationally.
  */
+/**
+ * GSPro takes speed and spin off a shot from rough, deep rough and sand before
+ * it flies, and the log's ball speed, carry and spin are what was left. The
+ * launch monitor's own speed is kept as `ballSpeedRaw`. Comparing what was left
+ * with clean-lie stock numbers always guessed a shorter club: all 10 tagged
+ * shots from deep rough and sand over 45 days were guessed short (5i and 6i as
+ * PW, 3W as 6i, 7i as GW). Semi-rough takes 1.5%, so under 2% counts as clean.
+ */
+const LIE_PENALTY_SPEED_KEPT = 0.98
+
+const rawLaunchSpeed = (shot: BrowserGsproCourseArchiveShot): number | null => {
+  const raw = shot.rawMetrics?.ballSpeedRaw
+  return finite(raw) && raw > 0 ? raw : null
+}
+
+/** The launch monitor's speed when GSPro cut it for the lie, else null. */
+export const lieCutLaunchSpeed = (shot: BrowserGsproCourseArchiveShot): number | null => {
+  const raw = rawLaunchSpeed(shot)
+  if (raw == null || !finite(shot.ballSpeedMph)) return null
+  return shot.ballSpeedMph / raw < LIE_PENALTY_SPEED_KEPT ? raw : null
+}
+
+const isPuttRecord = (shot: BrowserGsproCourseArchiveShot) => {
+  const putt = shot.rawMetrics?.putt
+  return Boolean(putt && typeof putt === 'object' && (putt as { isPutt?: unknown }).isPutt === true)
+}
+
+const emptyInference = (evaluatedAt: string): ClubInferenceResult => ({
+  predictedClub: null,
+  confidence: null,
+  alternatives: [],
+  modelVersion: CLUB_INFERENCE_MODEL_VERSION,
+  evaluatedAt,
+  metricsUsed: [],
+})
+
 export const inferClubForGsproShot = (
   sessions: readonly SavedSession[],
   shot: BrowserGsproCourseArchiveShot,
   evaluatedAt = new Date().toISOString(),
 ): ClubInferenceResult => {
+  // A putt is a putt; GSPro repeats the previous swing's numbers on its record,
+  // which made a wedge the guess for every putt.
+  if (isPuttRecord(shot)) return emptyInference(evaluatedAt)
+
+  // Off a penalized lie only the swing itself compares with stock: the launch
+  // monitor's speed and the launch angle. Carry, total and spin are GSPro's
+  // after the lie and would point at a shorter club.
+  const cutSpeed = lieCutLaunchSpeed(shot)
+  const observedSpeed = cutSpeed ?? shot.ballSpeedMph
+  const observedCarry = cutSpeed == null ? shot.carryYards : null
+  const observedTotal = cutSpeed == null ? shot.totalYards : null
+  const observedSpin = cutSpeed == null ? shot.totalSpinRpm : null
+
   const candidates = configuredClubs().flatMap((club) => {
     const historicalShots = sessionShotsForClub(sessions, club)
     if (historicalShots.length < 3) return []
@@ -217,7 +266,7 @@ export const inferClubForGsproShot = (
     const result = inferenceScore([
       {
         name: 'carry',
-        observed: shot.carryYards,
+        observed: observedCarry,
         mean: profile.carry,
         sigma: profile.carryVariability,
         floorSigma: 7,
@@ -225,7 +274,7 @@ export const inferClubForGsproShot = (
       },
       {
         name: 'total',
-        observed: shot.totalYards,
+        observed: observedTotal,
         mean: profile.total,
         sigma: profile.totalVariability,
         floorSigma: 9,
@@ -233,7 +282,7 @@ export const inferClubForGsproShot = (
       },
       {
         name: 'ball_speed',
-        observed: shot.ballSpeedMph,
+        observed: observedSpeed,
         mean: profile.ballSpeed,
         sigma: undefined,
         floorSigma: 5,
@@ -249,7 +298,7 @@ export const inferClubForGsproShot = (
       },
       {
         name: 'spin',
-        observed: shot.totalSpinRpm,
+        observed: observedSpin,
         mean: profile.spin,
         sigma: profile.spinVariability,
         floorSigma: 800,
@@ -271,16 +320,7 @@ export const inferClubForGsproShot = (
     }]
   })
 
-  if (candidates.length === 0) {
-    return {
-      predictedClub: null,
-      confidence: null,
-      alternatives: [],
-      modelVersion: CLUB_INFERENCE_MODEL_VERSION,
-      evaluatedAt,
-      metricsUsed: [],
-    }
-  }
+  if (candidates.length === 0) return emptyInference(evaluatedAt)
 
   const denominator = candidates.reduce((sum, candidate) => sum + candidate.likelihood, 0)
   const ranked = candidates
