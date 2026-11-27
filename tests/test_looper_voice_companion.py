@@ -194,6 +194,77 @@ class ParseCommandTest(unittest.TestCase):
         self.assertNotIn("caddie", full)
         self.assertNotIn("fly over", full)
 
+    def test_named_variants_after_a_club(self):
+        # Brian, 27 Nov: "seven iron" is the full swing; a variant the player named is said after it.
+        variants = voice.parse_variants("7i:one inch choke down,7i:knockdown,*:three quarter,PW:half")
+        bag = frozenset({"Driver", "7i", "9i", "PW"})
+        parse = lambda text: voice.parse_command(text, clubs=bag, variants=variants)  # noqa: E731
+        self.assertEqual(parse("looper seven iron"), {"action": "arm", "club": "7i"})
+        self.assertEqual(parse("looper seven iron one inch choke down"),
+                         {"action": "arm", "club": "7i", "variant": "one inch choke down"})
+        self.assertEqual(parse("looper give me the seven iron knockdown"),
+                         {"action": "arm", "club": "7i", "variant": "knockdown"})
+        # "*" variants go with any club; club variants only with their own.
+        self.assertEqual(parse("looper nine iron three quarter"),
+                         {"action": "arm", "club": "9i", "variant": "three quarter"})
+        self.assertIsNone(parse("looper nine iron knockdown"))
+        self.assertEqual(parse("looper pitching wedge half"), {"action": "arm", "club": "PW", "variant": "half"})
+        # "full" or "stock" after a club is its full swing.
+        self.assertEqual(parse("looper seven iron full"), {"action": "arm", "club": "7i"})
+        self.assertEqual(parse("looper seven iron stock"), {"action": "arm", "club": "7i"})
+        # Half a variant, or one they never named, is not a guess.
+        self.assertIsNone(parse("looper seven iron choke"))
+        self.assertIsNone(parse("looper seven iron punch"))
+        # Without the page's variants nothing after the club counts, as before.
+        self.assertIsNone(voice.parse_command("looper seven iron knockdown"))
+
+    def test_a_number_alone_is_that_iron(self):
+        bag = frozenset({"Driver", "3W", "5H", "7i", "8i", "9i"})
+        parse = lambda text: voice.parse_command(text, clubs=bag)  # noqa: E731
+        self.assertEqual(parse("looper seven"), {"action": "arm", "club": "7i"})
+        self.assertEqual(parse("caddie arm eight"), {"action": "arm", "club": "8i"})
+        # No 5 iron in the bag, one club numbered 5: that one. No 4 anything: nothing.
+        self.assertEqual(parse("looper five"), {"action": "arm", "club": "5H"})
+        self.assertIsNone(parse("looper four"))
+        # 3 wood and a 3 hybrid, no 3 iron: not a guess.
+        self.assertIsNone(voice.parse_command("looper three", clubs=frozenset({"3W", "3H"})))
+        # With a variant after it.
+        variants = voice.parse_variants("7i:one inch choke down")
+        self.assertEqual(voice.parse_command("looper seven one inch choke down", clubs=bag, variants=variants),
+                         {"action": "arm", "club": "7i", "variant": "one inch choke down"})
+        # Aim is unchanged: a number needs a direction there.
+        self.assertIsNone(parse("looper aim five"))
+        self.assertEqual(parse("looper aim left five"), {"action": "aim", "direction": "left", "yards": 5})
+
+    def test_variants_from_the_page_are_plain_words(self):
+        self.assertIsNone(voice.parse_variants(None))
+        self.assertEqual(voice.parse_variants(""), {})
+        table = voice.parse_variants("7i:one inch choke down,7i:<script>,x:,:knockdown,"
+                                     "PW:a very long name nobody would ever say")
+        self.assertEqual(table, {"7i": frozenset({"one inch choke down"})})
+
+    def test_variants_are_listenable(self):
+        variants = voice.parse_variants("7i:one inch choke down,*:knockdown")
+        heard = voice.grammar(frozenset({"7i"}), variants)
+        self.assertIn("one inch choke down", heard)
+        self.assertIn("knockdown", heard)
+        self.assertIn("full", heard)
+        self.assertNotIn("one inch choke down", voice.grammar(frozenset({"7i"})))
+        self.assertEqual(len(heard), len(set(heard)))
+
+    def test_listener_keeps_the_variants_the_page_sent(self):
+        listener = voice.VoiceListener()
+        listener.poll(None, listen=False, clubs=frozenset({"7i"}),
+                      variants=voice.parse_variants("7i:one inch choke down"))
+        event = listener.handle_text("looper seven iron one inch choke down", 0.9)
+        self.assertEqual(event["variant"], "one inch choke down")
+        # A page that sends no variants (Live Caddie) leaves them as they were.
+        listener.poll(None, listen=False, clubs=frozenset({"7i"}))
+        self.assertEqual(listener.handle_text("looper seven iron one inch choke down", 0.9), None)  # duplicate window
+        listener._last = None
+        self.assertEqual(listener.handle_text("looper seven iron one inch choke down", 0.9)["variant"],
+                         "one inch choke down")
+
     def test_confidence_is_the_weakest_real_word(self):
         result = {"text": "looper arm three wood", "result": [
             {"word": "looper", "conf": 1.0}, {"word": "arm", "conf": 0.9},
