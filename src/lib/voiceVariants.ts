@@ -44,7 +44,7 @@ const clubSpoken = (club: string): string[] => {
 export const spokenVariantPhrase = (name: string, club?: string): string | null => {
   let text = ` ${name.toLowerCase()} `
   for (const [fraction, words] of Object.entries(FRACTIONS)) text = text.split(fraction).join(words)
-  text = text.replace(/"|”|“|''/g, ' inch ').replace(/[-_/.,:;()]+/g, ' ').replace(/[^a-z0-9 ]+/g, ' ')
+  text = text.replace(/%/g, ' percent ').replace(/"|”|“|''/g, ' inch ').replace(/[-_/.,:;()]+/g, ' ').replace(/[^a-z0-9 ]+/g, ' ')
   // A name that starts with its own club ("7i choke down") drops it: the club is said already.
   let words = text.split(/\s+/).filter(Boolean)
   if (club) {
@@ -72,14 +72,37 @@ export const spokenVariantPhrase = (name: string, club?: string): string | null 
   return out.join(' ')
 }
 
+// What people say for a swing length: "fifty percent" is also "half".
+const PERCENT_WORDS: Record<string, string> = { 'twenty five': 'quarter', fifty: 'half', 'seventy five': 'three quarter' }
+
+/**
+ * Every way to say the name: the phrase itself, then the same without "percent"
+ * ("lob wedge 50%": "fifty percent", "fifty", "half"). Duplicates dropped.
+ */
+export const spokenVariantPhrases = (name: string, club?: string): string[] => {
+  const phrase = spokenVariantPhrase(name, club)
+  if (!phrase) return []
+  const said = [phrase]
+  const words = phrase.split(' ')
+  const at = words.indexOf('percent')
+  if (at > 0) {
+    // The number before "percent" is one or two number words ("fifty", "seventy five").
+    const two = at > 1 && TENS.includes(words[at - 2]) && ONES.includes(words[at - 1]) ? 2 : 1
+    const number = words.slice(at - two, at).join(' ')
+    const around = (middle: string[]) => [...words.slice(0, at - two), ...middle, ...words.slice(at + 1)].join(' ')
+    said.push(around(number.split(' ')))
+    if (PERCENT_WORDS[number]) said.push(around(PERCENT_WORDS[number].split(' ')))
+  }
+  return [...new Set(said)]
+}
+
 /** "club:phrase" pairs for the companion: each named variant the player can say, per bag club. "*" = any club. */
 export const voiceVariantEntries = (clubs: readonly Club[]): string[] => {
   const entries = new Set<string>()
   for (const club of clubs) {
     for (const variant of getShotVariantsForClub(club)) {
       if (variant.id === STOCK_SHOT_VARIANT_ID) continue
-      const phrase = spokenVariantPhrase(variant.name, variant.club)
-      if (phrase) entries.add(`${variant.club ? club : '*'}:${phrase}`)
+      for (const phrase of spokenVariantPhrases(variant.name, variant.club)) entries.add(`${variant.club ? club : '*'}:${phrase}`)
     }
   }
   return [...entries].sort()
@@ -88,4 +111,4 @@ export const voiceVariantEntries = (clubs: readonly Club[]): string[] => {
 /** The variant the companion heard for this club, by its spoken phrase. */
 export const resolveVoiceVariant = (club: Club, phrase: string): ShotVariant | null =>
   getShotVariantsForClub(club).find((variant) =>
-    variant.id !== STOCK_SHOT_VARIANT_ID && spokenVariantPhrase(variant.name, variant.club) === phrase) ?? null
+    variant.id !== STOCK_SHOT_VARIANT_ID && spokenVariantPhrases(variant.name, variant.club).includes(phrase)) ?? null

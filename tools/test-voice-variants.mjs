@@ -10,7 +10,7 @@ const load = globalThis.__looperTestLoad ?? (async (path) => {
   return server.ssrLoadModule(path)
 })
 try {
-  const { spokenVariantPhrase, numberWords } = await load('/src/lib/voiceVariants.ts')
+  const { spokenVariantPhrase, spokenVariantPhrases, numberWords } = await load('/src/lib/voiceVariants.ts')
   assert.equal(numberWords(7), 'seven')
   assert.equal(numberWords(52), 'fifty two')
   assert.equal(numberWords(60), 'sixty')
@@ -36,6 +36,13 @@ try {
   assert.equal(spokenVariantPhrase('!!!'), null)
   assert.equal(spokenVariantPhrase('7i', '7i'), null)
   assert.equal(spokenVariantPhrase('a very long name nobody would ever say out loud'), null)
+  // Brian, 27 Nov: "lob wedge 50%". Said with or without "percent", or as "half".
+  assert.equal(spokenVariantPhrase('Lob wedge 50%', 'LW'), 'fifty percent')
+  assert.deepEqual(spokenVariantPhrases('Lob wedge 50%', 'LW'), ['fifty percent', 'fifty', 'half'])
+  assert.deepEqual(spokenVariantPhrases('75% swing'), ['seventy five percent swing', 'seventy five swing', 'three quarter swing'])
+  assert.deepEqual(spokenVariantPhrases('60%'), ['sixty percent', 'sixty'])
+  assert.deepEqual(spokenVariantPhrases('Knock 50%'), ['knock fifty percent', 'knock fifty', 'knock half'])
+  assert.deepEqual(spokenVariantPhrases('1 inch choke down', '7i'), ['one inch choke down'])
   console.log('voice variants: ok')
 } finally {
   await server?.close()
