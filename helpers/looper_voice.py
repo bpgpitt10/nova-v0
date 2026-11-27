@@ -73,6 +73,38 @@ def _club_phrases() -> dict[str, str]:
 
 CLUB_PHRASES = _club_phrases()
 
+# Said after a club, these mean its full swing, not a named variant (Brian, 27 Nov).
+BASE_SWING_PHRASES = frozenset(("full", "full swing", "stock", "normal", "regular"))
+MAX_VARIANT_WORDS = 6
+
+
+def bare_number_club(number: int, clubs: frozenset[str] | None = None) -> str | None:
+    """"Looper, seven" -> the 7 iron. The iron when the bag has it; otherwise the one
+    hybrid or wood with that number. Two of those and no iron: not a guess."""
+    if clubs is None:
+        return f"{number}i" if 3 <= number <= 9 else None
+    if f"{number}i" in clubs:
+        return f"{number}i"
+    others = [club for club in (f"{number}H", f"{number}W") if club in clubs]
+    return others[0] if len(others) == 1 else None
+
+
+def parse_variants(raw: str | None) -> dict[str, frozenset[str]] | None:
+    """The page's named variants, "7i:one inch choke down,*:knockdown" -> {"7i": {...}, "*": {...}}.
+    "*" is a variant for any club. Only plain words, a few per phrase; the rest is dropped."""
+    if raw is None:
+        return None
+    table: dict[str, set[str]] = {}
+    for entry in raw.split(",")[:80]:
+        club, _, phrase = entry.partition(":")
+        words = phrase.lower().split()
+        if not club or len(club) > 12 or not words or len(words) > MAX_VARIANT_WORDS:
+            continue
+        if not all(word.isalpha() and len(word) <= 20 for word in words):
+            continue
+        table.setdefault(club, set()).add(" ".join(words))
+    return {club: frozenset(phrases) for club, phrases in table.items()}
+
 # ---- How people actually say it -------------------------------------------
 # Several wordings per command. The recogniser matches sounds, not meaning, so
 # every wording here is a deliberate addition: each extra word is one more
@@ -173,13 +205,18 @@ GSPRO_VIEWS = {
 _NOT_LISTENED = frozenset(("caddie", "fly over", "score card"))
 
 
-def grammar(clubs: frozenset[str] | None = None) -> list[str]:
+def grammar(clubs: frozenset[str] | None = None,
+            variants: dict[str, frozenset[str]] | None = None) -> list[str]:
     """What the recogniser may hear. It strings these together freely, so the
     parser below decides what counts; "[unk]" soaks up everything else.
 
-    ``clubs``: only these club ids are listenable (the player's bag)."""
+    ``clubs``: only these club ids are listenable (the player's bag).
+    ``variants``: the player's named variants, listenable after a club."""
     phrases: list[str] = list(WAKE_WORDS)
     phrases += [phrase for phrase, club in CLUB_PHRASES.items() if clubs is None or club in clubs]
+    if variants:
+        phrases += sorted(BASE_SWING_PHRASES)
+        phrases += sorted({phrase for table in variants.values() for phrase in table})
     phrases += list(GSPRO_VIEWS)
     for table in (CLEAR_PHRASES, CONFIRM_PHRASES, ARM_SHOWN_PHRASES, ARM_RECOMMENDED_PHRASES, RETRY_PHRASES,
                   DETAILS_PHRASES, AIM_RESET_PHRASES):
@@ -235,7 +272,37 @@ def _parse_aim(words: list[str]) -> dict | None:
     return {"action": "aim", "direction": directions[0], "yards": yards}
 
 
-def _parse_words(rest: list[str]) -> dict | None:
+def _club_command(club: str, after: list[str], variants: dict[str, frozenset[str]] | None) -> dict | None:
+    """A club and whatever followed it: nothing (the full swing), "full", or one of the
+    player's named variants for that club ("one inch choke down")."""
+    if not after:
+        return {"action": "arm", "club": club}
+    said = " ".join(after)
+    if said in BASE_SWING_PHRASES:
+        return {"action": "arm", "club": club}
+    for phrase in sorted((variants or {}).get(club, frozenset()) | (variants or {}).get("*", frozenset())):
+        # Compared the way the words were heard: filler words ("a", "the") don't count.
+        if " ".join(word for word in phrase.split() if word not in FILLER_WORDS) == said:
+            return {"action": "arm", "club": club, "variant": phrase}
+    return None
+
+
+def _parse_club(club_words: list[str], clubs: frozenset[str] | None,
+                variants: dict[str, frozenset[str]] | None) -> dict | None:
+    """"seven iron", "seven iron one inch choke down", "seven" (the 7 iron)."""
+    club, after_club = _match_phrase(club_words, CLUB_PHRASES)
+    if club:
+        return _club_command(club, after_club, variants)
+    number, after_number = _parse_number(club_words)
+    if number is not None and number < 10:
+        bare = bare_number_club(number, clubs)
+        if bare:
+            return _club_command(bare, after_number, variants)
+    return None
+
+
+def _parse_words(rest: list[str], clubs: frozenset[str] | None = None,
+                 variants: dict[str, frozenset[str]] | None = None) -> dict | None:
     """The words after the wake word -> a command. Every word must belong to it
     (filler words aside), so half-heard sentences do nothing."""
     spoken_all = " ".join(rest)
@@ -279,14 +346,15 @@ def _parse_words(rest: list[str]) -> dict | None:
         return {"action": "chip", "shot": CHIP_PHRASES[" ".join(club_words)], "arm": words[0] == "arm"}
     if " ".join(club_words) in AIM_LINE_PHRASES:
         return {"action": "aim-line", "line": AIM_LINE_PHRASES[" ".join(club_words)], "arm": words[0] == "arm"}
-    club, after_club = _match_phrase(club_words, CLUB_PHRASES)
-    if club and not after_club:
-        return {"action": "arm", "club": club}
-    # "switch to seven iron" is heard as "two seven iron".
-    if len(club_words) > 1 and club_words[0] in ("two", "four"):
-        club, after_club = _match_phrase(club_words[1:], CLUB_PHRASES)
-        if club and not after_club:
-            return {"action": "arm", "club": club}
+    if "left" not in words and "right" not in words:
+        command = _parse_club(club_words, clubs, variants)
+        if command:
+            return command
+        # "switch to seven iron" is heard as "two seven iron".
+        if len(club_words) > 1 and club_words[0] in ("two", "four"):
+            club, after_club = _match_phrase(club_words[1:], CLUB_PHRASES)
+            if club:
+                return _club_command(club, after_club, variants)
     if "left" in words or "right" in words:
         return _parse_aim(words)
     return None
@@ -302,20 +370,22 @@ def has_wake_word(text: str | None) -> bool:
     return any(word in WAKE_WORDS for word in _clean_words(text))
 
 
-def parse_command(text: str | None, wake_open: bool = False) -> dict | None:
+def parse_command(text: str | None, wake_open: bool = False, clubs: frozenset[str] | None = None,
+                  variants: dict[str, frozenset[str]] | None = None) -> dict | None:
     """Recognised text -> a command, or None. Pure, so it is unit-tested.
 
     A command needs a wake word in the same breath, unless ``wake_open``: the
-    wake word was said on its own a moment ago."""
+    wake word was said on its own a moment ago. ``clubs`` is the player's bag
+    (for "seven" alone); ``variants`` their named variants, per club."""
     words = _clean_words(text)
     wake_at = next((i for i, word in enumerate(words) if word in WAKE_WORDS), None)
     if wake_at is None:
-        return _parse_words(words) if wake_open else None
+        return _parse_words(words, clubs, variants) if wake_open else None
     rest = words[wake_at + 1:]
     # A second wake word starts over ("caddie ... caddie arm it").
     while any(word in WAKE_WORDS for word in rest):
         rest = rest[next(i for i, word in enumerate(rest) if word in WAKE_WORDS) + 1:]
-    return _parse_words(rest)
+    return _parse_words(rest, clubs, variants)
 
 
 def confidence(result: dict) -> float | None:
@@ -364,7 +434,8 @@ _MODEL = None
 _MODEL_LOCK = threading.Lock()
 
 
-def _new_recognizer(clubs: frozenset[str] | None = None):
+def _new_recognizer(clubs: frozenset[str] | None = None,
+                    variants: dict[str, frozenset[str]] | None = None):
     """A fresh recogniser on the shared model (loading the model takes a second)."""
     global _MODEL
     import vosk
@@ -373,7 +444,7 @@ def _new_recognizer(clubs: frozenset[str] | None = None):
     with _MODEL_LOCK:
         if _MODEL is None:
             _MODEL = vosk.Model(str(model_dir()))
-    recognizer = vosk.KaldiRecognizer(_MODEL, SAMPLE_RATE, json.dumps(grammar(clubs)))
+    recognizer = vosk.KaldiRecognizer(_MODEL, SAMPLE_RATE, json.dumps(grammar(clubs, variants)))
     recognizer.SetWords(True)  # per-word confidence
     return recognizer
 
@@ -455,11 +526,16 @@ class VoiceListener:
         # player can see why nothing happened ("heard Looper, then nothing").
         self._last_heard: dict | None = None
         self._clubs: frozenset[str] | None = None  # the player's bag, when the page sent it
+        # Their named variants, per club ("*" = any), when the page sent them (the range does).
+        self._variants: dict[str, frozenset[str]] | None = None
         self._wake_until = 0.0
 
-    def poll(self, since: int | None, listen: bool = True, clubs: frozenset[str] | None = None) -> dict:
+    def poll(self, since: int | None, listen: bool = True, clubs: frozenset[str] | None = None,
+             variants: dict[str, frozenset[str]] | None = None) -> dict:
         if clubs is not None:
             self._clubs = clubs or None
+        if variants is not None:
+            self._variants = variants or None
         error = _engine_error()
         if error:
             return self._payload("unavailable", error, since)
@@ -496,7 +572,7 @@ class VoiceListener:
         now = time.monotonic()
         wake_open = now < self._wake_until
         woke = has_wake_word(text)
-        command = parse_command(text, wake_open=wake_open)
+        command = parse_command(text, wake_open=wake_open, clubs=self._clubs, variants=self._variants)
         # "Looper" on its own: a command may follow in the next few seconds.
         waiting = False
         if woke and command is None:
@@ -535,8 +611,8 @@ class VoiceListener:
         try:
             import sounddevice
 
-            listening_for = self._clubs
-            recognizer = _new_recognizer(listening_for)
+            listening_for = (self._clubs, self._variants)
+            recognizer = _new_recognizer(*listening_for)
             stream, rate, name = _open_microphone(sounddevice)
             block = BLOCK_FRAMES if rate == SAMPLE_RATE else max(1, rate // 4)
             resample_state = None
@@ -550,10 +626,10 @@ class VoiceListener:
                     if data and recognizer.AcceptWaveform(data):
                         result = json.loads(recognizer.Result())
                         self.handle_text(result.get("text"), confidence(result))
-                    if self._clubs != listening_for:
-                        # The bag changed: only its clubs stay listenable.
-                        listening_for = self._clubs
-                        recognizer = _new_recognizer(listening_for)
+                    if (self._clubs, self._variants) != listening_for:
+                        # The bag or its variants changed: only those stay listenable.
+                        listening_for = (self._clubs, self._variants)
+                        recognizer = _new_recognizer(*listening_for)
             with self._lock:
                 self._status, self._reason, self._mic_level = "off", None, 0.0
         except Exception as error:  # no microphone, device busy, driver error

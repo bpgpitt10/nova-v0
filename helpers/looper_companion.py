@@ -376,6 +376,7 @@ class LooperCompanionHandler(base.OpenGolfCoachHandler):
                 listen=(query.get("listen") or ["1"])[0] != "0",
                 clubs=None if clubs_raw is None else frozenset(
                     club for club in clubs_raw.split(",") if club and len(club) <= 12),
+                variants=voice.parse_variants((query.get("variants") or [None])[0]),
             )
             payload["version"] = COMPANION_VERSION
             self._send_companion(200, payload)
