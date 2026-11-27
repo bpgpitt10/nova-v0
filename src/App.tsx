@@ -76,6 +76,15 @@ import {
   shotsForClubVariant,
   STOCK_SHOT_VARIANT_ID,
 } from './lib/shotVariants'
+import { resolveVoiceVariant, voiceVariantEntries } from './lib/voiceVariants'
+import {
+  loadVoiceEnabled,
+  saveVoiceEnabled,
+  startVoiceCommands,
+  VOICE_MIN_CONFIDENCE,
+  type VoiceCommand,
+  type VoiceStatus,
+} from './liveCaddie/voiceCommands'
 import { toggleFeltPerfectShot } from './lib/feltPerfect'
 import { summarizeReviewClub } from './lib/scoring'
 import { startSimReadHelper } from './lib/simreadHelper'
@@ -1232,6 +1241,68 @@ function App({
   useEffect(() => {
     selectedClubRef.current = selectedClub
   }, [selectedClub])
+
+  // Voice on the range (Brian, 27 Nov): "Looper, seven iron" moves the session to the 7 iron,
+  // "Looper, seven iron one inch choke down" to that named variant, "club up/down" one club.
+  // Shares Live Caddie's voice switch, so a player who turned it on there hears it here too.
+  const [rangeVoiceEnabled, setRangeVoiceEnabled] = useState(() => loadVoiceEnabled())
+  const [rangeVoiceStatus, setRangeVoiceStatus] = useState<VoiceStatus>({ state: 'off' })
+  const [rangeVoiceNote, setRangeVoiceNote] = useState<{ text: string; miss: boolean } | null>(null)
+  const rangeVoiceCommandRef = useRef<(command: VoiceCommand) => void>(() => undefined)
+  rangeVoiceCommandRef.current = (command) => {
+    if (command.conf != null && command.conf < VOICE_MIN_CONFIDENCE) {
+      setRangeVoiceNote({ text: `Didn't catch that ("${command.heard}")`, miss: true })
+      return
+    }
+    const bag = activeBagClubIds as string[]
+    if (command.action === 'arm' && command.club) {
+      if (!bag.includes(command.club)) {
+        setRangeVoiceNote({ text: `${command.club} isn't in your bag`, miss: true })
+        return
+      }
+      const club = command.club as Club
+      const variant = command.variant ? resolveVoiceVariant(club, command.variant) : null
+      setSelectedClub(club)
+      setSelectedShotVariantId(variant?.id ?? STOCK_SHOT_VARIANT_ID)
+      setRangeVoiceNote(command.variant && !variant
+        ? { text: `${getClubDisplayName(club)} (no variant "${command.variant}" for it)`, miss: true }
+        : { text: `${getClubDisplayName(club)}${variant ? ` · ${formatShotVariantName(variant.name)}` : ''}`, miss: false })
+      return
+    }
+    if (command.action === 'club-step') {
+      // The bag runs longest to shortest: "club up" is the next longer club.
+      const at = bag.indexOf(selectedClubRef.current)
+      const next = at < 0 ? -1 : command.direction === 'up' ? at - 1 : at + 1
+      if (next < 0 || next >= bag.length) {
+        setRangeVoiceNote({ text: command.direction === 'up' ? 'Already your longest club' : 'Already your shortest club', miss: true })
+        return
+      }
+      const club = bag[next] as Club
+      setSelectedClub(club)
+      setSelectedShotVariantId(STOCK_SHOT_VARIANT_ID)
+      setRangeVoiceNote({ text: getClubDisplayName(club), miss: false })
+      return
+    }
+    setRangeVoiceNote({ text: 'On the range, say a club: "Looper, seven iron"', miss: true })
+  }
+  useEffect(() => {
+    if (!forceSessionIntelligenceRoute || !rangeVoiceEnabled) return
+    return startVoiceCommands(
+      (command) => rangeVoiceCommandRef.current(command),
+      (next) => setRangeVoiceStatus((previous) => (previous.state === next.state ? previous : next)),
+      () => activeBagClubIds as string[],
+      () => voiceVariantEntries(activeBagClubIds),
+    )
+  }, [forceSessionIntelligenceRoute, rangeVoiceEnabled])
+  useEffect(() => {
+    if (!rangeVoiceNote) return
+    const timer = window.setTimeout(() => setRangeVoiceNote(null), rangeVoiceNote.miss ? 3000 : 4000)
+    return () => window.clearTimeout(timer)
+  }, [rangeVoiceNote])
+  const toggleRangeVoice = () => setRangeVoiceEnabled((current) => {
+    saveVoiceEnabled(!current)
+    return !current
+  })
 
   useEffect(() => {
     selectedShotVariantIdRef.current = selectedShotVariantId
@@ -5018,6 +5089,24 @@ function App({
                   ))}
                 </select>
               </div>
+            ) : null}
+            <button
+              type="button"
+              className={`session-intelligence-voice is-${rangeVoiceEnabled ? rangeVoiceStatus.state : 'off'}`}
+              aria-pressed={rangeVoiceEnabled}
+              onClick={toggleRangeVoice}
+              title={rangeVoiceEnabled
+                ? 'Say "Looper, seven iron" to change clubs, or add a variant you named: "Looper, seven iron one inch choke down".'
+                : 'Turn on voice to change clubs by saying "Looper, seven iron". Needs the companion and a microphone.'}
+            >
+              {!rangeVoiceEnabled ? 'Voice off'
+                : rangeVoiceStatus.state === 'listening' ? 'Listening'
+                  : rangeVoiceStatus.state === 'unavailable' ? 'Voice unavailable' : 'Voice starting'}
+            </button>
+            {rangeVoiceNote ? (
+              <span className={`session-intelligence-voice-note${rangeVoiceNote.miss ? ' is-miss' : ''}`} role="status">
+                {rangeVoiceNote.text}
+              </span>
             ) : null}
           </div>
           {visibleGsproSessionAlert ? (

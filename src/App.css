@@ -1942,6 +1942,46 @@ td {
   min-width: 0;
 }
 
+/* Voice on the range: a switch beside the club pickers, and a short note of what it did. */
+.session-intelligence-voice {
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.session-intelligence-voice[aria-pressed='true'] {
+  border-color: rgba(74, 222, 128, 0.6);
+}
+
+.session-intelligence-voice.is-listening {
+  background: rgba(74, 222, 128, 0.16);
+}
+
+.session-intelligence-voice.is-unavailable {
+  border-color: rgba(248, 113, 113, 0.6);
+}
+
+.session-intelligence-voice-note {
+  font-size: 13px;
+  font-weight: 700;
+  color: #86efac;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.session-intelligence-voice-note.is-miss {
+  color: #fca5a5;
+}
+
 .session-intelligence-gspro-alert {
   display: flex;
   flex-direction: column;
