@@ -33,6 +33,8 @@ export type VoiceCommand = {
   arm?: boolean
   /** chip: 'bump' | 'chip' | 'pitch' | 'flop', or a wedge flight: 'runner' | 'flighted' | 'standard' | 'high'. Shows it; with `arm`, aims it too. */
   shot?: string
+  /** arm: the named variant said after the club ("seven iron one inch choke down"), as the page sent it. Absent: the full swing. */
+  variant?: string
 }
 
 /** Below this the command is treated as misheard. Tuned from real rounds. */
@@ -98,12 +100,13 @@ const isCommand = (value: unknown): value is VoiceCommand => {
     && (event.club == null || typeof event.club === 'string')
 }
 
-const readVoice = async (since: number | null, clubs: string[]): Promise<VoicePayload> => {
+const readVoice = async (since: number | null, clubs: string[], variants: string[] | null): Promise<VoicePayload> => {
   const controller = new AbortController()
   const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
     // The bag goes along so only clubs the player carries can be heard.
-    const bag = `&clubs=${encodeURIComponent(clubs.join(','))}`
+    // Named variants ("7i:one inch choke down") go too, when the page uses them; older companions ignore them.
+    const bag = `&clubs=${encodeURIComponent(clubs.join(','))}${variants ? `&variants=${encodeURIComponent(variants.join(','))}` : ''}`
     const url = since == null ? `${VOICE_URL}?listen=1${bag}` : `${VOICE_URL}?listen=1&since=${since}${bag}`
     const response = await fetch(new Request(url, {
       method: 'GET',
@@ -128,6 +131,7 @@ export const startVoiceCommands = (
   onCommand: (command: VoiceCommand) => void,
   onStatus: (status: VoiceStatus) => void,
   getClubs: () => string[] = () => [],
+  getVariants: (() => string[]) | null = null,
 ) => {
   let stopped = false
   let busy = false
@@ -139,7 +143,7 @@ export const startVoiceCommands = (
     if (stopped || busy) return
     busy = true
     try {
-      const payload = await readVoice(since, getClubs())
+      const payload = await readVoice(since, getClubs(), getVariants ? getVariants() : null)
       if (stopped) return
       failures = 0
       if (payload.service !== 'looper-companion') throw new Error('not the companion')
@@ -150,7 +154,12 @@ export const startVoiceCommands = (
         for (const event of payload.events) {
           if (!isCommand(event) || event.seq <= since) continue
           since = event.seq
-          onCommand({ ...event, club: event.club ?? null, conf: typeof event.conf === 'number' ? event.conf : null })
+          onCommand({
+            ...event,
+            club: event.club ?? null,
+            conf: typeof event.conf === 'number' ? event.conf : null,
+            variant: typeof event.variant === 'string' ? event.variant : undefined,
+          })
         }
       }
       if (payload.status === 'listening') {
