@@ -492,6 +492,26 @@ const handleArmedClubChanged = () => {
   }, 0)
 }
 
+/**
+ * One Live Caddie session can run across several GSPro rounds and the range
+ * (27 Nov: Wildwood Green, Arcadia Bluffs, Cabot Cliffs, then the range, all in
+ * one). Hole and shot numbers repeat in every round, so a record from another
+ * round must never stand in for this shot's. A record with no round or course
+ * (made before GSPro said which) is still allowed.
+ */
+const fromSameGsproRound = (
+  record: LiveCaddieLineageRecord,
+  shot: ArchivedGsproCourseShot,
+) => {
+  const recordRoundId = finite(record.gsproRoundId)
+    ? record.gsproRoundId
+    : finite(record.payload.roundId) ? record.payload.roundId : null
+  if (recordRoundId != null && finite(shot.roundId) && recordRoundId !== shot.roundId) return false
+  const recordCourseKey = typeof record.payload.courseKey === 'string' ? record.payload.courseKey : null
+  if (recordCourseKey && shot.courseKey && recordCourseKey !== shot.courseKey) return false
+  return true
+}
+
 const stateForPhysicalPreShot = (
   store: LiveCaddieLineageStore,
   shot: ArchivedGsproCourseShot,
@@ -502,6 +522,7 @@ const stateForPhysicalPreShot = (
     const record = active[index]
     if (record.recordType !== 'state' || record.id === postState?.id) continue
     if (record.payload.holeNumber !== shot.holeNumber) continue
+    if (!fromSameGsproRound(record, shot)) continue
     if (shot.holeShot != null && record.payload.nextShotNumber !== shot.holeShot) continue
     if (postState && record.createdAt > postState.createdAt) continue
     return record
@@ -616,6 +637,7 @@ const puttingFactsForShot = (
   const firstPriorPuttingOutcome = activeRecords(store).find((record) => (
     record.recordType === 'shot_outcome'
     && record.payload.holeNumber === shot.holeNumber
+    && record.gsproRoundId === shot.roundId
     && asRecord(record.payload.putting) != null
   ))
   const priorPutting = firstPriorPuttingOutcome ? asRecord(firstPriorPuttingOutcome.payload.putting) : null
@@ -776,6 +798,7 @@ const processPhysicalShot = (store: LiveCaddieLineageStore, shot: ArchivedGsproC
   const priorSameSlot = newestRecord(store, (record) => (
     record.lineageRoundId === store.activeRoundId
     && record.recordType === 'shot_attempt'
+    && record.gsproRoundId === shot.roundId
     && record.payload.holeNumber === shot.holeNumber
     && record.payload.holeShot === shot.holeShot
   ))
