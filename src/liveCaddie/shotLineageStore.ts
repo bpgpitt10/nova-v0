@@ -4,6 +4,7 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '../cloud/supabaseClient'
+import { surfaceFromGsproRaw } from '../adapters/gsproSurfaceCodes'
 import { decisionBasis, paperCostStrokes } from './decisionOptions'
 import {
   loadArmedLiveClub,
@@ -87,17 +88,13 @@ const uuid = () => {
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
-const rawSurfaceLabel = (value: number | null | undefined) => {
-  switch (value) {
-    case 1: return 'rough'
-    case 2: return 'fairway'
-    case 3: return 'sand'
-    case 11: return 'sand'
-    case 5: return 'green'
-    case 18: return 'tee'
-    default: return null
-  }
-}
+/**
+ * GSPro's surface codes, from the confirmed table the rest of Live Caddie uses.
+ * This list had its own copy that still called code 3 sand: every deep-rough
+ * shot between 30 Oct and 28 Nov was recorded as a sand shot.
+ */
+const rawSurfaceLabel = (value: number | null | undefined) =>
+  surfaceFromGsproRaw(value ?? null)
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' && !Array.isArray(value)
